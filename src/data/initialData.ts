@@ -269,8 +269,28 @@ export const INITIAL_MODULES: Module[] = [
 
 export const INITIAL_STUDENTS: User[] = [
   {
+    id: 'usr-admin-herisson',
+    name: 'Herisson Trader (ADM)',
+    email: 'herisson.trader.jt5@gmail.com',
+    password: 'Trader@123',
+    termsAccepted: true,
+    termsAcceptedAt: '2025-01-15T10:00:00Z',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop',
+    role: 'admin',
+    tier: 'VIP',
+    status: 'Ativo',
+    joinedAt: '2025-01-15',
+    whatsapp: '551199887766',
+    progress: {
+      completedLessonIds: ['les-ob-1', 'les-ob-2', 'les-1-1', 'les-2-1'],
+      lastWatchedLessonId: 'les-ob-2',
+      lastWatchedModuleId: 'mod-ob-free'
+    },
+    notes: {}
+  },
+  {
     id: 'usr-current',
-    name: 'Vinicius Sestrem',
+    name: 'Vinicius Sestrem (ADM)',
     email: 'viniciussestremmm@gmail.com',
     password: 'Trader@123',
     termsAccepted: true,
