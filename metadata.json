@@ -1,0 +1,7 @@
+{
+  "name": "Trader Academic - Plataforma de Mentoria",
+  "description": "Área de membros estilo Kiwify com módulos verticais, aulas do YouTube, painel administrativo profissional e gestão avançada de alunos e acessos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
