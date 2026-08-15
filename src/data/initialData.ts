@@ -11,6 +11,7 @@ export const INITIAL_SETTINGS: PlatformSettings = {
   bannerHeadline: 'DOMINE O MERCADO COM MÉTODO E DISCIPLINA',
   bannerSubtext: 'Acesse o curso gratuito de Opções Binárias e faça o upgrade para a Formação Completa VIP por apenas R$ 499,90.',
   primaryColor: '#ff6b00',
+  caktoCheckoutUrl: 'https://pay.cakto.com.br/checkout/trader-academic-vip',
 };
 
 export const INITIAL_MODULES: Module[] = [

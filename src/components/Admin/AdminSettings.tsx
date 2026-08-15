@@ -170,6 +170,19 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
                 className="w-full p-3 rounded-xl bg-[#171724] border border-[#272738] text-white text-xs focus:outline-none focus:border-[#ff6b00]"
               />
             </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-300 mb-1 font-mono uppercase">
+                URL do Checkout Oficial da Cakto (Pagamento Cartão / PIX)
+              </label>
+              <input
+                type="text"
+                value={formData.caktoCheckoutUrl || ''}
+                placeholder="https://pay.cakto.com.br/checkout/seu-produto"
+                onChange={(e) => setFormData({ ...formData, caktoCheckoutUrl: e.target.value })}
+                className="w-full p-3 rounded-xl bg-[#171724] border border-[#272738] text-white text-xs focus:outline-none focus:border-[#ff6b00]"
+              />
+            </div>
           </div>
         </div>
 

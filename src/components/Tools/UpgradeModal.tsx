@@ -47,24 +47,17 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
     setTimeout(() => setCopiedPix(false), 2500);
   };
 
-  const handleSimulatePayment = () => {
+  const handleOpenCaktoCheckout = () => {
     setIsProcessing(true);
+    const checkoutUrl = settings.caktoCheckoutUrl || 'https://pay.cakto.com.br/checkout/trader-academic-vip';
+    
+    // Redireciona para o checkout oficial da Cakto em nova aba
+    window.open(checkoutUrl, '_blank');
+
     setTimeout(() => {
       setIsProcessing(false);
       setSuccess(true);
-      if (onSuccessUpgrade) {
-        setTimeout(() => {
-          onSuccessUpgrade();
-          onClose();
-        }, 1500);
-      }
-    }, 1200);
-  };
-
-  const handleOpenWhatsapp = () => {
-    const phone = settings.supportWhatsapp || '5511999999999';
-    const message = encodeURIComponent(`Olá! Gostaria de assinar o Plano VIP (R$ 499,90) da mentoria Trader Academic.`);
-    window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
+    }, 800);
   };
 
   return (
@@ -82,12 +75,12 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-orange-500/20 text-orange-400 border border-orange-500/30 uppercase tracking-widest font-mono">
-                  UPGRADE VIP
+                  CHECKOUT CAKTO
                 </span>
-                <span className="text-xs text-zinc-400">Acesso Total Imediato</span>
+                <span className="text-xs text-zinc-400">Pagamento Seguro 256-bit</span>
               </div>
               <h2 className="text-xl font-black text-white uppercase tracking-tight">
-                Plano VIP Oficial Trader Academic
+                Formação VIP Completa - Mentoria
               </h2>
             </div>
           </div>
@@ -105,13 +98,21 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
           
           {success ? (
             <div className="text-center py-8 space-y-4 animate-fade-in">
-              <div className="w-16 h-16 rounded-full bg-emerald-500/20 border-2 border-emerald-500 text-emerald-400 flex items-center justify-center mx-auto shadow-xl shadow-emerald-500/20 animate-bounce">
-                <CheckCircle2 className="w-10 h-10" />
+              <div className="w-16 h-16 rounded-full bg-orange-500/20 border-2 border-orange-500 text-orange-400 flex items-center justify-center mx-auto shadow-xl shadow-orange-500/20 animate-pulse">
+                <CreditCard className="w-8 h-8" />
               </div>
-              <h3 className="text-2xl font-black text-white">Parabéns! Você agora é VIP!</h3>
-              <p className="text-sm text-zinc-400 max-w-md mx-auto">
-                Seu plano foi atualizado para VIP. Todos os módulos avançados, salas ao vivo e setups estão 100% liberados!
+              <h3 className="text-2xl font-black text-white">Página de Checkout da Cakto Aberta!</h3>
+              <p className="text-sm text-zinc-300 max-w-md mx-auto leading-relaxed">
+                Conclua seu pagamento na aba da <strong className="text-white">Cakto</strong>. Assim que a transação for aprovada no Cartão ou PIX, seu plano VIP será ativado automaticamente pelo nosso Webhook!
               </p>
+              <div className="pt-2">
+                <button
+                  onClick={onClose}
+                  className="px-6 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-xs uppercase"
+                >
+                  Entendi, Voltar à Plataforma
+                </button>
+              </div>
             </div>
           ) : (
             <>
@@ -288,18 +289,18 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
 
               <button
                 type="button"
-                onClick={handleSimulatePayment}
+                onClick={handleOpenCaktoCheckout}
                 disabled={isProcessing}
                 className="flex-1 sm:flex-none px-6 py-3 rounded-xl bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-orange-600/30 flex items-center justify-center gap-2 hover:scale-105 transition-all cursor-pointer disabled:opacity-50"
               >
                 {isProcessing ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    <span>Processando...</span>
+                    <span>Redirecionando para Cakto...</span>
                   </>
                 ) : (
                   <>
-                    <span>Liberar Acesso VIP por R$ {vipPrice}</span>
+                    <span>Ir para o Checkout da Cakto (Cartão / PIX)</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}

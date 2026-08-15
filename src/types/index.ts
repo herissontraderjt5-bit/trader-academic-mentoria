@@ -136,4 +136,5 @@ export interface PlatformSettings {
   bannerHeadline: string;
   bannerSubtext: string;
   primaryColor: string;
+  caktoCheckoutUrl?: string;
 }
