@@ -122,14 +122,6 @@ export const storageService = {
       return { success: false, message: 'Já existe uma conta cadastrada com este email.' };
     }
 
-    const defaultAvatars = [
-      'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop',
-    ];
-    const randomAvatar = defaultAvatars[Math.floor(Math.random() * defaultAvatars.length)];
-
     const newUser: User = {
       id: 'usr-' + Date.now(),
       name: userData.name.trim(),
@@ -138,7 +130,7 @@ export const storageService = {
       password: userData.password,
       termsAccepted: userData.termsAccepted,
       termsAcceptedAt: new Date().toISOString(),
-      avatar: randomAvatar,
+      avatar: '',
       role: 'student',
       tier: 'Free',
       status: 'Ativo',
@@ -175,7 +167,7 @@ export const storageService = {
         id: 'usr-g-' + Date.now(),
         name: googleData.name,
         email: cleanEmail,
-        avatar: googleData.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop',
+        avatar: googleData.avatar || '',
         role: 'student',
         tier: 'Free',
         status: 'Ativo',

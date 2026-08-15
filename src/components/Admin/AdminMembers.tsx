@@ -22,6 +22,7 @@ import {
 import { User, Module, Tier, StudentStatus } from '../../types';
 import { supabaseService } from '../../services/supabaseService';
 import { storageService } from '../../services/storage';
+import { getAvatarUrl } from '../../utils/avatar';
 
 interface AdminMembersProps {
   users: User[];
@@ -174,7 +175,7 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
       tier: newUserForm.tier,
       status: newUserForm.status,
       role: 'student',
-      avatar: `https://images.unsplash.com/photo-${1534528741775 + Math.floor(Math.random() * 1000)}?q=80&w=200&auto=format&fit=crop`,
+      avatar: '',
       joinedAt: new Date().toLocaleDateString('pt-BR'),
       progress: {
         completedLessonIds: [],
@@ -193,7 +194,7 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
       name: '',
       email: '',
       whatsapp: '',
-      tier: 'Starter',
+      tier: 'Free',
       status: 'Ativo',
     });
   };
@@ -293,7 +294,7 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
                       <td className="py-4 px-4 sm:px-6">
                         <div className="flex items-center gap-3">
                           <img
-                            src={user.avatar}
+                            src={getAvatarUrl(user.avatar)}
                             alt={user.name}
                             className="w-10 h-10 rounded-xl object-cover ring-1 ring-orange-500/50"
                           />

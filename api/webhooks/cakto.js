@@ -65,7 +65,7 @@ export default async function handler(req, res) {
       tier: targetTier,
       status: targetStatus,
       role: 'student',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop',
+      avatar: '',
       joined_at: new Date().toISOString().split('T')[0],
       updated_at: new Date().toISOString(),
     };

@@ -141,7 +141,7 @@ export const AdminSimulator: React.FC<AdminSimulatorProps> = ({
             name: buyerName,
             email: buyerEmail,
             whatsapp: buyerPhone,
-            avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop',
+            avatar: '',
             role: 'student',
             tier: targetTier,
             status: targetStatus,

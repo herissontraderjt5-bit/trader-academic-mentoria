@@ -18,6 +18,7 @@ import {
   Award
 } from 'lucide-react';
 import { User } from '../../types';
+import { getAvatarUrl } from '../../utils/avatar';
 
 interface EditProfileModalProps {
   isOpen: boolean;
@@ -25,17 +26,6 @@ interface EditProfileModalProps {
   currentUser: User;
   onSaveProfile: (updatedData: Partial<User>) => void;
 }
-
-const PRESET_AVATARS = [
-  'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200&auto=format&fit=crop',
-];
 
 export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   isOpen,
@@ -265,7 +255,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 <div className="flex flex-col sm:flex-row items-center gap-5">
                   <div className="relative group">
                     <img 
-                      src={avatar || currentUser.avatar} 
+                      src={getAvatarUrl(avatar || currentUser.avatar)} 
                       alt="Avatar Preview" 
                       className="w-24 h-24 rounded-2xl object-cover ring-2 ring-orange-500/50 shadow-xl shadow-orange-950/50 group-hover:opacity-85 transition-all"
                     />
@@ -296,13 +286,23 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                         <Upload className="w-3.5 h-3.5" />
                         <span>Carregar Foto do Computador/Celular</span>
                       </button>
+
+                      {avatar && (
+                        <button
+                          type="button"
+                          onClick={() => setAvatar('')}
+                          className="px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-red-950 text-zinc-300 hover:text-red-400 border border-white/10 hover:border-red-500/40 text-xs font-semibold transition-all cursor-pointer"
+                        >
+                          Remover Foto de Perfil
+                        </button>
+                      )}
                     </div>
 
                     {/* URL Input */}
                     <div className="flex gap-2">
                       <input
                         type="text"
-                        placeholder="Ou cole o link direto da imagem (URL)..."
+                        placeholder="Ou cole o link direto da sua imagem (URL)..."
                         value={avatarUrlInput}
                         onChange={(e) => setAvatarUrlInput(e.target.value)}
                         className="flex-1 px-3 py-2 rounded-xl bg-black border border-white/10 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500"
@@ -320,32 +320,6 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                         Aplicar
                       </button>
                     </div>
-                  </div>
-                </div>
-
-                {/* Preset Avatars */}
-                <div>
-                  <span className="text-[11px] text-zinc-400 font-medium block mb-2">
-                    Ou escolha um avatar VIP pré-definido:
-                  </span>
-                  <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
-                    {PRESET_AVATARS.map((preset, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => setAvatar(preset)}
-                        className={`relative rounded-xl overflow-hidden shrink-0 transition-transform cursor-pointer ${
-                          avatar === preset ? 'ring-2 ring-orange-500 scale-105' : 'opacity-70 hover:opacity-100 hover:scale-105'
-                        }`}
-                      >
-                        <img src={preset} alt={`Avatar ${idx + 1}`} className="w-10 h-10 object-cover" />
-                        {avatar === preset && (
-                          <div className="absolute inset-0 bg-orange-500/30 flex items-center justify-center">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-white" />
-                          </div>
-                        )}
-                      </button>
-                    ))}
                   </div>
                 </div>
               </div>

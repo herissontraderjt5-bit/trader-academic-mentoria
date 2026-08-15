@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { User, Module, Announcement, PlatformSettings } from '../types';
 import { BrandLogo } from './BrandLogo';
+import { getAvatarUrl } from '../utils/avatar';
 
 interface NavbarProps {
   currentUser: User;
@@ -287,7 +288,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 rounded-full bg-zinc-900/60 hover:bg-zinc-800 border border-white/5 text-white transition-all cursor-pointer"
               >
                 <img
-                  src={currentUser.avatar}
+                  src={getAvatarUrl(currentUser.avatar)}
                   alt={currentUser.name}
                   className="w-7 h-7 rounded-full object-cover ring-1 ring-orange-500/40"
                 />
@@ -307,7 +308,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <div className="absolute right-0 mt-2 w-72 bg-[#0a0a0a] border border-orange-900/30 rounded-2xl shadow-2xl p-4 z-50">
                   <div className="flex items-center gap-3 pb-3 border-b border-white/5">
                     <img
-                      src={currentUser.avatar}
+                      src={getAvatarUrl(currentUser.avatar)}
                       alt={currentUser.name}
                       className="w-11 h-11 rounded-xl object-cover ring-2 ring-orange-500"
                     />
