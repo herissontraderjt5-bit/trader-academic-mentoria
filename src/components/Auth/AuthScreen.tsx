@@ -19,6 +19,7 @@ import {
   X
 } from 'lucide-react';
 import { storageService } from '../../services/storage';
+import { supabaseService } from '../../services/supabaseService';
 import { User, PlatformSettings } from '../../types';
 import { TermsModal } from './TermsModal';
 import { BrandLogo } from '../BrandLogo';
@@ -133,14 +134,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
             onAuthSuccess(res.user!);
           }, 500);
           return;
-        } else {
-          setErrorMessage(res.message || 'Credenciais inválidas. Verifique seu email e senha.');
-          setIsLoading(false);
-          return;
         }
       }
 
-      // Fallback local caso Supabase não esteja configurado
+      // Fallback local
       const res = storageService.login(loginEmail, loginPassword);
       if (res.success && res.user) {
         setSuccessMessage(`Bem-vindo de volta, ${res.user.name.split(' ')[0]}!`);
