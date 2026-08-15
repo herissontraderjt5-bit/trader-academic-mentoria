@@ -444,9 +444,8 @@ export default function App() {
             <ModuleGrid
               modules={modules}
               currentUser={currentUser}
-              onSelectLesson={handleSelectLesson}
-              onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
-              onOpenModuleModal={(mod) => setSelectedModuleForModal(mod)}
+              onSelectModule={(mod) => setSelectedModuleForModal(mod)}
+              onPlayFirstUncompleted={handlePlayFirstUncompleted}
             />
 
             {/* Community & Live Sessions Section */}
