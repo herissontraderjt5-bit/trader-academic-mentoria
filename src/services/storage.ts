@@ -235,14 +235,7 @@ export const storageService = {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.STUDENTS);
       if (data) {
-        const parsed: User[] = JSON.parse(data);
-        const merged = [...parsed];
-        INITIAL_STUDENTS.forEach((initUser) => {
-          if (!merged.some((u) => u.email.toLowerCase() === initUser.email.toLowerCase())) {
-            merged.push(initUser);
-          }
-        });
-        return merged;
+        return JSON.parse(data);
       }
     } catch (e) {
       console.error(e);
@@ -252,15 +245,14 @@ export const storageService = {
   },
 
   saveStudents(students: User[]): void {
-    const merged = [...students];
-    INITIAL_STUDENTS.forEach((initUser) => {
-      if (!merged.some((u) => u.email.toLowerCase() === initUser.email.toLowerCase())) {
-        merged.push(initUser);
-      }
-    });
-    localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(merged));
+    localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(students));
+  },
+
+  deleteStudent(userId: string): void {
+    const students = this.getStudents().filter((s) => s.id !== userId);
+    this.saveStudents(students);
     if (supabaseService.isConfigured()) {
-      merged.forEach((s) => supabaseService.upsertProfile(s));
+      supabaseService.deleteProfile(userId);
     }
   },
 

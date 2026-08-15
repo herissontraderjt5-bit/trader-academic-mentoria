@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { User, Module, Tier, StudentStatus } from '../../types';
 import { supabaseService } from '../../services/supabaseService';
+import { storageService } from '../../services/storage';
 
 interface AdminMembersProps {
   users: User[];
@@ -156,9 +157,7 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
     if (confirm('Tem certeza que deseja remover este aluno?')) {
       const updated = users.filter((u) => u.id !== userId);
       onUpdateUsers(updated);
-      if (supabaseService.isConfigured()) {
-        supabaseService.deleteProfile(userId);
-      }
+      storageService.deleteStudent(userId);
     }
   };
 
