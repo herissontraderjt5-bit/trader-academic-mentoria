@@ -18,8 +18,7 @@ export const storageService = {
   isAuthenticated(): boolean {
     const isAuth = localStorage.getItem(STORAGE_KEYS.IS_AUTHENTICATED);
     if (isAuth === null) {
-      localStorage.setItem(STORAGE_KEYS.IS_AUTHENTICATED, 'true');
-      return true;
+      return false;
     }
     return isAuth === 'true';
   },

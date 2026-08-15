@@ -56,7 +56,20 @@ export default function App() {
   // Current User Object
   const currentUser = useMemo(() => {
     const found = users.find(u => u.id === currentUserId);
-    return found || users[0];
+    if (found) return found;
+    if (users && users.length > 0) return users[0];
+    return {
+      id: 'usr-guest',
+      name: 'Visitante',
+      email: '',
+      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop',
+      role: 'student',
+      tier: 'Free',
+      status: 'Ativo',
+      joinedAt: new Date().toISOString().split('T')[0],
+      progress: { completedLessonIds: [] },
+      notes: {},
+    } as User;
   }, [users, currentUserId]);
 
   // Sync with Supabase on mount and listen to Auth state changes (including Google OAuth redirect)
