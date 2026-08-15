@@ -138,11 +138,16 @@ export default function App() {
 
   // Auth Handlers
   const handleAuthSuccess = (authUser: User) => {
-    const currentStudents = storageService.getStudents();
+    storageService.setCurrentUserId(authUser.id);
+    storageService.setAuthenticated(true);
+    let currentStudents = storageService.getStudents();
+    if (!currentStudents.some(u => u.id === authUser.id || u.email.toLowerCase() === authUser.email.toLowerCase())) {
+      currentStudents = [authUser, ...currentStudents];
+      storageService.saveStudents(currentStudents);
+    }
     setUsers(currentStudents);
     setCurrentUserId(authUser.id);
     setIsAuthenticated(true);
-    // If admin, keep in home or current view
     setActiveView('home');
   };
 

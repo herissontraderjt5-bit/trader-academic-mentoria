@@ -234,7 +234,16 @@ export const storageService = {
   getStudents(): User[] {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.STUDENTS);
-      if (data) return JSON.parse(data);
+      if (data) {
+        const parsed: User[] = JSON.parse(data);
+        const merged = [...parsed];
+        INITIAL_STUDENTS.forEach((initUser) => {
+          if (!merged.some((u) => u.email.toLowerCase() === initUser.email.toLowerCase())) {
+            merged.push(initUser);
+          }
+        });
+        return merged;
+      }
     } catch (e) {
       console.error(e);
     }
@@ -243,9 +252,15 @@ export const storageService = {
   },
 
   saveStudents(students: User[]): void {
-    localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(students));
+    const merged = [...students];
+    INITIAL_STUDENTS.forEach((initUser) => {
+      if (!merged.some((u) => u.email.toLowerCase() === initUser.email.toLowerCase())) {
+        merged.push(initUser);
+      }
+    });
+    localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(merged));
     if (supabaseService.isConfigured()) {
-      students.forEach((s) => supabaseService.upsertProfile(s));
+      merged.forEach((s) => supabaseService.upsertProfile(s));
     }
   },
 
