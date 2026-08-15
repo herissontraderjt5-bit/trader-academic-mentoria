@@ -1,19 +1,12 @@
 import React, { useState } from 'react';
 import { 
-  Sparkles, 
   X, 
   CheckCircle2, 
   Lock, 
   Flame, 
-  ShieldCheck, 
-  Zap, 
-  Clock, 
   ArrowRight,
   HelpCircle,
-  Copy,
-  Check,
-  CreditCard,
-  QrCode
+  CreditCard
 } from 'lucide-react';
 import { PlatformSettings } from '../../types';
 
@@ -21,43 +14,36 @@ interface UpgradeModalProps {
   isOpen: boolean;
   onClose: () => void;
   settings: PlatformSettings;
-  onSuccessUpgrade?: () => void;
 }
 
 export const UpgradeModal: React.FC<UpgradeModalProps> = ({
   isOpen,
   onClose,
   settings,
-  onSuccessUpgrade,
 }) => {
-  const [copiedPix, setCopiedPix] = useState(false);
-  const [selectedMethod, setSelectedMethod] = useState<'card' | 'pix'>('pix');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [success, setSuccess] = useState(false);
 
   if (!isOpen) return null;
 
   const vipPrice = '499,90';
   const vipPriceInstallment = '12x de R$ 49,90';
-  const dummyPixKey = '00020126580014br.gov.bcb.pix0136traderacademic-vip-499@pagamento.com5204000053039865405499.905802BR5923TRADER ACADEMIC VIP6009SAO PAULO62070503***6304E8F2';
-
-  const handleCopyPix = () => {
-    navigator.clipboard.writeText(dummyPixKey);
-    setCopiedPix(true);
-    setTimeout(() => setCopiedPix(false), 2500);
-  };
 
   const handleOpenCaktoCheckout = () => {
     setIsProcessing(true);
     const checkoutUrl = settings.caktoCheckoutUrl || 'https://pay.cakto.com.br/checkout/trader-academic-vip';
     
-    // Redireciona para o checkout oficial da Cakto em nova aba
+    // Redireciona diretamente para o checkout oficial da Cakto em nova aba
     window.open(checkoutUrl, '_blank');
 
     setTimeout(() => {
       setIsProcessing(false);
-      setSuccess(true);
-    }, 800);
+    }, 1000);
+  };
+
+  const handleOpenWhatsapp = () => {
+    const phone = settings.supportWhatsapp || '5511999999999';
+    const message = encodeURIComponent(`Olá! Tenho dúvidas sobre o checkout da mentoria Trader Academic.`);
+    window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
   };
 
   return (
@@ -95,219 +81,147 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
 
         {/* Modal Body */}
         <div className="p-6 space-y-6">
-          
-          {success ? (
-            <div className="text-center py-8 space-y-4 animate-fade-in">
-              <div className="w-16 h-16 rounded-full bg-orange-500/20 border-2 border-orange-500 text-orange-400 flex items-center justify-center mx-auto shadow-xl shadow-orange-500/20 animate-pulse">
-                <CreditCard className="w-8 h-8" />
+          {/* Plan Comparison Card */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            {/* Free Plan Box */}
+            <div className="p-5 rounded-2xl bg-zinc-900/60 border border-white/5 flex flex-col justify-between opacity-80">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-mono font-bold text-zinc-400 uppercase">Seu Plano Atual</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-zinc-800 text-zinc-300">FREE</span>
+                </div>
+                <h3 className="text-lg font-black text-white mb-1">Plano Free</h3>
+                <p className="text-xs text-zinc-400 mb-4">Acesso exclusivo ao módulo de introdução a Opções Binárias.</p>
+                
+                <ul className="space-y-2 text-xs text-zinc-300">
+                  <li className="flex items-center gap-2 text-emerald-400">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>Módulo de Opções Binárias Liberado</span>
+                  </li>
+                  <li className="flex items-center gap-2 text-zinc-500 line-through">
+                    <Lock className="w-3.5 h-3.5 shrink-0" />
+                    <span>Módulos de B3 (Índice & Dólar)</span>
+                  </li>
+                  <li className="flex items-center gap-2 text-zinc-500 line-through">
+                    <Lock className="w-3.5 h-3.5 shrink-0" />
+                    <span>Salas de Operações Ao Vivo</span>
+                  </li>
+                  <li className="flex items-center gap-2 text-zinc-500 line-through">
+                    <Lock className="w-3.5 h-3.5 shrink-0" />
+                    <span>Planilhas & Indicadores VIP</span>
+                  </li>
+                </ul>
               </div>
-              <h3 className="text-2xl font-black text-white">Página de Checkout da Cakto Aberta!</h3>
-              <p className="text-sm text-zinc-300 max-w-md mx-auto leading-relaxed">
-                Conclua seu pagamento na aba da <strong className="text-white">Cakto</strong>. Assim que a transação for aprovada no Cartão ou PIX, seu plano VIP será ativado automaticamente pelo nosso Webhook!
-              </p>
-              <div className="pt-2">
-                <button
-                  onClick={onClose}
-                  className="px-6 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-xs uppercase"
-                >
-                  Entendi, Voltar à Plataforma
-                </button>
+
+              <div className="mt-4 pt-4 border-t border-white/5">
+                <span className="text-lg font-black text-zinc-400">R$ 0,00</span>
               </div>
             </div>
-          ) : (
-            <>
-              {/* Plan Comparison Card */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            {/* VIP Plan Box (Featured) */}
+            <div className="p-5 rounded-2xl bg-gradient-to-b from-orange-950/40 via-zinc-900 to-black border-2 border-orange-500 flex flex-col justify-between shadow-xl shadow-orange-950/40 relative">
+              <div className="absolute -top-3 right-4 px-3 py-0.5 rounded-full bg-gradient-to-r from-orange-500 to-amber-400 text-black text-[10px] font-black uppercase tracking-wider shadow">
+                MAIS RECOMENDADO
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-mono font-bold text-orange-400 uppercase">Acesso Completo</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-orange-500 text-black">VIP</span>
+                </div>
+                <h3 className="text-xl font-black text-white mb-1">Plano VIP Completo</h3>
+                <p className="text-xs text-orange-200 mb-4">Acesso irrestrito a todos os módulos, mentorias e salas ao vivo.</p>
                 
-                {/* Free Plan Box */}
-                <div className="p-5 rounded-2xl bg-zinc-900/60 border border-white/5 flex flex-col justify-between opacity-80">
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-mono font-bold text-zinc-400 uppercase">Seu Plano Atual</span>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-zinc-800 text-zinc-300">FREE</span>
-                    </div>
-                    <h3 className="text-lg font-black text-white mb-1">Plano Free</h3>
-                    <p className="text-xs text-zinc-400 mb-4">Acesso exclusivo ao módulo de introdução a Opções Binárias.</p>
-                    
-                    <ul className="space-y-2 text-xs text-zinc-300">
-                      <li className="flex items-center gap-2 text-emerald-400">
-                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                        <span>Módulo de Opções Binárias Liberado</span>
-                      </li>
-                      <li className="flex items-center gap-2 text-zinc-500 line-through">
-                        <Lock className="w-3.5 h-3.5 shrink-0" />
-                        <span>Módulos de B3 (Índice & Dólar)</span>
-                      </li>
-                      <li className="flex items-center gap-2 text-zinc-500 line-through">
-                        <Lock className="w-3.5 h-3.5 shrink-0" />
-                        <span>Salas de Operações Ao Vivo</span>
-                      </li>
-                      <li className="flex items-center gap-2 text-zinc-500 line-through">
-                        <Lock className="w-3.5 h-3.5 shrink-0" />
-                        <span>Planilhas & Indicadores VIP</span>
-                      </li>
-                    </ul>
-                  </div>
-
-                  <div className="mt-4 pt-4 border-t border-white/5">
-                    <span className="text-lg font-black text-zinc-400">R$ 0,00</span>
-                  </div>
-                </div>
-
-                {/* VIP Plan Box (Featured) */}
-                <div className="p-5 rounded-2xl bg-gradient-to-b from-orange-950/40 via-zinc-900 to-black border-2 border-orange-500 flex flex-col justify-between shadow-xl shadow-orange-950/40 relative">
-                  <div className="absolute -top-3 right-4 px-3 py-0.5 rounded-full bg-gradient-to-r from-orange-500 to-amber-400 text-black text-[10px] font-black uppercase tracking-wider shadow">
-                    MAIS RECOMENDADO
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-mono font-bold text-orange-400 uppercase">Acesso Completo</span>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-orange-500 text-black">VIP</span>
-                    </div>
-                    <h3 className="text-xl font-black text-white mb-1">Plano VIP Completo</h3>
-                    <p className="text-xs text-orange-200 mb-4">Acesso irrestrito a todos os módulos, mentorias e salas ao vivo.</p>
-                    
-                    <ul className="space-y-2 text-xs text-zinc-200">
-                      <li className="flex items-center gap-2 text-orange-400 font-bold">
-                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-orange-400" />
-                        <span>Módulo de Opções Binárias + Todos os Módulos</span>
-                      </li>
-                      <li className="flex items-center gap-2 text-emerald-400 font-medium">
-                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                        <span>Price Action Avançado & Tape Reading</span>
-                      </li>
-                      <li className="flex items-center gap-2 text-emerald-400 font-medium">
-                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                        <span>Salas de Operações Ao Vivo & Gravações</span>
-                      </li>
-                      <li className="flex items-center gap-2 text-emerald-400 font-medium">
-                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                        <span>Pack de Planilhas, Indicadores e Certificado</span>
-                      </li>
-                      <li className="flex items-center gap-2 text-emerald-400 font-medium">
-                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                        <span>Grupo VIP no Telegram & Discord</span>
-                      </li>
-                    </ul>
-                  </div>
-
-                  <div className="mt-4 pt-4 border-t border-orange-500/30 flex items-baseline justify-between">
-                    <div>
-                      <span className="text-2xl sm:text-3xl font-black text-white font-mono">R$ {vipPrice}</span>
-                      <span className="text-[11px] text-orange-400 block font-sans">ou {vipPriceInstallment}</span>
-                    </div>
-                    <span className="text-[10px] text-zinc-400 font-mono">PAGAMENTO ÚNICO</span>
-                  </div>
-                </div>
-
+                <ul className="space-y-2 text-xs text-zinc-200">
+                  <li className="flex items-center gap-2 text-orange-400 font-bold">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-orange-400" />
+                    <span>Módulo de Opções Binárias + Todos os Módulos</span>
+                  </li>
+                  <li className="flex items-center gap-2 text-emerald-400 font-medium">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>Price Action Avançado & Tape Reading</span>
+                  </li>
+                  <li className="flex items-center gap-2 text-emerald-400 font-medium">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>Salas de Operações Ao Vivo & Gravações</span>
+                  </li>
+                  <li className="flex items-center gap-2 text-emerald-400 font-medium">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>Pack de Planilhas, Indicadores e Certificado</span>
+                  </li>
+                  <li className="flex items-center gap-2 text-emerald-400 font-medium">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>Grupo VIP no Telegram & Discord</span>
+                  </li>
+                </ul>
               </div>
 
-              {/* Payment Selector */}
-              <div className="p-4 rounded-2xl bg-zinc-900 border border-white/5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-zinc-300 font-mono">
-                    Forma de Pagamento
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedMethod('pix')}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                        selectedMethod === 'pix'
-                          ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
-                          : 'bg-zinc-800 text-zinc-400 hover:text-white'
-                      }`}
-                    >
-                      <QrCode className="w-3.5 h-3.5" />
-                      <span>PIX Instantâneo</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedMethod('card')}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                        selectedMethod === 'card'
-                          ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/30'
-                          : 'bg-zinc-800 text-zinc-400 hover:text-white'
-                      }`}
-                    >
-                      <CreditCard className="w-3.5 h-3.5" />
-                      <span>Cartão de Crédito</span>
-                    </button>
-                  </div>
+              <div className="mt-4 pt-4 border-t border-orange-500/30 flex items-baseline justify-between">
+                <div>
+                  <span className="text-2xl sm:text-3xl font-black text-white font-mono">R$ {vipPrice}</span>
+                  <span className="text-[11px] text-orange-400 block font-sans">ou {vipPriceInstallment}</span>
                 </div>
-
-                {selectedMethod === 'pix' ? (
-                  <div className="p-3 rounded-xl bg-black/60 border border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3">
-                    <div className="text-xs text-zinc-300">
-                      <p className="font-bold text-emerald-400 mb-0.5">PIX Copia e Cola - Liberação Instantânea</p>
-                      <p className="text-[11px] text-zinc-500 font-mono truncate max-w-sm">
-                        {dummyPixKey.slice(0, 45)}...
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleCopyPix}
-                      className="w-full sm:w-auto px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shrink-0 transition-all"
-                    >
-                      {copiedPix ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{copiedPix ? 'Copiado!' : 'Copiar Código PIX'}</span>
-                    </button>
-                  </div>
-                ) : (
-                  <div className="p-3 rounded-xl bg-black/60 border border-white/10 text-xs text-zinc-300 flex items-center justify-between">
-                    <span>Parcele em até 12x no cartão com aprovação automática.</span>
-                    <span className="text-xs font-mono font-bold text-orange-400">12x R$ 49,90</span>
-                  </div>
-                )}
+                <span className="text-[10px] text-zinc-400 font-mono">PAGAMENTO SEGURO</span>
               </div>
-            </>
-          )}
+            </div>
 
+          </div>
+
+          {/* Cakto Payment Info Banner */}
+          <div className="p-4 rounded-2xl bg-zinc-900 border border-white/5 flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-orange-600/20 text-orange-400">
+              <CreditCard className="w-5 h-5" />
+            </div>
+            <div className="text-xs text-zinc-300">
+              <p className="font-bold text-white mb-0.5">Pagamento Processado via Cakto (Cartão de Crédito / PIX)</p>
+              <p className="text-[11px] text-zinc-400">
+                Ao clicar no botão abaixo, você será redirecionado para a página oficial de pagamento da Cakto. Assim que o pagamento for confirmado, seu plano VIP será ativado automaticamente pelo Webhook!
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Modal Footer */}
-        {!success && (
-          <div className="p-6 bg-zinc-900/90 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="p-6 bg-zinc-900/90 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={handleOpenWhatsapp}
+            className="text-xs text-zinc-400 hover:text-emerald-400 flex items-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <HelpCircle className="w-4 h-4" />
+            <span>Dúvidas? Falar com Suporte no WhatsApp</span>
+          </button>
+
+          <div className="flex items-center gap-3 w-full sm:w-auto">
             <button
               type="button"
-              onClick={handleOpenWhatsapp}
-              className="text-xs text-zinc-400 hover:text-emerald-400 flex items-center gap-1.5 transition-colors cursor-pointer"
+              onClick={onClose}
+              className="px-4 py-2.5 rounded-xl text-zinc-400 hover:text-white text-xs font-bold cursor-pointer"
             >
-              <HelpCircle className="w-4 h-4" />
-              <span>Dúvidas? Falar com Suporte no WhatsApp</span>
+              Cancelar
             </button>
 
-            <div className="flex items-center gap-3 w-full sm:w-auto">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2.5 rounded-xl text-zinc-400 hover:text-white text-xs font-bold cursor-pointer"
-              >
-                Depois
-              </button>
-
-              <button
-                type="button"
-                onClick={handleOpenCaktoCheckout}
-                disabled={isProcessing}
-                className="flex-1 sm:flex-none px-6 py-3 rounded-xl bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-orange-600/30 flex items-center justify-center gap-2 hover:scale-105 transition-all cursor-pointer disabled:opacity-50"
-              >
-                {isProcessing ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    <span>Redirecionando para Cakto...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Ir para o Checkout da Cakto (Cartão / PIX)</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handleOpenCaktoCheckout}
+              disabled={isProcessing}
+              className="flex-1 sm:flex-none px-6 py-3 rounded-xl bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-orange-600/30 flex items-center justify-center gap-2 hover:scale-105 transition-all cursor-pointer disabled:opacity-50"
+            >
+              {isProcessing ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  <span>Redirecionando...</span>
+                </>
+              ) : (
+                <>
+                  <span>Ir para o Checkout da Cakto (Cartão / PIX)</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
           </div>
-        )}
+        </div>
 
       </div>
     </div>
