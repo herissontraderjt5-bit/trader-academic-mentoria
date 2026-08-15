@@ -253,8 +253,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
-            {/* Painel ADM / Aluno Switcher Button (Restrito estritamente a herisson.trader.jt5@gmail.com) */}
-            {currentUser.email?.toLowerCase() === 'herisson.trader.jt5@gmail.com' && (
+            {/* Painel ADM / Aluno Switcher Button */}
+            {(currentUser.role === 'admin' || currentUser.email?.toLowerCase() === 'herisson.trader.jt5@gmail.com' || currentUser.email?.toLowerCase() === 'viniciussestremmm@gmail.com') && (
               <button
                 onClick={() => {
                   if (activeView === 'admin') {

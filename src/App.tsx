@@ -76,9 +76,24 @@ export default function App() {
 
   // Current User Object
   const currentUser = useMemo(() => {
-    const found = users.find(u => u.id === currentUserId);
-    if (found) return found;
-    if (users && users.length > 0) return users[0];
+    let found = users.find(u => u.id === currentUserId || u.email?.toLowerCase() === currentUserId?.toLowerCase());
+    if (!found && users && users.length > 0) {
+      found = users.find(u => u.email?.toLowerCase() === 'herisson.trader.jt5@gmail.com') || users[0];
+    }
+    
+    if (found) {
+      const emailLower = found.email?.toLowerCase() || '';
+      if (emailLower === 'herisson.trader.jt5@gmail.com' || emailLower === 'viniciussestremmm@gmail.com' || found.role === 'admin') {
+        return {
+          ...found,
+          role: 'admin' as Role,
+          tier: 'VIP' as Tier,
+          status: 'Ativo' as StudentStatus,
+        };
+      }
+      return found;
+    }
+
     return {
       id: 'usr-guest',
       name: 'Visitante',
@@ -110,6 +125,9 @@ export default function App() {
     if (supabase) {
       const handleUserSession = async (sessionUser: any) => {
         if (!sessionUser) return;
+        const emailLower = sessionUser.email?.toLowerCase() || '';
+        const isAdminEmail = emailLower === 'herisson.trader.jt5@gmail.com' || emailLower === 'viniciussestremmm@gmail.com';
+        
         let profile = await supabaseService.getProfileById(sessionUser.id);
         if (!profile) {
           const newProfile: User = {
@@ -117,8 +135,8 @@ export default function App() {
             name: sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || sessionUser.email?.split('@')[0] || 'Aluno',
             email: sessionUser.email || '',
             avatar: sessionUser.user_metadata?.avatar_url || '',
-            role: 'student',
-            tier: 'Free',
+            role: isAdminEmail ? 'admin' : 'student',
+            tier: isAdminEmail ? 'VIP' : 'Free',
             status: 'Ativo',
             joinedAt: new Date().toISOString().split('T')[0],
             progress: { completedLessonIds: [] },
@@ -126,6 +144,10 @@ export default function App() {
           };
           await supabaseService.upsertProfile(newProfile);
           profile = newProfile;
+        } else if (isAdminEmail && profile.role !== 'admin') {
+          profile.role = 'admin';
+          profile.tier = 'VIP';
+          await supabaseService.upsertProfile(profile);
         }
         setCurrentUserId(profile.id);
         setIsAuthenticated(true);
@@ -333,8 +355,10 @@ export default function App() {
     );
   }
 
-  // Admin security check: strict email match
-  const isAdmin = currentUser?.email?.toLowerCase() === 'herisson.trader.jt5@gmail.com';
+  // Admin security check: admin role or admin email
+  const isAdmin = currentUser?.role === 'admin' || 
+                  currentUser?.email?.toLowerCase() === 'herisson.trader.jt5@gmail.com' || 
+                  currentUser?.email?.toLowerCase() === 'viniciussestremmm@gmail.com';
 
   return (
     <div className="min-h-screen bg-[#070709] text-gray-100 flex flex-col font-sans selection:bg-orange-500 selection:text-white">
