@@ -14,6 +14,9 @@ import { EditProfileModal } from './components/Profile/EditProfileModal';
 
 import { Module, User, Lesson, Announcement, LiveSession, PlatformSettings } from './types';
 import { storageService } from './services/storage';
+import { supabase } from './lib/supabase';
+import { supabaseService } from './services/supabaseService';
+
 import { 
   Flame, 
   Radio, 
@@ -56,8 +59,9 @@ export default function App() {
     return found || users[0];
   }, [users, currentUserId]);
 
-  // Sync with Supabase on mount
+  // Sync with Supabase on mount and listen to Auth state changes (including Google OAuth redirect)
   React.useEffect(() => {
+    // 1. Initial data sync
     storageService.syncWithSupabase().then(synced => {
       if (synced) {
         if (synced.modules) setModules(synced.modules);
@@ -67,6 +71,50 @@ export default function App() {
         if (synced.settings) setSettings(synced.settings);
       }
     });
+
+    // 2. Real Supabase Auth listener (Google OAuth & Email session detection)
+    if (supabase) {
+      const handleUserSession = async (sessionUser: any) => {
+        if (!sessionUser) return;
+        let profile = await supabaseService.getProfileById(sessionUser.id);
+        if (!profile) {
+          const newProfile: User = {
+            id: sessionUser.id,
+            name: sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || sessionUser.email?.split('@')[0] || 'Aluno',
+            email: sessionUser.email || '',
+            avatar: sessionUser.user_metadata?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop',
+            role: 'student',
+            tier: 'Free',
+            status: 'Ativo',
+            joinedAt: new Date().toISOString().split('T')[0],
+            progress: { completedLessonIds: [] },
+            notes: {},
+          };
+          await supabaseService.upsertProfile(newProfile);
+          profile = newProfile;
+        }
+        setCurrentUserId(profile.id);
+        setIsAuthenticated(true);
+      };
+
+      // Check current session
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+          handleUserSession(session.user);
+        }
+      });
+
+      // Listen for auth state changes
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (session?.user) {
+          handleUserSession(session.user);
+        }
+      });
+
+      return () => {
+        subscription.unsubscribe();
+      };
+    }
   }, []);
 
   // Overall Progress

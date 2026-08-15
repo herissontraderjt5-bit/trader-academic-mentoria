@@ -39,10 +39,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
 
   // Login Form States
-  const [loginEmail, setLoginEmail] = useState('viniciussestremmm@gmail.com');
-  const [loginPassword, setLoginPassword] = useState('Trader@123');
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+
 
   // Register Form States
   const [regName, setRegName] = useState('');
@@ -112,20 +113,36 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     };
   }, [regPassword, regConfirmPassword]);
 
-  // LOGIN SUBMIT
+  // LOGIN SUBMIT REAL VIA SUPABASE
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
     setSuccessMessage('');
 
-    if (!loginEmail.trim()) {
-      setErrorMessage('Por favor, informe seu endereço de email.');
+    if (!loginEmail.trim() || !loginPassword) {
+      setErrorMessage('Por favor, informe seu email e senha.');
       return;
     }
 
     setIsLoading(true);
 
     try {
+      if (supabaseService.isConfigured()) {
+        const res = await supabaseService.loginWithEmail(loginEmail, loginPassword);
+        if (res.success && res.user) {
+          setSuccessMessage(`Bem-vindo de volta, ${res.user.name.split(' ')[0]}!`);
+          setTimeout(() => {
+            onAuthSuccess(res.user!);
+          }, 500);
+          return;
+        } else {
+          setErrorMessage(res.message || 'Credenciais inválidas. Verifique seu email e senha.');
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // Fallback local caso Supabase não esteja configurado
       const res = storageService.login(loginEmail, loginPassword);
       if (res.success && res.user) {
         setSuccessMessage(`Bem-vindo de volta, ${res.user.name.split(' ')[0]}!`);
@@ -142,7 +159,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     }
   };
 
-  // REGISTER SUBMIT
+  // REGISTER SUBMIT REAL VIA SUPABASE
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
@@ -172,6 +189,29 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     setIsLoading(true);
 
     try {
+      if (supabaseService.isConfigured()) {
+        const res = await supabaseService.registerWithEmail({
+          name: regName,
+          email: regEmail,
+          whatsapp: regPhone,
+          password: regPassword,
+          termsAccepted: true,
+        });
+
+        if (res.success) {
+          setSuccessMessage('Conta criada com sucesso no Supabase! Acesse ou verifique seu e-mail.');
+          setTimeout(() => {
+            if (res.user) onAuthSuccess(res.user);
+          }, 800);
+          return;
+        } else {
+          setErrorMessage(res.message || 'Erro ao registrar no Supabase.');
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // Fallback local
       const res = storageService.register({
         name: regName,
         email: regEmail,
@@ -181,7 +221,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       });
 
       if (res.success && res.user) {
-        setSuccessMessage('Conta criada com sucesso! Liberando acesso à área de membros...');
+        setSuccessMessage('Conta criada com sucesso!');
         setTimeout(() => {
           onAuthSuccess(res.user!);
         }, 600);
@@ -195,20 +235,25 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     }
   };
 
-  // GOOGLE AUTH SUCCESS
-  const handleGoogleSuccess = (account: { name: string; email: string; avatar: string }) => {
-    setIsGoogleModalOpen(false);
-    setIsLoading(true);
+  // GOOGLE OAUTH REAL VIA SUPABASE
+  const handleGoogleAuthReal = async () => {
     setErrorMessage('');
+    setSuccessMessage('');
+    setIsLoading(true);
 
-    setTimeout(() => {
-      const res = storageService.loginWithGoogle(account);
-      setSuccessMessage(`Autenticado com sucesso via Google!`);
-      setTimeout(() => {
-        onAuthSuccess(res.user);
-      }, 500);
-    }, 500);
+    if (!supabaseService.isConfigured()) {
+      setErrorMessage('O Supabase precisa estar configurado para autenticação real do Google.');
+      setIsLoading(false);
+      return;
+    }
+
+    const res = await supabaseService.loginWithGoogle();
+    if (!res.success) {
+      setErrorMessage(res.message || 'Erro ao iniciar login com Google.');
+      setIsLoading(false);
+    }
   };
+
 
   // FORGOT PASSWORD SUBMIT
   const handleForgotSubmit = (e: React.FormEvent) => {
@@ -306,11 +351,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
             </div>
           )}
 
-          {/* GOOGLE SIGN IN BUTTON (ALWAYS PROMINENT) */}
+          {/* GOOGLE SIGN IN BUTTON (REAL SUPABASE OAUTH) */}
           <div className="space-y-4">
             <button
               type="button"
-              onClick={() => setIsGoogleModalOpen(true)}
+              onClick={handleGoogleAuthReal}
               className="w-full py-3 px-4 rounded-2xl bg-white hover:bg-zinc-100 text-zinc-900 font-bold text-xs flex items-center justify-center gap-3 transition-all shadow-md shadow-white/5 cursor-pointer group"
             >
               <svg className="w-4 h-4 shrink-0 group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
