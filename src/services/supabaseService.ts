@@ -223,6 +223,15 @@ export const supabaseService = {
     }
   },
 
+  async deleteProfile(userId: string): Promise<void> {
+    if (!supabase) return;
+    try {
+      await supabase.from('profiles').delete().eq('id', userId);
+    } catch (e) {
+      console.error('Error deleting profile in Supabase:', e);
+    }
+  },
+
   // ------------------------------------------
   // MODULES & LESSONS
   // ------------------------------------------

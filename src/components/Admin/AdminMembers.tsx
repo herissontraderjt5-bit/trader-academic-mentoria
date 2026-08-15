@@ -20,6 +20,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { User, Module, Tier, StudentStatus } from '../../types';
+import { supabaseService } from '../../services/supabaseService';
 
 interface AdminMembersProps {
   users: User[];
@@ -83,17 +84,22 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
   const handleSaveCustomAccess = () => {
     if (!customAccessUser) return;
 
+    let targetUpdated: User | null = null;
     const updated = users.map((u) => {
       if (u.id === customAccessUser.id) {
-        return {
+        targetUpdated = {
           ...u,
           customAllowedModuleIds: isOverrideActive ? selectedModuleIds : undefined,
         };
+        return targetUpdated;
       }
       return u;
     });
 
     onUpdateUsers(updated);
+    if (targetUpdated && supabaseService.isConfigured()) {
+      supabaseService.upsertProfile(targetUpdated);
+    }
     setCustomAccessUser(null);
   };
 
@@ -109,30 +115,40 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
 
   // Toggle Status (Ativo / Bloqueado)
   const handleToggleStatus = (userId: string) => {
+    let targetUpdated: User | null = null;
     const updated = users.map((u) => {
       if (u.id === userId) {
-        return {
+        targetUpdated = {
           ...u,
           status: u.status === 'Ativo' ? ('Bloqueado' as StudentStatus) : ('Ativo' as StudentStatus),
         };
+        return targetUpdated;
       }
       return u;
     });
     onUpdateUsers(updated);
+    if (targetUpdated && supabaseService.isConfigured()) {
+      supabaseService.upsertProfile(targetUpdated);
+    }
   };
 
   // Change Tier
   const handleChangeTier = (userId: string, newTier: Tier) => {
+    let targetUpdated: User | null = null;
     const updated = users.map((u) => {
       if (u.id === userId) {
-        return {
+        targetUpdated = {
           ...u,
           tier: newTier,
         };
+        return targetUpdated;
       }
       return u;
     });
     onUpdateUsers(updated);
+    if (targetUpdated && supabaseService.isConfigured()) {
+      supabaseService.upsertProfile(targetUpdated);
+    }
   };
 
   // Delete User
@@ -140,6 +156,9 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
     if (confirm('Tem certeza que deseja remover este aluno?')) {
       const updated = users.filter((u) => u.id !== userId);
       onUpdateUsers(updated);
+      if (supabaseService.isConfigured()) {
+        supabaseService.deleteProfile(userId);
+      }
     }
   };
 
@@ -167,6 +186,9 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
     };
 
     onUpdateUsers([newUser, ...users]);
+    if (supabaseService.isConfigured()) {
+      supabaseService.upsertProfile(newUser);
+    }
     setIsAddUserModalOpen(false);
     setNewUserForm({
       name: '',

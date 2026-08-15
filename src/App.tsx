@@ -23,7 +23,8 @@ import {
   Calculator, 
   ShieldCheck,
   Send,
-  Sparkles,
+  Lock,
+  MessageCircle,
   Phone,
   Compass
 } from 'lucide-react';
@@ -271,6 +272,39 @@ export default function App() {
         settings={settings}
         allUsers={users}
       />
+    );
+  }
+
+  // Blocked Access Screen
+  if (currentUser.status === 'Bloqueado' && currentUser.role !== 'admin') {
+    return (
+      <div className="min-h-screen bg-[#050507] text-white flex flex-col items-center justify-center p-4 selection:bg-orange-500 selection:text-white">
+        <div className="w-full max-w-md bg-[#0e0e12] border border-red-500/30 rounded-3xl p-8 shadow-2xl text-center space-y-4 animate-in zoom-in-95">
+          <div className="w-16 h-16 rounded-2xl bg-red-950/80 border border-red-500/40 text-red-500 flex items-center justify-center mx-auto shadow-xl">
+            <Lock className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-black text-white uppercase tracking-tight">Acesso Suspenso</h2>
+          <p className="text-xs text-zinc-400">
+            Sua conta se encontra temporariamente bloqueada pelo administrador da plataforma. Entre em contato com o suporte para regularizar o acesso.
+          </p>
+          <div className="pt-4 flex flex-col gap-2">
+            <a
+              href={`https://wa.me/${settings.supportWhatsapp}`}
+              target="_blank"
+              rel="noreferrer"
+              className="w-full py-3 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-lg shadow-orange-600/20"
+            >
+              Falar com o Suporte
+            </a>
+            <button
+              onClick={handleLogout}
+              className="w-full py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs font-bold uppercase transition-all"
+            >
+              Sair da Conta
+            </button>
+          </div>
+        </div>
+      </div>
     );
   }
 
