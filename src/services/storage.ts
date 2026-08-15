@@ -399,11 +399,8 @@ export const storageService = {
 
     const tierHierarchy: Record<string, number> = {
       'Free': 1,
-      'Starter': 1,
       'VIP': 2,
-      'Pro': 2,
-      'VIP Black': 2,
-      'Vitalício': 2
+      'Vitalício': 3
     };
 
     const userTierLevel = tierHierarchy[user.tier] || 1;

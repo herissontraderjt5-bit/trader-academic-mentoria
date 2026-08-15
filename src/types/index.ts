@@ -1,6 +1,6 @@
 export type Role = 'student' | 'admin';
 
-export type Tier = 'Free' | 'VIP';
+export type Tier = 'Free' | 'VIP' | 'Vitalício';
 
 export type StudentStatus = 'Ativo' | 'Pendente' | 'Bloqueado' | 'Expirado';
 

@@ -111,7 +111,7 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
       setSelectedModuleIds(user.customAllowedModuleIds);
       setIsOverrideActive(true);
     } else {
-      const tierHierarchy: Record<string, number> = { 'Free': 1, 'Starter': 1, 'VIP': 2, 'Pro': 2, 'VIP Black': 2, 'Vitalício': 2 };
+      const tierHierarchy: Record<string, number> = { 'Free': 1, 'VIP': 2, 'Vitalício': 3 };
       const userLevel = tierHierarchy[user.tier] || 1;
       const defaultIds = modules
         .filter(m => (tierHierarchy[m.requiredTier] || 1) <= userLevel)
@@ -282,7 +282,8 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
           >
             <option value="all">Todos os Planos</option>
             <option value="Free">Free (Opções Binárias)</option>
-            <option value="VIP">VIP (R$ 499,90)</option>
+            <option value="VIP">VIP</option>
+            <option value="Vitalício">Vitalício</option>
           </select>
 
           <select
@@ -366,6 +367,7 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
                         >
                           <option value="Free">Free</option>
                           <option value="VIP">VIP</option>
+                          <option value="Vitalício">Vitalício</option>
                         </select>
                       </td>
 
@@ -485,7 +487,7 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
                 {isOverrideActive && (
                   <button
                     onClick={() => {
-                      const tierHierarchy = { 'Starter': 1, 'Pro': 2, 'VIP Black': 3, 'Vitalício': 4 };
+                      const tierHierarchy: Record<string, number> = { 'Free': 1, 'VIP': 2, 'Vitalício': 3 };
                       const userLevel = tierHierarchy[customAccessUser.tier] || 1;
                       const defaultIds = modules
                         .filter(m => (tierHierarchy[m.requiredTier] || 1) <= userLevel)
@@ -625,7 +627,8 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
                     className="w-full px-3 py-2.5 rounded-xl bg-zinc-900 border border-white/10 text-white text-xs focus:outline-none focus:border-orange-500"
                   >
                     <option value="Free">Free (Opções Binárias)</option>
-                    <option value="VIP">VIP (R$ 499,90)</option>
+                    <option value="VIP">VIP</option>
+                    <option value="Vitalício">Vitalício</option>
                   </select>
                 </div>
 

@@ -123,7 +123,7 @@ export const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({
                     <span>
                       {module.price 
                         ? `Módulo Avulso: R$ ${module.price.toFixed(2).replace('.', ',')}` 
-                        : 'Módulo exclusivo do Plano VIP (R$ 499,90)'}
+                        : `Módulo exclusivo do Plano ${module.requiredTier}`}
                     </span>
                   </div>
                   <button
@@ -137,7 +137,7 @@ export const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({
                     }}
                     className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white font-extrabold text-xs shadow-lg shadow-orange-600/30 cursor-pointer uppercase transition-all"
                   >
-                    {module.price ? 'Comprar Módulo' : 'Fazer Upgrade VIP'}
+                    {module.price ? 'Comprar Módulo' : 'Fazer Upgrade'}
                   </button>
                 </div>
               )}

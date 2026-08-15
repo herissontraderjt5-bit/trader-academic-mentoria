@@ -559,8 +559,9 @@ export const AdminModules: React.FC<AdminModulesProps> = ({
                     onChange={(e) => setModuleForm({ ...moduleForm, requiredTier: e.target.value as Tier })}
                     className="w-full p-3 rounded-xl bg-[#161622] border border-[#272738] text-white text-xs focus:outline-none focus:border-[#ff6b00]"
                   >
-                    <option value="Free">Plano Free (Opções Binárias)</option>
-                    <option value="VIP">Plano VIP (R$ 499,90 - Mentoria Completa)</option>
+                    <option value="Free">Free (Opções Binárias)</option>
+                    <option value="VIP">VIP</option>
+                    <option value="Vitalício">Vitalício (Todos os Módulos)</option>
                   </select>
                 </div>
                 
