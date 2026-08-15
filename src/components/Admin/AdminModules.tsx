@@ -79,6 +79,7 @@ export const AdminModules: React.FC<AdminModulesProps> = ({
     category: string;
     requiredTier: Tier;
     badgeText: string;
+    price: number | '';
   }>({
     title: '',
     subtitle: '',
@@ -87,6 +88,7 @@ export const AdminModules: React.FC<AdminModulesProps> = ({
     category: 'Análise Técnica',
     requiredTier: 'VIP',
     badgeText: '',
+    price: '',
   });
 
   // Form states for Lesson
@@ -124,6 +126,7 @@ export const AdminModules: React.FC<AdminModulesProps> = ({
         category: mod.category,
         requiredTier: mod.requiredTier,
         badgeText: mod.badgeText || '',
+        price: mod.price || '',
       });
     } else {
       setEditingModule(null);
@@ -133,8 +136,9 @@ export const AdminModules: React.FC<AdminModulesProps> = ({
         description: 'Descrição completa dos tópicos abordados...',
         coverImage: PRESET_COVERS[modules.length % PRESET_COVERS.length],
         category: 'Setups & Operacional',
-        requiredTier: 'Starter',
+        requiredTier: 'Starter' as Tier,
         badgeText: 'NOVO',
+        price: '',
       });
     }
     setIsModuleModalOpen(true);
@@ -157,6 +161,7 @@ export const AdminModules: React.FC<AdminModulesProps> = ({
               category: moduleForm.category,
               requiredTier: moduleForm.requiredTier,
               badgeText: moduleForm.badgeText,
+              price: moduleForm.price === '' ? undefined : Number(moduleForm.price),
             }
           : m
       );
@@ -172,6 +177,7 @@ export const AdminModules: React.FC<AdminModulesProps> = ({
         order: modules.length + 1,
         requiredTier: moduleForm.requiredTier,
         badgeText: moduleForm.badgeText,
+        price: moduleForm.price === '' ? undefined : Number(moduleForm.price),
         lessons: [],
       };
       onUpdateModules([...modules, newMod]);
@@ -556,6 +562,21 @@ export const AdminModules: React.FC<AdminModulesProps> = ({
                     <option value="Free">Plano Free (Opções Binárias)</option>
                     <option value="VIP">Plano VIP (R$ 499,90 - Mentoria Completa)</option>
                   </select>
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-bold text-gray-300 mb-1.5 uppercase font-mono">
+                    Preço Avulso (R$) - Deixe em branco se for incluso no plano
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={moduleForm.price}
+                    onChange={(e) => setModuleForm({ ...moduleForm, price: e.target.value ? Number(e.target.value) : '' })}
+                    placeholder="Ex: 299.90"
+                    className="w-full p-3 rounded-xl bg-[#161622] border border-[#272738] text-white text-xs focus:outline-none focus:border-[#ff6b00]"
+                  />
                 </div>
               </div>
 

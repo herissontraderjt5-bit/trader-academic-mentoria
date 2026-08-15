@@ -1,11 +1,12 @@
 import React from 'react';
 import { X, Play, Lock, CheckCircle2, Clock, FileText, ArrowRight, ShieldCheck, Download } from 'lucide-react';
-import { Module, User, Lesson } from '../types';
+import { Module, User, Lesson, PlatformSettings } from '../types';
 import { storageService } from '../services/storage';
 
 interface ModuleDetailModalProps {
   module: Module | null;
   currentUser: User;
+  settings: PlatformSettings;
   onClose: () => void;
   onSelectLesson: (moduleId: string, lessonId: string) => void;
   onOpenSupport: () => void;
@@ -14,6 +15,7 @@ interface ModuleDetailModalProps {
 export const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({
   module,
   currentUser,
+  settings,
   onClose,
   onSelectLesson,
   onOpenSupport,
@@ -118,13 +120,24 @@ export const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({
                 <div className="p-3 rounded-2xl bg-orange-950/40 border border-orange-500/40 flex flex-col sm:flex-row items-center justify-between gap-3">
                   <div className="flex items-center gap-2 text-xs text-orange-200 font-semibold">
                     <Lock className="w-4 h-4 text-orange-400 shrink-0" />
-                    <span>Módulo exclusivo do Plano VIP (R$ 499,90)</span>
+                    <span>
+                      {module.price 
+                        ? `Módulo Avulso: R$ ${module.price.toFixed(2).replace('.', ',')}` 
+                        : 'Módulo exclusivo do Plano VIP (R$ 499,90)'}
+                    </span>
                   </div>
                   <button
-                    onClick={onOpenSupport}
+                    onClick={() => {
+                      if (module.price) {
+                        const message = encodeURIComponent(`Olá, gostaria de adquirir o módulo: ${module.title}`);
+                        window.open(`https://wa.me/${settings.supportWhatsapp}?text=${message}`, '_blank');
+                      } else {
+                        onOpenSupport();
+                      }
+                    }}
                     className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white font-extrabold text-xs shadow-lg shadow-orange-600/30 cursor-pointer uppercase transition-all"
                   >
-                    Fazer Upgrade VIP
+                    {module.price ? 'Comprar Módulo' : 'Fazer Upgrade VIP'}
                   </button>
                 </div>
               )}

@@ -91,8 +91,10 @@ export const ModuleCard: React.FC<ModuleCardProps> = ({
           ) : (
             <div className="p-3 rounded-xl bg-black/95 border border-orange-500/40 text-center text-xs text-orange-200 shadow-xl">
               <Lock className="w-5 h-5 mx-auto mb-1 text-orange-400" />
-              <p className="font-bold">Plano VIP Exclusivo</p>
-              <p className="text-[10px] text-zinc-400">R$ 499,90 • Acesso Imediato</p>
+              <p className="font-bold">{module.price ? 'Módulo Avulso' : 'Plano VIP Exclusivo'}</p>
+              <p className="text-[10px] text-zinc-400">
+                {module.price ? `R$ ${module.price.toFixed(2).replace('.', ',')} • Acesso Imediato` : 'R$ 499,90 • Acesso Imediato'}
+              </p>
             </div>
           )}
         </div>

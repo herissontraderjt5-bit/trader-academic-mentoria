@@ -576,6 +576,7 @@ export default function App() {
       <ModuleDetailModal
         module={selectedModuleForModal}
         currentUser={currentUser}
+        settings={settings}
         onClose={() => setSelectedModuleForModal(null)}
         onSelectLesson={handleSelectLesson}
         onOpenSupport={() => {

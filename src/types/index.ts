@@ -82,6 +82,7 @@ export interface Module {
   category: string;
   order: number;
   requiredTier: Tier;
+  price?: number;
   badgeText?: string;
   isNew?: boolean;
   isLiveModule?: boolean;
