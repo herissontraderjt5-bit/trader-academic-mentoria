@@ -532,9 +532,6 @@ export default function App() {
         isOpen={isUpgradeModalOpen}
         onClose={() => setIsUpgradeModalOpen(false)}
         settings={settings}
-        onSuccessUpgrade={() => {
-          handleUpdateProfile({ tier: 'VIP' });
-        }}
       />
 
       <RiskCalculatorModal
