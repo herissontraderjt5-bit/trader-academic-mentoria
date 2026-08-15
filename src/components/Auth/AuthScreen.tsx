@@ -273,7 +273,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
         
         {/* Brand Header */}
         <div className="text-center mb-6 flex flex-col items-center">
-          <BrandLogo className="h-14 w-auto mb-2" showText={true} subtext={settings.tagline || 'Portal Exclusivo de Membros & Mentoria VIP'} />
+          <BrandLogo 
+            layout="col" 
+            size="64px" 
+            showText={true} 
+            textClassName="text-2xl" 
+            subtext={settings.tagline || 'Portal Exclusivo de Membros & Mentoria VIP'} 
+          />
         </div>
 
         {/* Auth Box */}
