@@ -78,12 +78,12 @@ export default function App() {
   const currentUser = useMemo(() => {
     let found = users.find(u => u.id === currentUserId || u.email?.toLowerCase() === currentUserId?.toLowerCase());
     if (!found && users && users.length > 0) {
-      found = users.find(u => u.email?.toLowerCase() === 'herisson.trader.jt5@gmail.com') || users[0];
+      found = users.find(u => u.email?.toLowerCase() === 'viniciussestremmm@gmail.com') || users[0];
     }
     
     if (found) {
       const emailLower = found.email?.toLowerCase() || '';
-      if (emailLower === 'herisson.trader.jt5@gmail.com' || emailLower === 'viniciussestremmm@gmail.com' || found.role === 'admin') {
+      if (emailLower === 'viniciussestremmm@gmail.com') {
         return {
           ...found,
           role: 'admin' as Role,
@@ -91,7 +91,10 @@ export default function App() {
           status: 'Ativo' as StudentStatus,
         };
       }
-      return found;
+      return {
+        ...found,
+        role: 'student' as Role,
+      };
     }
 
     return {
@@ -126,7 +129,7 @@ export default function App() {
       const handleUserSession = async (sessionUser: any) => {
         if (!sessionUser) return;
         const emailLower = sessionUser.email?.toLowerCase() || '';
-        const isAdminEmail = emailLower === 'herisson.trader.jt5@gmail.com' || emailLower === 'viniciussestremmm@gmail.com';
+        const isAdminEmail = emailLower === 'viniciussestremmm@gmail.com';
         
         let profile = await supabaseService.getProfileById(sessionUser.id);
         if (!profile) {
@@ -147,6 +150,9 @@ export default function App() {
         } else if (isAdminEmail && profile.role !== 'admin') {
           profile.role = 'admin';
           profile.tier = 'VIP';
+          await supabaseService.upsertProfile(profile);
+        } else if (!isAdminEmail && profile.role === 'admin') {
+          profile.role = 'student';
           await supabaseService.upsertProfile(profile);
         }
         setCurrentUserId(profile.id);
@@ -355,10 +361,8 @@ export default function App() {
     );
   }
 
-  // Admin security check: admin role or admin email
-  const isAdmin = currentUser?.role === 'admin' || 
-                  currentUser?.email?.toLowerCase() === 'herisson.trader.jt5@gmail.com' || 
-                  currentUser?.email?.toLowerCase() === 'viniciussestremmm@gmail.com';
+  // Admin security check: strictly viniciussestremmm@gmail.com
+  const isAdmin = currentUser?.email?.toLowerCase() === 'viniciussestremmm@gmail.com';
 
   return (
     <div className="min-h-screen bg-[#070709] text-gray-100 flex flex-col font-sans selection:bg-orange-500 selection:text-white">

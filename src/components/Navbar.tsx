@@ -253,18 +253,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
-            {/* Painel ADM / Aluno Switcher Button */}
-            {(currentUser.role === 'admin' || currentUser.email?.toLowerCase() === 'herisson.trader.jt5@gmail.com' || currentUser.email?.toLowerCase() === 'viniciussestremmm@gmail.com') && (
+            {/* Painel ADM / Aluno Switcher Button (Restrito estritamente a viniciussestremmm@gmail.com) */}
+            {currentUser.email?.toLowerCase() === 'viniciussestremmm@gmail.com' && (
               <button
                 onClick={() => {
-                  if (activeView === 'admin') {
-                    setActiveView('home');
-                  } else {
-                    if (currentUser.role !== 'admin') {
-                      onToggleRole();
-                    }
-                    setActiveView('admin');
-                  }
+                  setActiveView(activeView === 'admin' ? 'home' : 'admin');
                 }}
                 className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-md hover:scale-105 ${
                   activeView === 'admin'
@@ -383,36 +376,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                       </div>
                     </button>
 
-                    <button
-                      onClick={() => {
-                        if (activeView !== 'admin') {
-                          if (currentUser.role !== 'admin') onToggleRole();
-                          setActiveView('admin');
-                        } else {
-                          setActiveView('home');
-                        }
-                        setIsUserMenuOpen(false);
-                      }}
-                      className="w-full flex items-center justify-between p-2 rounded-xl text-xs bg-zinc-900 hover:bg-orange-600 hover:text-white text-orange-400 border border-orange-500/30 transition-all text-left cursor-pointer font-bold mb-1"
-                    >
-                      <div className="flex items-center gap-2">
-                        <ShieldCheck className="w-4 h-4 text-orange-400" />
-                        <span>{activeView === 'admin' ? 'Ver como Aluno' : 'Painel de Administração (ADM)'}</span>
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        onToggleRole();
-                        setIsUserMenuOpen(false);
-                      }}
-                      className="w-full flex items-center justify-between p-2 rounded-xl text-xs text-zinc-300 hover:text-white hover:bg-zinc-900 transition-all text-left cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2">
-                        <ShieldCheck className="w-4 h-4 text-zinc-400" />
-                        <span>Alternar Cargo: {currentUser.role === 'admin' ? 'Aluno' : 'Admin'}</span>
-                      </div>
-                    </button>
+                    {currentUser.email?.toLowerCase() === 'viniciussestremmm@gmail.com' && (
+                      <button
+                        onClick={() => {
+                          setActiveView(activeView === 'admin' ? 'home' : 'admin');
+                          setIsUserMenuOpen(false);
+                        }}
+                        className="w-full flex items-center justify-between p-2 rounded-xl text-xs bg-zinc-900 hover:bg-orange-600 hover:text-white text-orange-400 border border-orange-500/30 transition-all text-left cursor-pointer font-bold mb-1"
+                      >
+                        <div className="flex items-center gap-2">
+                          <ShieldCheck className="w-4 h-4 text-orange-400" />
+                          <span>{activeView === 'admin' ? 'Ver como Aluno' : 'Painel de Administração (ADM)'}</span>
+                        </div>
+                      </button>
+                    )}
                   </div>
 
                   {/* Logout Button */}
