@@ -252,31 +252,33 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
-            {/* Painel ADM / Aluno Switcher Button */}
-            <button
-              onClick={() => {
-                if (activeView === 'admin') {
-                  setActiveView('home');
-                } else {
-                  if (currentUser.role !== 'admin') {
-                    onToggleRole();
+            {/* Painel ADM / Aluno Switcher Button (Restrito estritamente a herisson.trader.jt5@gmail.com) */}
+            {currentUser.email?.toLowerCase() === 'herisson.trader.jt5@gmail.com' && (
+              <button
+                onClick={() => {
+                  if (activeView === 'admin') {
+                    setActiveView('home');
+                  } else {
+                    if (currentUser.role !== 'admin') {
+                      onToggleRole();
+                    }
+                    setActiveView('admin');
                   }
-                  setActiveView('admin');
-                }
-              }}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-md hover:scale-105 ${
-                activeView === 'admin'
-                  ? 'bg-orange-600 text-white shadow-orange-600/30 border border-orange-400'
-                  : 'bg-zinc-900/90 text-orange-400 border border-orange-500/40 hover:bg-orange-600 hover:text-white'
-              }`}
-              title="Acessar o Painel de Administração"
-            >
-              <ShieldCheck className="w-4 h-4 text-orange-400 group-hover:text-white" />
-              <span className="hidden sm:inline">
-                {activeView === 'admin' ? 'Ver como Aluno' : 'Painel ADM'}
-              </span>
-              <span className="sm:hidden">ADM</span>
-            </button>
+                }}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-md hover:scale-105 ${
+                  activeView === 'admin'
+                    ? 'bg-orange-600 text-white shadow-orange-600/30 border border-orange-400'
+                    : 'bg-zinc-900/90 text-orange-400 border border-orange-500/40 hover:bg-orange-600 hover:text-white'
+                }`}
+                title="Acessar o Painel de Administração"
+              >
+                <ShieldCheck className="w-4 h-4 text-orange-400 group-hover:text-white" />
+                <span className="hidden sm:inline">
+                  {activeView === 'admin' ? 'Ver como Aluno' : 'Painel ADM'}
+                </span>
+                <span className="sm:hidden">ADM</span>
+              </button>
+            )}
 
             {/* User Profile / Simulator Dropdown */}
             <div className="relative">

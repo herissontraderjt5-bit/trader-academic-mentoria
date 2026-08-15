@@ -314,11 +314,14 @@ export default function App() {
     );
   }
 
+  // Admin security check: strict email match
+  const isAdmin = currentUser?.email?.toLowerCase() === 'herisson.trader.jt5@gmail.com';
+
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-orange-500 selection:text-white">
+    <div className="min-h-screen bg-[#070709] text-gray-100 flex flex-col font-sans selection:bg-orange-500 selection:text-white">
       
-      {/* View 1: Admin Panel */}
-      {activeView === 'admin' && (
+      {/* View 1: Admin Panel (Restrito estritamente a herisson.trader.jt5@gmail.com) */}
+      {activeView === 'admin' && isAdmin && (
         <AdminLayout
           currentUser={currentUser}
           allUsers={users}
@@ -351,7 +354,7 @@ export default function App() {
       )}
 
       {/* View 3: Student Member Area (Kiwify Dashboard) */}
-      {activeView === 'home' && (
+      {(activeView === 'home' || (activeView === 'admin' && !isAdmin)) && (
         <>
           <Navbar
             currentUser={currentUser}
@@ -361,58 +364,52 @@ export default function App() {
             activeView={activeView}
             setActiveView={setActiveView}
             modules={modules}
-            onSelectLesson={handleSelectLesson}
             announcements={announcements}
-            settings={settings}
-            overallProgress={overallProgress}
-            onOpenRiskCalc={() => setIsRiskCalcOpen(true)}
-            onOpenCertificate={() => setIsCertificateOpen(true)}
-            onOpenLive={() => setIsLiveOpen(true)}
-            onOpenEditProfile={() => setIsEditProfileOpen(true)}
+            onSelectLesson={handleSelectLesson}
             onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
-            onLogout={handleLogout}
           />
 
-          <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 w-full">
+          {/* Main Dashboard */}
+          <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
             
-            {/* Top Spotlight Hero Banner */}
+            {/* Top Announcement Banner */}
+            <AnnouncementBanner announcements={announcements} />
+
+            {/* Kiwify Hero Banner */}
             <HeroBanner
               currentUser={currentUser}
-              modules={modules}
               settings={settings}
-              overallProgress={overallProgress}
               onResumeWatching={handleResumeWatching}
-              onOpenLive={() => setIsLiveOpen(true)}
               onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
+              onOpenLive={() => setIsLiveOpen(true)}
+              nextLiveSession={liveSessions.find(s => s.status === 'upcoming')}
             />
 
-            {/* Vertical Cards Module Grid Section */}
+            {/* Course Modules Grid */}
             <ModuleGrid
               modules={modules}
               currentUser={currentUser}
-              onSelectModule={(mod) => setSelectedModuleForModal(mod)}
-              onPlayFirstUncompleted={handlePlayFirstUncompleted}
+              onSelectLesson={handleSelectLesson}
+              onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
+              onOpenModuleModal={(mod) => setSelectedModuleForModal(mod)}
             />
 
-            {/* VIP Community & Support Hub Card */}
-            <section className="mb-16 rounded-3xl p-6 sm:p-10 bg-zinc-900/60 border border-orange-900/30 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-80 h-80 bg-orange-600/10 rounded-full blur-3xl pointer-events-none"></div>
-
-              <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-8">
-                <div>
-                  <div className="flex items-center gap-2 text-orange-400 text-xs font-bold uppercase tracking-wider font-mono mb-2">
-                    <Sparkles className="w-4 h-4" />
-                    <span>Rede de Network & Acompanhamento</span>
-                  </div>
-                  <h3 className="text-2xl sm:text-3xl font-black text-white leading-tight mb-2">
-                    Comunidade Exclusiva & Suporte dos Mentores
-                  </h3>
-                  <p className="text-xs sm:text-sm text-zinc-300 max-w-2xl leading-relaxed">
-                    Tire dúvidas em tempo real, receba análises diárias de pré-mercado e compartilhe seus trades com outros alunos da mentoria Trader Academic.
+            {/* Community & Live Sessions Section */}
+            <section className="p-8 rounded-3xl bg-gradient-to-r from-[#120a05] via-[#16121e] to-[#0c0d18] border border-orange-900/30 shadow-2xl relative overflow-hidden">
+              <div className="flex flex-col lg:flex-row items-center justify-between gap-6 relative z-10">
+                <div className="space-y-2 text-center lg:text-left">
+                  <span className="px-3 py-1 rounded-full text-xs font-black bg-orange-500/20 text-orange-400 border border-orange-500/30 uppercase tracking-widest font-mono">
+                    Comunidade VIP
+                  </span>
+                  <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                    Opere Ao Vivo com o Mentor e Alunos VIP
+                  </h2>
+                  <p className="text-sm text-zinc-400 max-w-xl">
+                    Participe das nossas salas de operações diárias, analise o mercado em tempo real e tire dúvidas direto no chat exclusivo.
                   </p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3 shrink-0">
+                <div className="flex flex-wrap items-center gap-3">
                   <a
                     href={settings.telegramVipUrl}
                     target="_blank"
@@ -464,10 +461,14 @@ export default function App() {
                 <button onClick={() => setIsCertificateOpen(true)} className="hover:text-orange-400 cursor-pointer">
                   Certificado
                 </button>
-                <span>•</span>
-                <button onClick={() => setActiveView('admin')} className="text-orange-400 hover:text-orange-300 hover:underline cursor-pointer font-bold font-mono">
-                  Acesso Mentor (Painel ADM)
-                </button>
+                {isAdmin && (
+                  <>
+                    <span>•</span>
+                    <button onClick={() => setActiveView('admin')} className="text-orange-400 hover:text-orange-300 hover:underline cursor-pointer font-bold font-mono">
+                      Acesso Mentor (Painel ADM)
+                    </button>
+                  </>
+                )}
                 <span>•</span>
                 <button onClick={handleLogout} className="text-zinc-500 hover:text-red-400 cursor-pointer font-mono">
                   Sair da Conta
@@ -504,13 +505,15 @@ export default function App() {
               <span>Calc Lote</span>
             </button>
 
-            <button
-              onClick={() => setActiveView('admin')}
-              className="flex flex-col items-center gap-1 text-[10px] font-bold text-zinc-400"
-            >
-              <ShieldCheck className="w-5 h-5" />
-              <span>ADM</span>
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => setActiveView('admin')}
+                className="flex flex-col items-center gap-1 text-[10px] font-bold text-zinc-400"
+              >
+                <ShieldCheck className="w-5 h-5" />
+                <span>ADM</span>
+              </button>
+            )}
           </div>
         </>
       )}
