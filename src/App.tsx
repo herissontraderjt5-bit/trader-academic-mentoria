@@ -397,11 +397,12 @@ export default function App() {
             {/* Kiwify Hero Banner */}
             <HeroBanner
               currentUser={currentUser}
+              modules={modules}
               settings={settings}
+              overallProgress={overallProgress}
               onResumeWatching={handleResumeWatching}
               onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
               onOpenLive={() => setIsLiveOpen(true)}
-              nextLiveSession={liveSessions.find(s => s.status === 'upcoming')}
             />
 
             {/* Course Modules Grid */}
