@@ -244,10 +244,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             {currentUser.tier === 'Free' && onOpenUpgrade && (
               <button
                 onClick={onOpenUpgrade}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-orange-600/30 transition-all hover:scale-105 cursor-pointer animate-pulse"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-500 hover:to-green-400 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-emerald-600/30 transition-all hover:scale-105 cursor-pointer animate-pulse"
               >
                 <Flame className="w-3.5 h-3.5 fill-current" />
-                <span className="hidden sm:inline">Virar VIP • R$ 499,90</span>
+                <span className="hidden sm:inline">Virar VIP no WhatsApp</span>
                 <span className="sm:hidden">VIP</span>
               </button>
             )}

@@ -110,10 +110,10 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
             {currentUser.tier === 'Free' && onOpenUpgrade ? (
               <button
                 onClick={onOpenUpgrade}
-                className="flex items-center gap-2 px-5 py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-black font-black text-xs uppercase tracking-wider shadow-lg shadow-orange-600/30 hover:scale-[1.02] transition-all cursor-pointer"
+                className="flex items-center gap-2 px-5 py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-600/30 hover:scale-[1.02] transition-all cursor-pointer"
               >
-                <Flame className="w-4 h-4 fill-black text-black" />
-                <span>LIBERAR VIP (R$ 499,90)</span>
+                <Flame className="w-4 h-4 fill-white text-white" />
+                <span>LIBERAR VIP NO WHATSAPP</span>
               </button>
             ) : (
               <button
