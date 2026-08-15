@@ -670,14 +670,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
         onAccept={() => setTermsAccepted(true)}
       />
 
-      {/* Google Auth Modal */}
-      <GoogleAuthModal
-        isOpen={isGoogleModalOpen}
-        onClose={() => setIsGoogleModalOpen(false)}
-        onSelectGoogleAccount={handleGoogleSuccess}
-        defaultEmail={authMode === 'register' ? regEmail : loginEmail}
-        defaultName={regName}
-      />
+
 
       {/* Forgot Password Modal */}
       {isForgotModalOpen && (
