@@ -30,6 +30,25 @@ import {
   Sparkles
 } from 'lucide-react';
 
+const AnnouncementBanner: React.FC<{ announcements: Announcement[] }> = ({ announcements }) => {
+  if (!announcements || announcements.length === 0) return null;
+  const latest = announcements[0];
+  return (
+    <div className="p-4 rounded-2xl bg-gradient-to-r from-orange-950/60 via-zinc-900 to-black border border-orange-500/30 flex items-center justify-between gap-4">
+      <div className="flex items-center gap-3">
+        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-orange-500/20 text-orange-400 border border-orange-500/30 uppercase font-mono shrink-0">
+          AVISO VIP
+        </span>
+        <div>
+          <h4 className="text-xs font-bold text-white">{latest.title}</h4>
+          <p className="text-[11px] text-zinc-400 line-clamp-1">{latest.content}</p>
+        </div>
+      </div>
+      <span className="text-[10px] text-zinc-500 font-mono shrink-0">{latest.date}</span>
+    </div>
+  );
+};
+
 export default function App() {
   // Main Data States
   const [modules, setModules] = useState<Module[]>(() => storageService.getModules());
