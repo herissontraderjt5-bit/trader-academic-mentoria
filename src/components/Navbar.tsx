@@ -329,12 +329,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <div className="py-3 border-b border-white/5">
                     <div className="flex justify-between text-[11px] text-zinc-400 mb-1 font-mono">
                       <span>Progresso Geral</span>
-                      <span className="text-orange-400 font-bold">{overallProgress.percentage}%</span>
+                      <span className="text-orange-400 font-bold">{overallProgress?.percentage || 0}%</span>
                     </div>
                     <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
                       <div 
                         className="h-full bg-orange-500 rounded-full transition-all"
-                        style={{ width: `${overallProgress.percentage}%` }}
+                        style={{ width: `${overallProgress?.percentage || 0}%` }}
                       ></div>
                     </div>
                   </div>

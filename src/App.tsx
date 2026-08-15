@@ -385,7 +385,14 @@ export default function App() {
             modules={modules}
             announcements={announcements}
             onSelectLesson={handleSelectLesson}
+            settings={settings}
+            overallProgress={overallProgress}
+            onOpenRiskCalc={() => setIsRiskCalcOpen(true)}
+            onOpenCertificate={() => setIsCertificateOpen(true)}
+            onOpenLive={() => setIsLiveOpen(true)}
+            onOpenEditProfile={() => setIsEditProfileOpen(true)}
             onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
+            onLogout={handleLogout}
           />
 
           {/* Main Dashboard */}
