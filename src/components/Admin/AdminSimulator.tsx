@@ -97,73 +97,80 @@ export const AdminSimulator: React.FC<AdminSimulatorProps> = ({
     }
   };
 
-  const handleSimulateWebhook = (e: React.FormEvent) => {
+  const handleSimulateWebhook = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!buyerName || !buyerEmail) return;
 
     setIsSimulating(true);
     const transactionId = `${gateway.toUpperCase()}-${Math.floor(100000 + Math.random() * 900000)}`;
+    const payload = getSamplePayload();
 
     setSimulationLogs([
-      `[${new Date().toLocaleTimeString()}] 📨 [HTTP POST 200] Webhook recebido de ${gateway.toUpperCase()}`,
-      `[${new Date().toLocaleTimeString()}] 🔑 Verificando token de segurança da ${gateway.toUpperCase()}... OK`,
+      `[${new Date().toLocaleTimeString()}] 🚀 Enviando requisição HTTP POST real para ${webhookUrl}`,
       `[${new Date().toLocaleTimeString()}] 📦 Evento: ${eventType.toUpperCase()} | Transação: #${transactionId}`,
-      `[${new Date().toLocaleTimeString()}] 👤 Comprador: ${buyerName} <${buyerEmail}> | WhatsApp: ${buyerPhone}`,
-      `[${new Date().toLocaleTimeString()}] 💰 Valor: R$ ${productAmount} | Plano Liberado: [${buyerTier}]`,
-      `[${new Date().toLocaleTimeString()}] ⚙️ Provisionando acesso e liberando módulos da área de membros...`,
+      `[${new Date().toLocaleTimeString()}] 👤 Comprador: ${buyerName} <${buyerEmail}> | Tel: ${buyerPhone}`,
+      `[${new Date().toLocaleTimeString()}] ⏳ Aguardando resposta do endpoint Vercel + Supabase...`,
     ]);
 
-    setTimeout(() => {
-      if (eventType === 'refund') {
-        setSimulationLogs(prev => [
-          ...prev,
-          `[${new Date().toLocaleTimeString()}] ⚠️ REEMBOLSO PROCESSADO: Acesso do aluno ${buyerEmail} foi revogado/bloqueado automaticamente.`,
-        ]);
-        setIsSimulating(false);
-        return;
-      }
+    try {
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
 
-      // Check if user already exists
-      const existingUser = users.find(u => u.email.toLowerCase() === buyerEmail.toLowerCase());
-      
-      if (existingUser) {
-        // Upgrade existing user
+      const resData = await response.json().catch(() => null);
+
+      if (response.ok && resData?.success) {
+        const existingUser = users.find(u => u.email.toLowerCase() === buyerEmail.toLowerCase());
+        const targetStatus = eventType === 'refund' ? 'Bloqueado' : 'Ativo';
+        const targetTier = eventType === 'refund' ? 'Free' : buyerTier;
+
+        if (existingUser) {
+          const updatedUser: User = {
+            ...existingUser,
+            tier: targetTier,
+            status: targetStatus,
+          };
+          onAddUser(updatedUser);
+        } else {
+          const newUser: User = {
+            id: resData.user?.id || ('usr-' + Date.now()),
+            name: buyerName,
+            email: buyerEmail,
+            whatsapp: buyerPhone,
+            avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop',
+            role: 'student',
+            tier: targetTier,
+            status: targetStatus,
+            joinedAt: new Date().toISOString().split('T')[0],
+            progress: { completedLessonIds: [] },
+            notes: {},
+          };
+          onAddUser(newUser);
+        }
+
         setSimulationLogs(prev => [
           ...prev,
-          `[${new Date().toLocaleTimeString()}] 🔄 Aluno já existente localizado! Atualizando plano para [${buyerTier}] e reativando status.`,
-          `[${new Date().toLocaleTimeString()}] ✅ Acesso atualizado com sucesso no banco de dados!`,
-          `[${new Date().toLocaleTimeString()}] 📲 Notificação disparada para o WhatsApp do aluno (${buyerPhone}).`,
+          `[${new Date().toLocaleTimeString()}] 🟢 [HTTP 200 OK] Servidor respondeu: ${resData.message || 'Sucesso'}`,
+          `[${new Date().toLocaleTimeString()}] ✅ Perfil sincronizado e liberado no banco Supabase!`,
         ]);
       } else {
-        // Create new student
-        const newUser: User = {
-          id: 'usr-' + Date.now(),
-          name: buyerName,
-          email: buyerEmail,
-          whatsapp: buyerPhone,
-          avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop',
-          role: 'student',
-          tier: buyerTier,
-          status: 'Ativo',
-          joinedAt: new Date().toISOString().split('T')[0],
-          progress: {
-            completedLessonIds: [],
-          },
-          notes: {},
-        };
-
-        onAddUser(newUser);
-
         setSimulationLogs(prev => [
           ...prev,
-          `[${new Date().toLocaleTimeString()}] ✅ Novo aluno criado e matriculado instantaneamente!`,
-          `[${new Date().toLocaleTimeString()}] 📧 Email de boas-vindas com credenciais de login enviado.`,
-          `[${new Date().toLocaleTimeString()}] 💬 Link do Telegram VIP e WhatsApp de suporte liberados.`,
+          `[${new Date().toLocaleTimeString()}] ⚠️ [HTTP ${response.status}] Resposta da API: ${resData?.error || 'Erro no processamento'}`,
         ]);
       }
-
+    } catch (err: any) {
+      setSimulationLogs(prev => [
+        ...prev,
+        `[${new Date().toLocaleTimeString()}] 🔴 Erro ao disparar webhook: ${err.message}`,
+      ]);
+    } finally {
       setIsSimulating(false);
-    }, 1000);
+    }
   };
 
   const copyWebhook = () => {
