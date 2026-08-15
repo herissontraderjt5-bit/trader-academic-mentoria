@@ -26,7 +26,6 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
   if (!isOpen) return null;
 
   const vipPrice = '499,90';
-  const vipPriceInstallment = '12x de R$ 49,90';
 
   const handleOpenWhatsappPayment = () => {
     setIsProcessing(true);
@@ -155,7 +154,6 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
               <div className="mt-4 pt-4 border-t border-emerald-500/30 flex items-baseline justify-between">
                 <div>
                   <span className="text-2xl sm:text-3xl font-black text-white font-mono">R$ {vipPrice}</span>
-                  <span className="text-[11px] text-emerald-400 block font-sans">ou {vipPriceInstallment}</span>
                 </div>
                 <span className="text-[10px] text-zinc-400 font-mono">VIA WHATSAPP</span>
               </div>
