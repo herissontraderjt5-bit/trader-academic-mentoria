@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   Plus, 
   Edit, 
@@ -13,7 +13,9 @@ import {
   Sparkles, 
   Check, 
   ArrowUp, 
-  ArrowDown 
+  ArrowDown,
+  Upload,
+  Camera
 } from 'lucide-react';
 import { Module, Lesson, Tier, Material } from '../../types';
 import { extractYouTubeId } from '../../utils/youtube';
@@ -43,6 +45,30 @@ export const AdminModules: React.FC<AdminModulesProps> = ({
   const [selectedModuleForLessons, setSelectedModuleForLessons] = useState<Module | null>(null);
   const [isModuleModalOpen, setIsModuleModalOpen] = useState(false);
   const [editingModule, setEditingModule] = useState<Module | null>(null);
+  const coverFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCoverFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor, selecione um arquivo de imagem válido (PNG, JPG, WEBP).');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert('A imagem deve ter no máximo 10MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        setModuleForm(prev => ({ ...prev, coverImage: event.target!.result as string }));
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Form states for Module
   const [moduleForm, setModuleForm] = useState<{
@@ -546,31 +572,76 @@ export const AdminModules: React.FC<AdminModulesProps> = ({
                 />
               </div>
 
-              {/* Vertical Cover Selection */}
-              <div>
-                <label className="block text-xs font-bold text-gray-300 mb-1.5 uppercase font-mono">
-                  Foto Vertical de Capa (URL ou Selecione Prévia)
+              {/* Vertical Cover Upload & Selection */}
+              <div className="space-y-3">
+                <label className="block text-xs font-bold text-gray-300 uppercase font-mono">
+                  Foto Vertical de Capa do Módulo
                 </label>
+
                 <input
-                  type="url"
-                  value={moduleForm.coverImage}
-                  onChange={(e) => setModuleForm({ ...moduleForm, coverImage: e.target.value })}
-                  className="w-full p-3 rounded-xl bg-[#161622] border border-[#272738] text-white text-xs focus:outline-none focus:border-[#ff6b00] mb-2"
+                  type="file"
+                  ref={coverFileInputRef}
+                  onChange={handleCoverFileUpload}
+                  accept="image/*"
+                  className="hidden"
                 />
 
-                <div className="grid grid-cols-5 sm:grid-cols-9 gap-2">
-                  {PRESET_COVERS.map((url, i) => (
+                <div className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-2xl bg-[#161622] border border-[#272738]">
+                  <div className="w-24 aspect-[3/4] rounded-xl overflow-hidden relative shadow-lg border border-orange-500/40 shrink-0 bg-black">
+                    {moduleForm.coverImage ? (
+                      <img
+                        src={moduleForm.coverImage}
+                        alt="Capa Preview"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center text-zinc-500">
+                        <ImageIcon className="w-6 h-6 mb-1" />
+                        <span className="text-[9px]">Sem Capa</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-1 space-y-2 w-full">
                     <button
                       type="button"
-                      key={i}
-                      onClick={() => setModuleForm({ ...moduleForm, coverImage: url })}
-                      className={`aspect-[3/4] rounded-lg overflow-hidden border-2 cursor-pointer transition-all ${
-                        moduleForm.coverImage === url ? 'border-[#ff6b00] scale-105' : 'border-transparent opacity-60 hover:opacity-100'
-                      }`}
+                      onClick={() => coverFileInputRef.current?.click()}
+                      className="w-full py-2.5 px-4 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-extrabold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all shadow-lg shadow-orange-600/20 uppercase tracking-wider"
                     >
-                      <img src={url} alt={`Preset ${i}`} className="w-full h-full object-cover" />
+                      <Upload className="w-4 h-4" />
+                      <span>Enviar Foto do Seu Aparelho (Galeria / Arquivos)</span>
                     </button>
-                  ))}
+
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Ou cole a URL direta da foto da capa..."
+                        value={moduleForm.coverImage}
+                        onChange={(e) => setModuleForm({ ...moduleForm, coverImage: e.target.value })}
+                        className="flex-1 p-2.5 rounded-xl bg-[#0d0d14] border border-[#272738] text-white text-xs focus:outline-none focus:border-[#ff6b00]"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-[10px] text-zinc-400 font-mono block mb-1.5">
+                    Ou escolha uma sugestão pré-definida:
+                  </span>
+                  <div className="grid grid-cols-5 sm:grid-cols-9 gap-2">
+                    {PRESET_COVERS.map((url, i) => (
+                      <button
+                        type="button"
+                        key={i}
+                        onClick={() => setModuleForm({ ...moduleForm, coverImage: url })}
+                        className={`aspect-[3/4] rounded-lg overflow-hidden border-2 cursor-pointer transition-all ${
+                          moduleForm.coverImage === url ? 'border-[#ff6b00] scale-105' : 'border-transparent opacity-60 hover:opacity-100'
+                        }`}
+                      >
+                        <img src={url} alt={`Preset ${i}`} className="w-full h-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
