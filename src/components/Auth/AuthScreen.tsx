@@ -272,19 +272,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       <div className="w-full max-w-md relative z-10">
         
         {/* Brand Header */}
-        <div className="text-center mb-6 space-y-2">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-orange-600 to-amber-500 text-white shadow-xl shadow-orange-600/30 mb-2 ring-4 ring-orange-500/20">
-            <Flame className="w-8 h-8 fill-current" />
-          </div>
-
-          <div className="flex items-center justify-center gap-2">
-            <span className="font-black text-2xl tracking-tight text-orange-500 uppercase">TRADER</span>
-            <span className="font-black text-2xl tracking-tight text-white uppercase">ACADEMIC</span>
-          </div>
-
-          <p className="text-xs text-zinc-400 font-medium">
-            {settings.tagline || 'Portal Exclusivo de Membros & Mentoria VIP'}
-          </p>
+        <div className="text-center mb-6 flex flex-col items-center">
+          <BrandLogo className="h-14 w-auto mb-2" showText={true} subtext={settings.tagline || 'Portal Exclusivo de Membros & Mentoria VIP'} />
         </div>
 
         {/* Auth Box */}

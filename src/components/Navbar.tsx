@@ -17,6 +17,7 @@ import {
   Edit3
 } from 'lucide-react';
 import { User, Module, Announcement, PlatformSettings } from '../types';
+import { BrandLogo } from './BrandLogo';
 
 interface NavbarProps {
   currentUser: User;
@@ -88,22 +89,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => setActiveView('home')}
               className="flex items-center gap-3 text-left group transition-transform focus:outline-none cursor-pointer"
             >
-              <div className="w-10 h-10 rounded-xl bg-orange-600 flex items-center justify-center shadow-lg shadow-orange-600/30 group-hover:scale-105 transition-all text-white">
-                <Flame className="w-5 h-5 fill-current" />
-              </div>
-              <div>
-                <div className="flex items-center gap-1.5 leading-none">
-                  <span className="font-black text-xl text-orange-500 tracking-tighter uppercase">
-                    TRADER
-                  </span>
-                  <span className="font-black text-xl text-white tracking-tighter uppercase">
-                    ACADEMIC
-                  </span>
-                </div>
-                <p className="text-[10px] text-zinc-500 font-bold tracking-widest uppercase mt-0.5">
-                  Área de Membros VIP
-                </p>
-              </div>
+              <BrandLogo className="h-10 w-auto" showText={true} subtext="Área de Membros VIP" />
             </button>
 
             {/* Desktop Navigation Badges */}

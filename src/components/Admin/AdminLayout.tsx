@@ -93,24 +93,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
         <div>
           {/* Brand Header */}
           <div className="p-6 border-b border-orange-900/20">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-orange-600 flex items-center justify-center text-white shadow-lg shadow-orange-600/30">
-                <ShieldCheck className="w-6 h-6" />
-              </div>
-              <div>
-                <div className="flex items-center gap-1 leading-none">
-                  <span className="font-black text-base text-orange-500 tracking-tight uppercase">
-                    TRADER
-                  </span>
-                  <span className="font-black text-base text-white tracking-tight uppercase">
-                    ACADEMIC
-                  </span>
-                </div>
-                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">
-                  Painel de Controle
-                </p>
-              </div>
-            </div>
+            <BrandLogo className="h-10 w-auto" showText={true} subtext="Painel ADM" />
           </div>
 
           {/* Navigation Links */}
