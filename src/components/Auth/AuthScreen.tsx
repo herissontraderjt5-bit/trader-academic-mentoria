@@ -272,12 +272,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       <div className="w-full max-w-md relative z-10">
         
         {/* Brand Header */}
-        <div className="text-center mb-6 flex flex-col items-center">
+        <div className="text-center mb-6 flex flex-col items-center justify-center">
           <BrandLogo 
             layout="col" 
-            size="64px" 
-            showText={true} 
-            textClassName="text-2xl" 
+            size="110px" 
             subtext={settings.tagline || 'Portal Exclusivo de Membros & Mentoria VIP'} 
           />
         </div>

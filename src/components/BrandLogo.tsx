@@ -33,9 +33,9 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
         style={sizeStyle}
         className={`${size ? '' : 'h-10'} w-auto object-contain select-none transition-transform group-hover:scale-105`}
       />
-      {showText && (
-        <div className={`flex flex-col select-none ${isCol ? 'items-center text-center' : ''}`}>
-          <div className="flex items-center gap-1.5 leading-none justify-center">
+      {showText && !isCol && (
+        <div className="flex flex-col select-none">
+          <div className="flex items-center gap-1.5 leading-none">
             <span className={`font-black tracking-tight text-orange-500 uppercase font-sans ${textClassName}`}>
               TRADER
             </span>
@@ -49,6 +49,11 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
             </span>
           )}
         </div>
+      )}
+      {subtext && isCol && (
+        <span className="text-xs text-zinc-400 font-medium tracking-wider uppercase mt-1">
+          {subtext}
+        </span>
       )}
     </div>
   );
