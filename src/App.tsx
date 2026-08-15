@@ -26,7 +26,8 @@ import {
   Lock,
   MessageCircle,
   Phone,
-  Compass
+  Compass,
+  Sparkles
 } from 'lucide-react';
 
 export default function App() {
