@@ -23,6 +23,7 @@ export interface User {
   termsAccepted?: boolean;
   termsAcceptedAt?: string;
   customAllowedModuleIds?: string[]; // If defined, overrides tier default
+  allowedCertificates?: ('b3' | 'binarias' | 'forex')[]; // Explicitly unlocked certificates by Admin
   progress: {
     completedLessonIds: string[];
     lastWatchedLessonId?: string;

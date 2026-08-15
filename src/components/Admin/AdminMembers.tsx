@@ -17,7 +17,11 @@ import {
   Phone, 
   Mail, 
   Calendar,
-  Sparkles
+  Sparkles,
+  Award,
+  BarChart2,
+  Globe,
+  TrendingUp
 } from 'lucide-react';
 import { User, Module, Tier, StudentStatus } from '../../types';
 import { supabaseService } from '../../services/supabaseService';
@@ -44,6 +48,41 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
   const [customAccessUser, setCustomAccessUser] = useState<User | null>(null);
   const [selectedModuleIds, setSelectedModuleIds] = useState<string[]>([]);
   const [isOverrideActive, setIsOverrideActive] = useState(false);
+
+  // Certificate Release Modal State
+  const [certReleaseUser, setCertReleaseUser] = useState<User | null>(null);
+  const [selectedCerts, setSelectedCerts] = useState<('b3' | 'binarias' | 'forex')[]>([]);
+
+  const handleOpenCertRelease = (user: User) => {
+    setCertReleaseUser(user);
+    setSelectedCerts(user.allowedCertificates || []);
+  };
+
+  const handleSaveCertRelease = () => {
+    if (!certReleaseUser) return;
+    const updated = users.map((u) => {
+      if (u.id === certReleaseUser.id) {
+        const uUpdated = {
+          ...u,
+          allowedCertificates: selectedCerts,
+        };
+        if (supabaseService.isConfigured()) {
+          supabaseService.upsertProfile(uUpdated);
+        }
+        return uUpdated;
+      }
+      return u;
+    });
+    onUpdateUsers(updated);
+    storageService.saveStudents(updated);
+    setCertReleaseUser(null);
+  };
+
+  const toggleCertSelection = (cert: 'b3' | 'binarias' | 'forex') => {
+    setSelectedCerts((prev) =>
+      prev.includes(cert) ? prev.filter((c) => c !== cert) : [...prev, cert]
+    );
+  };
 
   // New user form
   const [newUserForm, setNewUserForm] = useState({
@@ -379,15 +418,26 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
                       <td className="py-4 px-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button
+                            onClick={() => handleOpenCertRelease(user)}
+                            className={`p-2 rounded-xl border transition-all cursor-pointer ${
+                              user.allowedCertificates && user.allowedCertificates.length > 0
+                                ? 'bg-orange-600/20 text-orange-400 border-orange-500/40 hover:bg-orange-600/30'
+                                : 'bg-zinc-800 text-zinc-300 hover:text-orange-400 hover:bg-zinc-700 border-white/5'
+                            }`}
+                            title="Liberar Certificados (B3, Opções Binárias, Forex)"
+                          >
+                            <Award className="w-3.5 h-3.5" />
+                          </button>
+                          <button
                             onClick={() => handleOpenCustomAccess(user)}
-                            className="p-2 rounded-xl bg-zinc-800 text-zinc-300 hover:text-orange-400 hover:bg-zinc-700 transition-all cursor-pointer"
+                            className="p-2 rounded-xl bg-zinc-800 text-zinc-300 hover:text-orange-400 hover:bg-zinc-700 border border-white/5 transition-all cursor-pointer"
                             title="Gerenciar Módulos"
                           >
                             <KeyRound className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => handleDeleteUser(user.id)}
-                            className="p-2 rounded-xl bg-zinc-800 text-zinc-400 hover:text-red-400 hover:bg-zinc-700 transition-all cursor-pointer"
+                            className="p-2 rounded-xl bg-zinc-800 text-zinc-400 hover:text-red-400 hover:bg-zinc-700 border border-white/5 transition-all cursor-pointer"
                             title="Excluir Aluno"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -610,6 +660,126 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Certificate Release per Member */}
+      {certReleaseUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="w-full max-w-lg bg-[#0a0a0a] border border-orange-900/30 rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-white/5 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-black text-white flex items-center gap-2">
+                  <Award className="w-5 h-5 text-orange-500" />
+                  <span>Liberar Certificados Oficiais</span>
+                </h3>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Aluno: <strong className="text-white">{certReleaseUser.name}</strong> ({certReleaseUser.tier})
+                </p>
+              </div>
+              <button
+                onClick={() => setCertReleaseUser(null)}
+                className="p-2 rounded-xl bg-zinc-900 text-zinc-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <p className="text-xs text-zinc-300 leading-relaxed">
+                Selecione os certificados que deseja liberar para download por este aluno, independente do progresso:
+              </p>
+
+              <div className="space-y-3">
+                <div
+                  onClick={() => toggleCertSelection('b3')}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+                    selectedCerts.includes('b3')
+                      ? 'bg-orange-600/10 border-orange-500/50 text-white'
+                      : 'bg-zinc-900/50 border-white/5 text-zinc-400 hover:border-white/20'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <TrendingUp className="w-5 h-5 text-orange-500" />
+                    <div>
+                      <h4 className="text-xs font-black">Certificado B3 (Mini-Índice & Dólar)</h4>
+                      <p className="text-[10px] text-zinc-400">Operações no Mercado Nacional</p>
+                    </div>
+                  </div>
+                  <div className={`w-5 h-5 rounded-lg border flex items-center justify-center ${selectedCerts.includes('b3') ? 'bg-orange-500 border-orange-500 text-white' : 'border-zinc-700'}`}>
+                    {selectedCerts.includes('b3') && <Check className="w-3.5 h-3.5" />}
+                  </div>
+                </div>
+
+                <div
+                  onClick={() => toggleCertSelection('binarias')}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+                    selectedCerts.includes('binarias')
+                      ? 'bg-emerald-600/10 border-emerald-500/50 text-white'
+                      : 'bg-zinc-900/50 border-white/5 text-zinc-400 hover:border-white/20'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <BarChart2 className="w-5 h-5 text-emerald-400" />
+                    <div>
+                      <h4 className="text-xs font-black">Certificado Opções Binárias</h4>
+                      <p className="text-[10px] text-zinc-400">Price Action Avançado M1/M5</p>
+                    </div>
+                  </div>
+                  <div className={`w-5 h-5 rounded-lg border flex items-center justify-center ${selectedCerts.includes('binarias') ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-zinc-700'}`}>
+                    {selectedCerts.includes('binarias') && <Check className="w-3.5 h-3.5" />}
+                  </div>
+                </div>
+
+                <div
+                  onClick={() => toggleCertSelection('forex')}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+                    selectedCerts.includes('forex')
+                      ? 'bg-blue-600/10 border-blue-500/50 text-white'
+                      : 'bg-zinc-900/50 border-white/5 text-zinc-400 hover:border-white/20'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Globe className="w-5 h-5 text-blue-400" />
+                    <div>
+                      <h4 className="text-xs font-black">Certificado Forex</h4>
+                      <p className="text-[10px] text-zinc-400">Mercado Internacional de Câmbio</p>
+                    </div>
+                  </div>
+                  <div className={`w-5 h-5 rounded-lg border flex items-center justify-center ${selectedCerts.includes('forex') ? 'bg-blue-500 border-blue-500 text-white' : 'border-zinc-700'}`}>
+                    {selectedCerts.includes('forex') && <Check className="w-3.5 h-3.5" />}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-white/5 flex items-center justify-between gap-3 bg-zinc-900/40">
+              <button
+                type="button"
+                onClick={() => setSelectedCerts(['b3', 'binarias', 'forex'])}
+                className="text-xs font-bold text-orange-400 hover:underline cursor-pointer"
+              >
+                Liberar Todos
+              </button>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCertReleaseUser(null)}
+                  className="px-4 py-2 rounded-xl bg-zinc-800 text-zinc-300 hover:text-white text-xs font-bold cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveCertRelease}
+                  className="px-5 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold cursor-pointer transition-all shadow-lg shadow-orange-600/20"
+                >
+                  Salvar Liberados
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
