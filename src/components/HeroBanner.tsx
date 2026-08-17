@@ -107,24 +107,14 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
               <span>CONTINUAR ASSISTINDO</span>
             </button>
 
-            {currentUser.tier === 'Free' && onOpenUpgrade ? (
-              <button
-                onClick={onOpenUpgrade}
-                className="flex items-center gap-2 px-5 py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-600/30 hover:scale-[1.02] transition-all cursor-pointer"
-              >
-                <Flame className="w-4 h-4 fill-white text-white" />
-                <span>LIBERAR VIP NO WHATSAPP</span>
-              </button>
-            ) : (
-              <button
-                onClick={onOpenLive}
-                className="flex items-center gap-2 px-5 py-3.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
-              >
-                <Radio className="w-4 h-4 text-red-500 animate-pulse" />
-                <span>Sala Operacional</span>
-                <ArrowRight className="w-4 h-4 text-zinc-400 ml-1" />
-              </button>
-            )}
+            <button
+              onClick={onOpenLive}
+              className="flex items-center gap-2 px-5 py-3.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
+            >
+              <Radio className="w-4 h-4 text-red-500 animate-pulse" />
+              <span>Sala Operacional</span>
+              <ArrowRight className="w-4 h-4 text-zinc-400 ml-1" />
+            </button>
           </div>
         </div>
 
