@@ -37,14 +37,20 @@ export const ModuleCard: React.FC<ModuleCardProps> = ({
       <div className="relative aspect-[3/4] w-full overflow-hidden bg-black">
         
         {/* Module Poster Image */}
-        <img
-          src={module.coverImage}
-          alt={module.title}
-          className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${
-            hasAccess ? 'grayscale group-hover:grayscale-0' : 'grayscale'
-          }`}
-          loading="lazy"
-        />
+        {module.coverImage ? (
+          <img
+            src={module.coverImage}
+            alt={module.title}
+            className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${
+              hasAccess ? 'grayscale group-hover:grayscale-0' : 'grayscale'
+            }`}
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-zinc-800 via-zinc-900 to-black flex items-center justify-center p-4">
+            <BookOpen className="w-12 h-12 text-orange-500/40" />
+          </div>
+        )}
 
         {/* Gradient Overlay for Text Readability */}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
