@@ -34,21 +34,12 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 -- Enable RLS on profiles
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
--- Profiles Policies
 DROP POLICY IF EXISTS "Public profiles are viewable by authenticated or anon" ON public.profiles;
-CREATE POLICY "Public profiles are viewable by authenticated or anon"
-  ON public.profiles FOR SELECT USING (true);
-
 DROP POLICY IF EXISTS "Users can update their own profile or admins can update any" ON public.profiles;
-CREATE POLICY "Users can update their own profile or admins can update any"
-  ON public.profiles FOR UPDATE USING (
-    auth.uid()::text = id OR 
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid()::text AND role = 'admin')
-  );
-
 DROP POLICY IF EXISTS "Users can insert their own profile or admins" ON public.profiles;
-CREATE POLICY "Users can insert their own profile or admins"
-  ON public.profiles FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Profiles full access" ON public.profiles;
+CREATE POLICY "Profiles full access"
+  ON public.profiles FOR ALL USING (true) WITH CHECK (true);
 
 -- ------------------------------------------
 -- 2. USER PROGRESS TABLE
@@ -64,18 +55,10 @@ CREATE TABLE IF NOT EXISTS public.user_progress (
 ALTER TABLE public.user_progress ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "User progress viewable by owner or admin" ON public.user_progress;
-CREATE POLICY "User progress viewable by owner or admin"
-  ON public.user_progress FOR SELECT USING (
-    auth.uid()::text = user_id OR 
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid()::text AND role = 'admin')
-  );
-
 DROP POLICY IF EXISTS "User progress editable by owner or admin" ON public.user_progress;
-CREATE POLICY "User progress editable by owner or admin"
-  ON public.user_progress FOR ALL USING (
-    auth.uid()::text = user_id OR 
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid()::text AND role = 'admin')
-  );
+DROP POLICY IF EXISTS "User progress full access" ON public.user_progress;
+CREATE POLICY "User progress full access"
+  ON public.user_progress FOR ALL USING (true) WITH CHECK (true);
 
 -- ------------------------------------------
 -- 3. USER NOTES TABLE
@@ -92,12 +75,10 @@ CREATE TABLE IF NOT EXISTS public.user_notes (
 ALTER TABLE public.user_notes ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "User notes viewable by owner" ON public.user_notes;
-CREATE POLICY "User notes viewable by owner"
-  ON public.user_notes FOR SELECT USING (auth.uid()::text = user_id);
-
 DROP POLICY IF EXISTS "User notes editable by owner" ON public.user_notes;
-CREATE POLICY "User notes editable by owner"
-  ON public.user_notes FOR ALL USING (auth.uid()::text = user_id);
+DROP POLICY IF EXISTS "User notes full access" ON public.user_notes;
+CREATE POLICY "User notes full access"
+  ON public.user_notes FOR ALL USING (true) WITH CHECK (true);
 
 -- ------------------------------------------
 -- 4. MODULES TABLE
