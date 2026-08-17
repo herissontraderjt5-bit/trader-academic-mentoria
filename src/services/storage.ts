@@ -217,7 +217,11 @@ export const storageService = {
   },
 
   saveModules(modules: Module[]): void {
-    localStorage.setItem(STORAGE_KEYS.MODULES, JSON.stringify(modules));
+    try {
+      localStorage.setItem(STORAGE_KEYS.MODULES, JSON.stringify(modules));
+    } catch (e) {
+      console.warn('LocalStorage quota warning for modules:', e);
+    }
     if (supabaseService.isConfigured()) {
       supabaseService.saveModules(modules);
     }
@@ -237,7 +241,11 @@ export const storageService = {
   },
 
   saveStudents(students: User[]): void {
-    localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(students));
+    try {
+      localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(students));
+    } catch (e) {
+      console.warn('LocalStorage error for students:', e);
+    }
   },
 
   deleteStudent(userId: string): void {
@@ -249,12 +257,20 @@ export const storageService = {
   },
 
   getCurrentUserId(): string {
-    const id = localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID);
-    return id || 'usr-current';
+    try {
+      const id = localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID);
+      return id || 'usr-current';
+    } catch {
+      return 'usr-current';
+    }
   },
 
   setCurrentUserId(id: string): void {
-    localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, id);
+    try {
+      localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, id);
+    } catch (e) {
+      console.warn(e);
+    }
   },
 
   updateUser(userId: string, updates: Partial<User>): User | null {
@@ -306,12 +322,18 @@ export const storageService = {
     } catch (e) {
       console.error(e);
     }
-    localStorage.setItem(STORAGE_KEYS.ANNOUNCEMENTS, JSON.stringify(INITIAL_ANNOUNCEMENTS));
+    try {
+      localStorage.setItem(STORAGE_KEYS.ANNOUNCEMENTS, JSON.stringify(INITIAL_ANNOUNCEMENTS));
+    } catch {}
     return INITIAL_ANNOUNCEMENTS;
   },
 
   saveAnnouncements(announcements: Announcement[]): void {
-    localStorage.setItem(STORAGE_KEYS.ANNOUNCEMENTS, JSON.stringify(announcements));
+    try {
+      localStorage.setItem(STORAGE_KEYS.ANNOUNCEMENTS, JSON.stringify(announcements));
+    } catch (e) {
+      console.warn(e);
+    }
     if (supabaseService.isConfigured()) {
       supabaseService.saveAnnouncements(announcements);
     }
@@ -324,12 +346,18 @@ export const storageService = {
     } catch (e) {
       console.error(e);
     }
-    localStorage.setItem(STORAGE_KEYS.LIVE_SESSIONS, JSON.stringify(INITIAL_LIVE_SESSIONS));
+    try {
+      localStorage.setItem(STORAGE_KEYS.LIVE_SESSIONS, JSON.stringify(INITIAL_LIVE_SESSIONS));
+    } catch {}
     return INITIAL_LIVE_SESSIONS;
   },
 
   saveLiveSessions(sessions: LiveSession[]): void {
-    localStorage.setItem(STORAGE_KEYS.LIVE_SESSIONS, JSON.stringify(sessions));
+    try {
+      localStorage.setItem(STORAGE_KEYS.LIVE_SESSIONS, JSON.stringify(sessions));
+    } catch (e) {
+      console.warn(e);
+    }
     if (supabaseService.isConfigured()) {
       supabaseService.saveLiveSessions(sessions);
     }
@@ -342,12 +370,18 @@ export const storageService = {
     } catch (e) {
       console.error(e);
     }
-    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(INITIAL_SETTINGS));
+    try {
+      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(INITIAL_SETTINGS));
+    } catch {}
     return INITIAL_SETTINGS;
   },
 
   saveSettings(settings: PlatformSettings): void {
-    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
+    try {
+      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
+    } catch (e) {
+      console.warn(e);
+    }
     if (supabaseService.isConfigured()) {
       supabaseService.saveSettings(settings);
     }
@@ -360,12 +394,18 @@ export const storageService = {
     } catch (e) {
       console.error(e);
     }
-    localStorage.setItem(STORAGE_KEYS.JOURNAL, JSON.stringify(INITIAL_JOURNAL));
+    try {
+      localStorage.setItem(STORAGE_KEYS.JOURNAL, JSON.stringify(INITIAL_JOURNAL));
+    } catch {}
     return INITIAL_JOURNAL;
   },
 
   saveJournal(journal: TradeJournalEntry[]): void {
-    localStorage.setItem(STORAGE_KEYS.JOURNAL, JSON.stringify(journal));
+    try {
+      localStorage.setItem(STORAGE_KEYS.JOURNAL, JSON.stringify(journal));
+    } catch (e) {
+      console.warn(e);
+    }
     if (supabaseService.isConfigured()) {
       supabaseService.saveJournal(journal);
     }

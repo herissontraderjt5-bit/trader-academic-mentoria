@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Module, Lesson, Tier, Material } from '../../types';
 import { extractYouTubeId } from '../../utils/youtube';
+import { compressImageFile } from '../../utils/imageCompressor';
 
 interface AdminModulesProps {
   modules: Module[];
@@ -45,9 +46,10 @@ export const AdminModules: React.FC<AdminModulesProps> = ({
   const [selectedModuleForLessons, setSelectedModuleForLessons] = useState<Module | null>(null);
   const [isModuleModalOpen, setIsModuleModalOpen] = useState(false);
   const [editingModule, setEditingModule] = useState<Module | null>(null);
+  const [isCompressingCover, setIsCompressingCover] = useState(false);
   const coverFileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleCoverFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCoverFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -56,18 +58,15 @@ export const AdminModules: React.FC<AdminModulesProps> = ({
       return;
     }
 
-    if (file.size > 10 * 1024 * 1024) {
-      alert('A imagem deve ter no máximo 10MB.');
-      return;
+    try {
+      setIsCompressingCover(true);
+      const compressed = await compressImageFile(file, 600, 800, 0.75);
+      setModuleForm(prev => ({ ...prev, coverImage: compressed }));
+    } catch (err: any) {
+      alert(err.message || 'Erro ao carregar a imagem.');
+    } finally {
+      setIsCompressingCover(false);
     }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        setModuleForm(prev => ({ ...prev, coverImage: event.target!.result as string }));
-      }
-    };
-    reader.readAsDataURL(file);
   };
 
   // Form states for Module
@@ -627,11 +626,21 @@ export const AdminModules: React.FC<AdminModulesProps> = ({
                   <div className="flex-1 space-y-2 w-full">
                     <button
                       type="button"
+                      disabled={isCompressingCover}
                       onClick={() => coverFileInputRef.current?.click()}
-                      className="w-full py-2.5 px-4 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-extrabold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all shadow-lg shadow-orange-600/20 uppercase tracking-wider"
+                      className="w-full py-2.5 px-4 rounded-xl bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white font-extrabold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all shadow-lg shadow-orange-600/20 uppercase tracking-wider"
                     >
-                      <Upload className="w-4 h-4" />
-                      <span>Enviar Foto do Seu Aparelho (Galeria / Arquivos)</span>
+                      {isCompressingCover ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          <span>Processando Foto Otimizada...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-4 h-4" />
+                          <span>Enviar Foto do Seu Aparelho (Galeria / Arquivos)</span>
+                        </>
+                      )}
                     </button>
 
                     <div className="flex gap-2">

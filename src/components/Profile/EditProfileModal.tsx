@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { User } from '../../types';
 import { getAvatarUrl } from '../../utils/avatar';
+import { compressImageFile } from '../../utils/imageCompressor';
 
 interface EditProfileModalProps {
   isOpen: boolean;
@@ -79,7 +80,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   };
 
   // Image upload via file input
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -88,19 +89,13 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      setErrorMessage('A imagem deve ter no máximo 5MB.');
-      return;
+    try {
+      const compressed = await compressImageFile(file, 400, 400, 0.8);
+      setAvatar(compressed);
+      setErrorMessage('');
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Erro ao processar imagem.');
     }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        setAvatar(event.target.result as string);
-        setErrorMessage('');
-      }
-    };
-    reader.readAsDataURL(file);
   };
 
   // Save handler
