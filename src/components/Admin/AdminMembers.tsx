@@ -42,6 +42,29 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [filterTier, setFilterTier] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Auto-sync students from Supabase on mount
+  const refreshFromSupabase = async () => {
+    setIsRefreshing(true);
+    try {
+      if (supabaseService.isConfigured()) {
+        const remoteProfiles = await supabaseService.getProfiles();
+        if (remoteProfiles && remoteProfiles.length > 0) {
+          onUpdateUsers(remoteProfiles);
+          storageService.saveStudents(remoteProfiles);
+        }
+      }
+    } catch (e) {
+      console.error('Error refreshing students from Supabase:', e);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  React.useEffect(() => {
+    refreshFromSupabase();
+  }, []);
 
   // Modal states
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
@@ -93,12 +116,19 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
     status: 'Ativo' as StudentStatus,
   });
 
-  // Filter users
-  const filteredUsers = users.filter((u) => {
+  // Filter users safely
+  const filteredUsers = (users || []).filter((u) => {
+    if (!u) return false;
+    const nameStr = (u.name || '').toLowerCase();
+    const emailStr = (u.email || '').toLowerCase();
+    const whatsappStr = u.whatsapp || '';
+    const q = searchQuery.toLowerCase();
+
     const matchesSearch =
-      u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (u.whatsapp && u.whatsapp.includes(searchQuery));
+      !searchQuery ||
+      nameStr.includes(q) ||
+      emailStr.includes(q) ||
+      whatsappStr.includes(q);
     const matchesTier = filterTier === 'all' || u.tier === filterTier;
     const matchesStatus = filterStatus === 'all' || u.status === filterStatus;
     return matchesSearch && matchesTier && matchesStatus;
@@ -252,13 +282,25 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={() => setIsAddUserModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs transition-all shadow-lg shadow-orange-600/30 cursor-pointer uppercase tracking-wider"
-        >
-          <UserPlus className="w-4 h-4" />
-          <span>Novo Aluno</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={refreshFromSupabase}
+            disabled={isRefreshing}
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-xs transition-all border border-white/5 cursor-pointer uppercase tracking-wider disabled:opacity-50"
+            title="Sincronizar alunos com o Supabase"
+          >
+            <RotateCcw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-orange-500' : ''}`} />
+            <span>{isRefreshing ? 'Atualizando...' : 'Atualizar Lista'}</span>
+          </button>
+
+          <button
+            onClick={() => setIsAddUserModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs transition-all shadow-lg shadow-orange-600/30 cursor-pointer uppercase tracking-wider"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>Novo Aluno</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}
@@ -322,9 +364,10 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
               ) : (
                 filteredUsers.map((user) => {
                   const isCustom = user.customAllowedModuleIds && user.customAllowedModuleIds.length > 0;
-                  const totalLessonsCount = modules.reduce((acc, m) => acc + m.lessons.length, 0);
+                  const totalLessonsCount = (modules || []).reduce((acc, m) => acc + (m.lessons?.length || 0), 0);
+                  const completedCount = user.progress?.completedLessonIds?.length || 0;
                   const progressPct = totalLessonsCount > 0 
-                    ? Math.round((user.progress.completedLessonIds.length / totalLessonsCount) * 100) 
+                    ? Math.round((completedCount / totalLessonsCount) * 100) 
                     : 0;
 
                   return (
