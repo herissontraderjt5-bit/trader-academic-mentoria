@@ -32,14 +32,14 @@ export const INITIAL_STUDENTS: User[] = [
     joinedAt: '2025-01-15',
     whatsapp: '551199887766',
     progress: {
-      completedLessonIds: ['les-ob-1', 'les-ob-2', 'les-1-1', 'les-2-1'],
-      lastWatchedLessonId: 'les-ob-2',
-      lastWatchedModuleId: 'mod-ob-free'
+      completedLessonIds: [],
+      lastWatchedLessonId: '',
+      lastWatchedModuleId: ''
     },
     notes: {}
   },
   {
-    id: 'usr-current',
+    id: 'usr-admin-vinicius',
     name: 'Vinicius Sestrem (ADM)',
     email: 'viniciussestremmm@gmail.com',
     password: 'Trader@123',
@@ -52,51 +52,9 @@ export const INITIAL_STUDENTS: User[] = [
     joinedAt: '2025-01-15',
     whatsapp: '551199887766',
     progress: {
-      completedLessonIds: ['les-ob-1', 'les-ob-2', 'les-1-1', 'les-2-1'],
-      lastWatchedLessonId: 'les-ob-2',
-      lastWatchedModuleId: 'mod-ob-free'
-    },
-    notes: {
-      'les-ob-2': 'Esperar o toque no suporte após os 30 segundos da vela de M1 para pegar a retração com margem de segurança.'
-    }
-  },
-  {
-    id: 'usr-free-1',
-    name: 'Carlos Henrique (Plano Free)',
-    email: 'carlos.free@gmail.com',
-    password: 'Trader@123',
-    termsAccepted: true,
-    termsAcceptedAt: '2025-02-10T14:30:00Z',
-    avatar: '',
-    role: 'student',
-    tier: 'Free',
-    status: 'Ativo',
-    joinedAt: '2025-02-10',
-    whatsapp: '5511988887777',
-    progress: {
-      completedLessonIds: ['les-ob-1', 'les-ob-2'],
-      lastWatchedLessonId: 'les-ob-2',
-      lastWatchedModuleId: 'mod-ob-free'
-    },
-    notes: {}
-  },
-  {
-    id: 'usr-vip-1',
-    name: 'Mariana Prado (Plano VIP)',
-    email: 'mariana.vip@outlook.com',
-    password: 'Trader@123',
-    termsAccepted: true,
-    termsAcceptedAt: '2025-03-01T09:15:00Z',
-    avatar: '',
-    role: 'student',
-    tier: 'VIP',
-    status: 'Ativo',
-    joinedAt: '2025-03-01',
-    whatsapp: '5521977776666',
-    progress: {
-      completedLessonIds: ['les-ob-1', 'les-1-1', 'les-2-1'],
-      lastWatchedLessonId: 'les-2-1',
-      lastWatchedModuleId: 'mod-2'
+      completedLessonIds: [],
+      lastWatchedLessonId: '',
+      lastWatchedModuleId: ''
     },
     notes: {}
   }
