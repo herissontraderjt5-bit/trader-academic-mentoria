@@ -323,6 +323,15 @@ export const supabaseService = {
   async saveModules(modules: Module[]): Promise<void> {
     if (!supabase) return;
     try {
+      const { data: existingModules } = await supabase.from('modules').select('id');
+      const existingModuleIds = existingModules?.map(m => m.id) || [];
+      const currentModuleIds = modules.map(m => m.id);
+      const modulesToDelete = existingModuleIds.filter(id => !currentModuleIds.includes(id));
+
+      if (modulesToDelete.length > 0) {
+        await supabase.from('modules').delete().in('id', modulesToDelete);
+      }
+
       for (const m of modules) {
         await supabase.from('modules').upsert({
           id: m.id,
@@ -338,6 +347,15 @@ export const supabaseService = {
           is_live_module: m.isLiveModule,
         });
 
+        const { data: existingLessons } = await supabase.from('lessons').select('id').eq('module_id', m.id);
+        const existingLessonIds = existingLessons?.map(l => l.id) || [];
+        const currentLessonIds = m.lessons.map(l => l.id);
+        const lessonsToDelete = existingLessonIds.filter(id => !currentLessonIds.includes(id));
+
+        if (lessonsToDelete.length > 0) {
+          await supabase.from('lessons').delete().in('id', lessonsToDelete);
+        }
+
         for (const l of m.lessons) {
           await supabase.from('lessons').upsert({
             id: l.id,
@@ -351,6 +369,15 @@ export const supabaseService = {
           });
 
           if (l.materials) {
+            const { data: existingMaterials } = await supabase.from('materials').select('id').eq('lesson_id', l.id);
+            const existingMaterialIds = existingMaterials?.map(mat => mat.id) || [];
+            const currentMaterialIds = l.materials.map(mat => mat.id);
+            const materialsToDelete = existingMaterialIds.filter(id => !currentMaterialIds.includes(id));
+
+            if (materialsToDelete.length > 0) {
+              await supabase.from('materials').delete().in('id', materialsToDelete);
+            }
+
             for (const mat of l.materials) {
               await supabase.from('materials').upsert({
                 id: mat.id,
@@ -360,6 +387,11 @@ export const supabaseService = {
                 type: mat.type,
                 size: mat.size,
               });
+            }
+          } else {
+            const { data: existingMaterials } = await supabase.from('materials').select('id').eq('lesson_id', l.id);
+            if (existingMaterials && existingMaterials.length > 0) {
+              await supabase.from('materials').delete().eq('lesson_id', l.id);
             }
           }
         }
@@ -396,6 +428,15 @@ export const supabaseService = {
   async saveAnnouncements(announcements: Announcement[]): Promise<void> {
     if (!supabase) return;
     try {
+      const { data: existing } = await supabase.from('announcements').select('id');
+      const existingIds = existing?.map(a => a.id) || [];
+      const currentIds = announcements.map(a => a.id);
+      const toDelete = existingIds.filter(id => !currentIds.includes(id));
+      
+      if (toDelete.length > 0) {
+        await supabase.from('announcements').delete().in('id', toDelete);
+      }
+
       for (const a of announcements) {
         await supabase.from('announcements').upsert({
           id: a.id,
@@ -441,6 +482,15 @@ export const supabaseService = {
   async saveLiveSessions(sessions: LiveSession[]): Promise<void> {
     if (!supabase) return;
     try {
+      const { data: existing } = await supabase.from('live_sessions').select('id');
+      const existingIds = existing?.map(s => s.id) || [];
+      const currentIds = sessions.map(s => s.id);
+      const toDelete = existingIds.filter(id => !currentIds.includes(id));
+      
+      if (toDelete.length > 0) {
+        await supabase.from('live_sessions').delete().in('id', toDelete);
+      }
+
       for (const s of sessions) {
         await supabase.from('live_sessions').upsert({
           id: s.id,
