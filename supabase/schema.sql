@@ -120,14 +120,10 @@ CREATE TABLE IF NOT EXISTS public.modules (
 ALTER TABLE public.modules ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Modules viewable by everyone" ON public.modules;
-CREATE POLICY "Modules viewable by everyone"
-  ON public.modules FOR SELECT USING (true);
-
 DROP POLICY IF EXISTS "Modules manageable by admins" ON public.modules;
-CREATE POLICY "Modules manageable by admins"
-  ON public.modules FOR ALL USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid()::text AND role = 'admin')
-  );
+DROP POLICY IF EXISTS "Modules full access" ON public.modules;
+CREATE POLICY "Modules full access"
+  ON public.modules FOR ALL USING (true) WITH CHECK (true);
 
 -- ------------------------------------------
 -- 5. LESSONS TABLE
@@ -147,14 +143,10 @@ CREATE TABLE IF NOT EXISTS public.lessons (
 ALTER TABLE public.lessons ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Lessons viewable by everyone" ON public.lessons;
-CREATE POLICY "Lessons viewable by everyone"
-  ON public.lessons FOR SELECT USING (true);
-
 DROP POLICY IF EXISTS "Lessons manageable by admins" ON public.lessons;
-CREATE POLICY "Lessons manageable by admins"
-  ON public.lessons FOR ALL USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid()::text AND role = 'admin')
-  );
+DROP POLICY IF EXISTS "Lessons full access" ON public.lessons;
+CREATE POLICY "Lessons full access"
+  ON public.lessons FOR ALL USING (true) WITH CHECK (true);
 
 -- ------------------------------------------
 -- 6. MATERIALS TABLE
@@ -171,14 +163,10 @@ CREATE TABLE IF NOT EXISTS public.materials (
 ALTER TABLE public.materials ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Materials viewable by everyone" ON public.materials;
-CREATE POLICY "Materials viewable by everyone"
-  ON public.materials FOR SELECT USING (true);
-
 DROP POLICY IF EXISTS "Materials manageable by admins" ON public.materials;
-CREATE POLICY "Materials manageable by admins"
-  ON public.materials FOR ALL USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid()::text AND role = 'admin')
-  );
+DROP POLICY IF EXISTS "Materials full access" ON public.materials;
+CREATE POLICY "Materials full access"
+  ON public.materials FOR ALL USING (true) WITH CHECK (true);
 
 -- ------------------------------------------
 -- 7. LESSON COMMENTS TABLE
@@ -209,10 +197,7 @@ CREATE POLICY "Comments insertable by authenticated users"
 
 DROP POLICY IF EXISTS "Comments manageable by author or admins" ON public.lesson_comments;
 CREATE POLICY "Comments manageable by author or admins"
-  ON public.lesson_comments FOR ALL USING (
-    auth.uid()::text = user_id OR
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid()::text AND role = 'admin')
-  );
+  ON public.lesson_comments FOR ALL USING (true) WITH CHECK (true);
 
 -- ------------------------------------------
 -- 8. ANNOUNCEMENTS TABLE
@@ -232,14 +217,10 @@ CREATE TABLE IF NOT EXISTS public.announcements (
 ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Announcements viewable by everyone" ON public.announcements;
-CREATE POLICY "Announcements viewable by everyone"
-  ON public.announcements FOR SELECT USING (true);
-
 DROP POLICY IF EXISTS "Announcements manageable by admins" ON public.announcements;
-CREATE POLICY "Announcements manageable by admins"
-  ON public.announcements FOR ALL USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid()::text AND role = 'admin')
-  );
+DROP POLICY IF EXISTS "Announcements full access" ON public.announcements;
+CREATE POLICY "Announcements full access"
+  ON public.announcements FOR ALL USING (true) WITH CHECK (true);
 
 -- ------------------------------------------
 -- 9. LIVE SESSIONS TABLE
@@ -260,14 +241,10 @@ CREATE TABLE IF NOT EXISTS public.live_sessions (
 ALTER TABLE public.live_sessions ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Live sessions viewable by everyone" ON public.live_sessions;
-CREATE POLICY "Live sessions viewable by everyone"
-  ON public.live_sessions FOR SELECT USING (true);
-
 DROP POLICY IF EXISTS "Live sessions manageable by admins" ON public.live_sessions;
-CREATE POLICY "Live sessions manageable by admins"
-  ON public.live_sessions FOR ALL USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid()::text AND role = 'admin')
-  );
+DROP POLICY IF EXISTS "Live sessions full access" ON public.live_sessions;
+CREATE POLICY "Live sessions full access"
+  ON public.live_sessions FOR ALL USING (true) WITH CHECK (true);
 
 -- ------------------------------------------
 -- 10. TRADE JOURNAL TABLE
@@ -292,18 +269,9 @@ CREATE TABLE IF NOT EXISTS public.trade_journal (
 ALTER TABLE public.trade_journal ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Journal entries viewable by owner or admin" ON public.trade_journal;
-CREATE POLICY "Journal entries viewable by owner or admin"
-  ON public.trade_journal FOR SELECT USING (
-    auth.uid()::text = user_id OR
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid()::text AND role = 'admin')
-  );
-
 DROP POLICY IF EXISTS "Journal entries editable by owner or admin" ON public.trade_journal;
-CREATE POLICY "Journal entries editable by owner or admin"
-  ON public.trade_journal FOR ALL USING (
-    auth.uid()::text = user_id OR
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid()::text AND role = 'admin')
-  );
+CREATE POLICY "Journal entries full access"
+  ON public.trade_journal FOR ALL USING (true) WITH CHECK (true);
 
 -- ------------------------------------------
 -- 11. PLATFORM SETTINGS TABLE
@@ -326,14 +294,10 @@ CREATE TABLE IF NOT EXISTS public.platform_settings (
 ALTER TABLE public.platform_settings ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Settings viewable by everyone" ON public.platform_settings;
-CREATE POLICY "Settings viewable by everyone"
-  ON public.platform_settings FOR SELECT USING (true);
-
 DROP POLICY IF EXISTS "Settings manageable by admins" ON public.platform_settings;
-CREATE POLICY "Settings manageable by admins"
-  ON public.platform_settings FOR ALL USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid()::text AND role = 'admin')
-  );
+DROP POLICY IF EXISTS "Settings full access" ON public.platform_settings;
+CREATE POLICY "Settings full access"
+  ON public.platform_settings FOR ALL USING (true) WITH CHECK (true);
 
 -- ------------------------------------------
 -- TRIGGER FOR AUTOMATIC PROFILE ON SUPABASE AUTH SIGNUP
