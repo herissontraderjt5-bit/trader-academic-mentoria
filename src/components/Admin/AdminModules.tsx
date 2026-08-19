@@ -15,11 +15,16 @@ import {
   ArrowUp, 
   ArrowDown,
   Upload,
-  Camera
+  Camera,
+  RotateCcw,
+  Undo2
 } from 'lucide-react';
 import { Module, Lesson, Tier, Material } from '../../types';
 import { extractYouTubeId } from '../../utils/youtube';
 import { compressImageFile } from '../../utils/imageCompressor';
+import { supabaseService } from '../../services/supabaseService';
+import { storageService } from '../../services/storage';
+import { INITIAL_MODULES } from '../../data/initialData';
 
 interface AdminModulesProps {
   modules: Module[];
@@ -47,7 +52,37 @@ export const AdminModules: React.FC<AdminModulesProps> = ({
   const [isModuleModalOpen, setIsModuleModalOpen] = useState(false);
   const [editingModule, setEditingModule] = useState<Module | null>(null);
   const [isCompressingCover, setIsCompressingCover] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const coverFileInputRef = useRef<HTMLInputElement>(null);
+
+  const refreshFromSupabase = async () => {
+    setIsRefreshing(true);
+    try {
+      if (supabaseService.isConfigured()) {
+        const remoteMods = await supabaseService.getModules();
+        if (remoteMods && remoteMods.length > 0) {
+          onUpdateModules(remoteMods);
+          storageService.saveModules(remoteMods);
+        } else if (INITIAL_MODULES.length > 0) {
+          // If remote is empty, seed with initial modules
+          await supabaseService.saveModules(INITIAL_MODULES);
+          onUpdateModules(INITIAL_MODULES);
+          storageService.saveModules(INITIAL_MODULES);
+        }
+      }
+    } catch (e) {
+      console.error('Error refreshing modules from Supabase:', e);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const handleRestoreDefaults = async () => {
+    if (window.confirm('Deseja restaurar todos os 7 módulos padrão oficiais da mentoria?')) {
+      const restored = storageService.restoreInitialModules();
+      onUpdateModules(restored);
+    }
+  };
 
   const handleCoverFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -316,18 +351,66 @@ export const AdminModules: React.FC<AdminModulesProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={() => handleOpenModuleModal()}
-          className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-[#ff6b00] hover:bg-[#ff8800] text-black font-extrabold text-xs transition-all shadow-lg shadow-orange-500/25 cursor-pointer"
-        >
-          <Plus className="w-4 h-4 stroke-[3]" />
-          <span>Criar Novo Módulo</span>
-        </button>
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <button
+            onClick={refreshFromSupabase}
+            disabled={isRefreshing}
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-bold text-xs transition-all border border-white/5 cursor-pointer uppercase tracking-wider disabled:opacity-50"
+            title="Sincronizar com o banco Supabase"
+          >
+            <RotateCcw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-orange-500' : ''}`} />
+            <span>{isRefreshing ? 'Sincronizando...' : 'Sincronizar Banco'}</span>
+          </button>
+
+          <button
+            onClick={handleRestoreDefaults}
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white font-bold text-xs transition-all border border-white/5 cursor-pointer uppercase tracking-wider"
+            title="Restaurar grade padrão de 7 módulos da mentoria"
+          >
+            <Undo2 className="w-4 h-4 text-orange-400" />
+            <span>Restaurar Padrão</span>
+          </button>
+
+          <button
+            onClick={() => handleOpenModuleModal()}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#ff6b00] hover:bg-[#ff8800] text-black font-extrabold text-xs transition-all shadow-lg shadow-orange-500/25 cursor-pointer uppercase tracking-wider"
+          >
+            <Plus className="w-4 h-4 stroke-[3]" />
+            <span>Criar Novo Módulo</span>
+          </button>
+        </div>
       </div>
 
       {/* Modules List Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {modules.map((mod) => (
+      {modules.length === 0 ? (
+        <div className="p-12 rounded-3xl bg-[#111118] border border-[#242433] text-center space-y-4 max-w-lg mx-auto">
+          <div className="w-14 h-14 rounded-2xl bg-orange-600/10 border border-orange-500/20 text-orange-400 flex items-center justify-center mx-auto">
+            <Layers className="w-7 h-7" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-white">Nenhum Módulo Encontrado</h3>
+            <p className="text-xs text-zinc-400 mt-1">
+              Você pode restaurar a grade de 7 módulos oficiais da mentoria ou criar um novo módulo do zero.
+            </p>
+          </div>
+          <div className="pt-2 flex items-center justify-center gap-3">
+            <button
+              onClick={handleRestoreDefaults}
+              className="px-4 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs transition-all shadow-lg shadow-orange-600/20 cursor-pointer uppercase tracking-wider"
+            >
+              Restaurar 7 Módulos Oficiais
+            </button>
+            <button
+              onClick={() => handleOpenModuleModal()}
+              className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-xs transition-all cursor-pointer uppercase tracking-wider"
+            >
+              Criar Módulo
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {modules.map((mod) => (
           <div
             key={mod.id}
             className="rounded-3xl bg-[#111118] border border-[#242433] overflow-hidden flex flex-col justify-between hover:border-[#ff6b00]/60 transition-all shadow-xl"
@@ -393,8 +476,9 @@ export const AdminModules: React.FC<AdminModulesProps> = ({
               </div>
             </div>
           </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Drawer / Modal: Manage Lessons for Selected Module */}
       {selectedModuleForLessons && (

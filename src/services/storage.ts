@@ -49,19 +49,25 @@ export const storageService = {
 
       const result: any = {};
 
-      if (remoteModules.length > 0) {
+      if (remoteModules && remoteModules.length > 0) {
         this.saveModules(remoteModules);
         result.modules = remoteModules;
+      } else {
+        const localModules = this.getModules();
+        if (localModules && localModules.length > 0) {
+          supabaseService.saveModules(localModules);
+          result.modules = localModules;
+        }
       }
-      if (remoteProfiles.length > 0) {
+      if (remoteProfiles && remoteProfiles.length > 0) {
         this.saveStudents(remoteProfiles);
         result.users = remoteProfiles;
       }
-      if (remoteAnnouncements.length > 0) {
+      if (remoteAnnouncements && remoteAnnouncements.length > 0) {
         this.saveAnnouncements(remoteAnnouncements);
         result.announcements = remoteAnnouncements;
       }
-      if (remoteLive.length > 0) {
+      if (remoteLive && remoteLive.length > 0) {
         this.saveLiveSessions(remoteLive);
         result.liveSessions = remoteLive;
       }
@@ -69,7 +75,7 @@ export const storageService = {
         this.saveSettings(remoteSettings);
         result.settings = remoteSettings;
       }
-      if (remoteJournal.length > 0) {
+      if (remoteJournal && remoteJournal.length > 0) {
         this.saveJournal(remoteJournal);
         result.journal = remoteJournal;
       }
@@ -208,11 +214,26 @@ export const storageService = {
   getModules(): Module[] {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.MODULES);
-      if (data) return JSON.parse(data);
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
     } catch (e) {
-      console.error(e);
+      console.error('Error reading modules from localStorage', e);
     }
+    if (INITIAL_MODULES && INITIAL_MODULES.length > 0) {
+      localStorage.setItem(STORAGE_KEYS.MODULES, JSON.stringify(INITIAL_MODULES));
+    }
+    return INITIAL_MODULES;
+  },
+
+  restoreInitialModules(): Module[] {
     localStorage.setItem(STORAGE_KEYS.MODULES, JSON.stringify(INITIAL_MODULES));
+    if (supabaseService.isConfigured()) {
+      supabaseService.saveModules(INITIAL_MODULES);
+    }
     return INITIAL_MODULES;
   },
 

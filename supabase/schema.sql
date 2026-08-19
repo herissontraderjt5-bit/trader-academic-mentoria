@@ -41,6 +41,55 @@ DROP POLICY IF EXISTS "Profiles full access" ON public.profiles;
 CREATE POLICY "Profiles full access"
   ON public.profiles FOR ALL USING (true) WITH CHECK (true);
 
+-- Automatic Profile Creation Trigger for Supabase Auth Users
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.profiles (
+    id, 
+    email, 
+    name, 
+    avatar, 
+    whatsapp, 
+    role, 
+    tier, 
+    status, 
+    joined_at, 
+    terms_accepted, 
+    terms_accepted_at
+  )
+  VALUES (
+    new.id,
+    new.email,
+    COALESCE(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', split_part(new.email, '@', 1)),
+    COALESCE(new.raw_user_meta_data->>'avatar_url', ''),
+    COALESCE(new.raw_user_meta_data->>'whatsapp', ''),
+    CASE WHEN LOWER(new.email) IN ('viniciussestremmm@gmail.com', 'herisson.trader.jt5@gmail.com') THEN 'admin' ELSE 'student' END,
+    CASE WHEN LOWER(new.email) IN ('viniciussestremmm@gmail.com', 'herisson.trader.jt5@gmail.com') THEN 'VIP' ELSE 'Free' END,
+    'Ativo',
+    CURRENT_DATE,
+    true,
+    NOW()
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    email = EXCLUDED.email,
+    name = COALESCE(NULLIF(EXCLUDED.name, ''), profiles.name),
+    whatsapp = COALESCE(NULLIF(EXCLUDED.whatsapp, ''), profiles.whatsapp);
+
+  -- Also initialize progress row
+  INSERT INTO public.user_progress (user_id, completed_lesson_ids)
+  VALUES (new.id, '{}')
+  ON CONFLICT (user_id) DO NOTHING;
+
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
 -- ------------------------------------------
 -- 2. USER PROGRESS TABLE
 -- ------------------------------------------
@@ -412,6 +461,19 @@ VALUES
   'VIP',
   false,
   false
+),
+(
+  'mod-6',
+  'Módulo 6: Gravações de Salas Operacionais Ao Vivo & Indicadores',
+  'Pregões reais comentados segundo a segundo e indicadores VIP para download',
+  'Veja na prática como lemos o mercado ao vivo em dias de alta volatilidade com execução em tempo real e faça o download das regras de coloração.',
+  'https://images.unsplash.com/photo-1516245834210-c4c142787335?q=80&w=800&auto=format&fit=crop',
+  'Ao Vivo & Ferramentas',
+  7,
+  'VIP',
+  'AO VIVO GRAVADO',
+  true,
+  true
 )
 ON CONFLICT (id) DO NOTHING;
 
@@ -439,6 +501,26 @@ VALUES
   ARRAY['Zonas com mais de 3 toques perdem a força de retenção.', 'Em M1 a confirmação do tempo de expiração deve ser ajustada antes do clique.']
 ),
 (
+  'les-ob-3',
+  'mod-ob-free',
+  'Aula 03: Estratégia de Pullback e Rompimento com Confirmação de Volume',
+  'Como operar rompimentos verdadeiros e pegar a taxa no teste da região rompida.',
+  'https://www.youtube.com/watch?v=r_s9s88h9b0',
+  28,
+  3,
+  ARRAY['Aguardar o pullback tocar na região rompida.', 'Verificar se o volume confirma o rompimento.']
+),
+(
+  'les-ob-4',
+  'mod-ob-free',
+  'Aula 04: Gestão de Banca 2x1 & Soros Nível 1 sem Martingale',
+  'A matemática para ser lucrativo mesmo acertando 50% a 60% das operações, eliminando o risco de quebrar a banca.',
+  'https://www.youtube.com/watch?v=b0VwJ3J5u34',
+  25,
+  4,
+  ARRAY['Meta batida: pare imediatamente.', 'Limite diário de perda: 2 entradas erradas no dia.']
+),
+(
   'les-1-1',
   'mod-1',
   'Aula 01: Boas-vindas à Mentoria Trader Academic VIP',
@@ -457,5 +539,75 @@ VALUES
   34,
   2,
   ARRAY['Utilize o SuperDOM para envios rápidos de ordens OCO com stop automático.']
+),
+(
+  'les-2-1',
+  'mod-2',
+  'Aula 01: Como Funciona o Mini-Índice (WIN) e Mini-Dólar (WDO)',
+  'Variação em pontos, cálculo de ganho e perda por contrato, rollover de contratos e alavancagem inteligente.',
+  'https://www.youtube.com/watch?v=r_s9s88h9b0',
+  28,
+  1,
+  ARRAY['Mini-índice: R$ 0,20 por ponto por contrato.', 'Mini-dólar: R$ 10,00 por ponto por contrato.']
+),
+(
+  'les-2-2',
+  'mod-2',
+  'Aula 02: Horários Nobres de Liquidez & Calendário Econômico',
+  'Abertura do mercado à vista (10h), abertura de Nova York (10h30), Payroll, CPI e decisões de taxa de juros.',
+  'https://www.youtube.com/watch?v=b0VwJ3J5u34',
+  31,
+  2,
+  ARRAY['Evite operar 5 minutos antes e depois de notícias 3 touros / Payroll.']
+),
+(
+  'les-3-1',
+  'mod-3',
+  'Aula 01: Identificação de Tendências Fortes vs Mercados Laterais',
+  'Como classificar o estado do mercado logo nos primeiros 30 minutos de pregão.',
+  'https://www.youtube.com/watch?v=F_3T216k5_U',
+  42,
+  1,
+  ARRAY['Mercado em canal estreito: apenas opere a favor da tendência.', 'Mercado lateral: compre no fundo e venda no topo.']
+),
+(
+  'les-3-2',
+  'mod-3',
+  'Aula 02: O Segredo dos Falsos Rompimentos (Traps Institucionais)',
+  'Onde os amadores colocam o stop e como os grandes bancos exploram essa liquidez para entrar pesado.',
+  'https://www.youtube.com/watch?v=r_s9s88h9b0',
+  38,
+  2,
+  ARRAY['Aguardar o fechamento do candle fora da região antes de confirmar o rompimento.']
+),
+(
+  'les-4-1',
+  'mod-4',
+  'Aula 01: Fundamentos de Tape Reading e Times & Trades',
+  'Identificando agressão de compra e venda e lotes ocultos (Iceberg orders).',
+  'https://www.youtube.com/watch?v=b0VwJ3J5u34',
+  45,
+  1,
+  ARRAY['Agressão continuada com deslocamento de preço confirma intenção dos players.']
+),
+(
+  'les-5-1',
+  'mod-5',
+  'Aula 01: Setup 01 - O Trap de Abertura no Mini-Índice',
+  'Regras de entrada, stop técnico e alvos de 500 a 1000 pontos.',
+  'https://www.youtube.com/watch?v=r_s9s88h9b0',
+  48,
+  1,
+  ARRAY['Relação risco/retorno mínima de 3:1.']
+),
+(
+  'les-6-1',
+  'mod-6',
+  'Sala 01: Operando o Payroll ao Vivo (+1.850 Pontos no WIN)',
+  'Leitura da reação da taxa de desemprego dos EUA e execução precisa.',
+  'https://www.youtube.com/watch?v=b0VwJ3J5u34',
+  62,
+  1,
+  ARRAY['Aguarde a primeira barra de 5 minutos do Payroll se definir.']
 )
 ON CONFLICT (id) DO NOTHING;

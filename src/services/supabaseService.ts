@@ -30,8 +30,24 @@ export const supabaseService = {
         return { success: false, message: 'Falha na autenticação.' };
       }
 
-      const profile = await this.getProfileById(data.user.id);
-      return { success: true, user: profile || undefined };
+      let profile = await this.getProfileById(data.user.id);
+      if (!profile) {
+        const isAdmin = ['viniciussestremmm@gmail.com', 'herisson.trader.jt5@gmail.com'].includes(data.user.email?.toLowerCase() || '');
+        profile = {
+          id: data.user.id,
+          name: data.user.user_metadata?.full_name || data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'Aluno',
+          email: data.user.email || '',
+          avatar: data.user.user_metadata?.avatar_url || '',
+          role: isAdmin ? 'admin' : 'student',
+          tier: isAdmin ? 'VIP' : 'Free',
+          status: 'Ativo',
+          joinedAt: new Date().toISOString().split('T')[0],
+          progress: { completedLessonIds: [] },
+          notes: {},
+        };
+        await this.upsertProfile(profile);
+      }
+      return { success: true, user: profile };
     } catch (e: any) {
       return { success: false, message: e.message || 'Erro ao realizar login.' };
     }
@@ -57,6 +73,7 @@ export const supabaseService = {
         options: {
           data: {
             name: userData.name.trim(),
+            full_name: userData.name.trim(),
             whatsapp: userData.whatsapp.trim(),
           },
         },
@@ -70,14 +87,16 @@ export const supabaseService = {
         return { success: false, message: 'Erro ao criar conta.' };
       }
 
+      const isAdmin = ['viniciussestremmm@gmail.com', 'herisson.trader.jt5@gmail.com'].includes(userData.email.trim().toLowerCase());
+
       // Create or update profile row
       const newUser: User = {
         id: data.user.id,
         name: userData.name.trim(),
         email: userData.email.trim().toLowerCase(),
-        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop',
-        role: 'student',
-        tier: 'Free',
+        avatar: '',
+        role: isAdmin ? 'admin' : 'student',
+        tier: isAdmin ? 'VIP' : 'Free',
         status: 'Ativo',
         whatsapp: userData.whatsapp.trim(),
         termsAccepted: userData.termsAccepted,

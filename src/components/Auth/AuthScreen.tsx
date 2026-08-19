@@ -193,11 +193,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           termsAccepted: true,
         });
 
-        if (res.success) {
-          setSuccessMessage('Conta criada com sucesso no Supabase! Acesse ou verifique seu e-mail.');
+        if (res.success && res.user) {
+          const currentStudents = storageService.getStudents();
+          if (!currentStudents.some(u => u.id === res.user!.id || u.email.toLowerCase() === res.user!.email.toLowerCase())) {
+            storageService.saveStudents([res.user, ...currentStudents]);
+          }
+          setSuccessMessage('Conta criada com sucesso!');
           setTimeout(() => {
-            if (res.user) onAuthSuccess(res.user);
-          }, 800);
+            onAuthSuccess(res.user!);
+          }, 600);
           return;
         } else {
           setErrorMessage(res.message || 'Erro ao registrar no Supabase.');
