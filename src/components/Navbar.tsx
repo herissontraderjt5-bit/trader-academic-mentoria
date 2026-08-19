@@ -242,8 +242,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
 
 
-            {/* Painel ADM / Aluno Switcher Button (Restrito estritamente a viniciussestremmm@gmail.com) */}
-            {currentUser.email?.toLowerCase() === 'viniciussestremmm@gmail.com' && (
+            {/* Painel ADM / Aluno Switcher Button (Restrito aos administradores) */}
+            {(currentUser.role === 'admin' || ['viniciussestremmm@gmail.com', 'herisson.trader.jt5@gmail.com'].includes(currentUser.email?.toLowerCase() || '')) && (
               <button
                 onClick={() => {
                   setActiveView(activeView === 'admin' ? 'home' : 'admin');
@@ -365,7 +365,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       </div>
                     </button>
 
-                    {currentUser.email?.toLowerCase() === 'viniciussestremmm@gmail.com' && (
+                    {(currentUser.role === 'admin' || ['viniciussestremmm@gmail.com', 'herisson.trader.jt5@gmail.com'].includes(currentUser.email?.toLowerCase() || '')) && (
                       <button
                         onClick={() => {
                           setActiveView(activeView === 'admin' ? 'home' : 'admin');

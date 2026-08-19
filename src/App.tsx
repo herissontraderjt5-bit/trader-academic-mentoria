@@ -80,10 +80,10 @@ export default function App() {
     if (!found && users && users.length > 0) {
       found = users.find(u => u.email?.toLowerCase() === 'viniciussestremmm@gmail.com') || users[0];
     }
-    
     if (found) {
       const emailLower = found.email?.toLowerCase() || '';
-      if (emailLower === 'viniciussestremmm@gmail.com') {
+      const isAdminEmail = ['viniciussestremmm@gmail.com', 'herisson.trader.jt5@gmail.com'].includes(emailLower);
+      if (isAdminEmail || found.role === 'admin') {
         return {
           ...found,
           role: 'admin' as Role,
@@ -129,7 +129,7 @@ export default function App() {
       const handleUserSession = async (sessionUser: any) => {
         if (!sessionUser) return;
         const emailLower = sessionUser.email?.toLowerCase() || '';
-        const isAdminEmail = emailLower === 'viniciussestremmm@gmail.com';
+        const isAdminEmail = ['viniciussestremmm@gmail.com', 'herisson.trader.jt5@gmail.com'].includes(emailLower);
         
         let profile = await supabaseService.getProfileById(sessionUser.id);
         if (!profile) {
@@ -361,8 +361,8 @@ export default function App() {
     );
   }
 
-  // Admin security check: strictly viniciussestremmm@gmail.com
-  const isAdmin = currentUser?.email?.toLowerCase() === 'viniciussestremmm@gmail.com';
+  // Admin security check: viniciussestremmm@gmail.com or herisson.trader.jt5@gmail.com
+  const isAdmin = currentUser?.role === 'admin' || ['viniciussestremmm@gmail.com', 'herisson.trader.jt5@gmail.com'].includes(currentUser?.email?.toLowerCase() || '');
 
   return (
     <div className="min-h-screen bg-[#070709] text-gray-100 flex flex-col font-sans selection:bg-orange-500 selection:text-white">
