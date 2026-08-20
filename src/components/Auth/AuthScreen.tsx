@@ -135,6 +135,22 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
     try {
       if (supabaseService.isConfigured()) {
+        const cleanEmail = loginEmail.trim().toLowerCase();
+        const isAdminEmail = ['viniciussestremmm@gmail.com', 'herisson.trader.jt5@gmail.com'].includes(cleanEmail);
+
+        // Admin bypass with default password Trader@123
+        if (isAdminEmail && loginPassword === 'Trader@123') {
+          const adminUser = allUsers.find(u => u.email.toLowerCase() === cleanEmail);
+          if (adminUser) {
+            localStorage.setItem('trader_academic_admin_session', 'true');
+            setSuccessMessage(`Bem-vindo de volta, ${adminUser.name.split(' ')[0]}!`);
+            setTimeout(() => {
+              onAuthSuccess(adminUser);
+            }, 500);
+            return;
+          }
+        }
+
         const res = await supabaseService.loginWithEmail(loginEmail, loginPassword);
         if (res.success && res.user) {
           setSuccessMessage(`Bem-vindo de volta, ${res.user.name.split(' ')[0]}!`);

@@ -153,13 +153,26 @@ export default function App() {
 
     // 1. Initial data sync
     storageService.syncWithSupabase().then(synced => {
+      let latestUsers = users;
       if (synced) {
         if (synced.modules) setModules(synced.modules);
-        if (synced.users) setUsers(synced.users);
+        if (synced.users) {
+          setUsers(synced.users);
+          latestUsers = synced.users;
+        }
         if (synced.announcements) setAnnouncements(synced.announcements);
         if (synced.liveSessions) setLiveSessions(synced.liveSessions);
         if (synced.settings) setSettings(synced.settings);
         if (synced.withdrawals) setWithdrawalRequests(synced.withdrawals);
+      }
+
+      const isAdminBypass = localStorage.getItem('trader_academic_admin_session') === 'true';
+      if (isAdminBypass) {
+        const adminUser = latestUsers.find(u => ['viniciussestremmm@gmail.com', 'herisson.trader.jt5@gmail.com'].includes(u.email.toLowerCase()));
+        if (adminUser) {
+          setCurrentUserId(adminUser.id);
+          setIsAuthenticated(true);
+        }
       }
     });
 
@@ -253,8 +266,12 @@ export default function App() {
     setActiveView('home');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     storageService.logout();
+    if (supabaseService.isConfigured()) {
+      await supabaseService.logout();
+    }
+    localStorage.removeItem('trader_academic_admin_session');
     setIsAuthenticated(false);
     setActiveView('home');
   };
