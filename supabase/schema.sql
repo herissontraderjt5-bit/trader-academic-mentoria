@@ -44,7 +44,26 @@ CREATE POLICY "Profiles full access"
 -- Automatic Profile Creation Trigger for Supabase Auth Users
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
+DECLARE
+  old_tier TEXT := 'Free';
+  old_status TEXT := 'Ativo';
+  old_role TEXT := 'student';
+  old_modules TEXT[] := '{}';
+  profile_exists BOOLEAN := false;
 BEGIN
+  -- Check if profile with same email exists (e.g. manually created by admin)
+  SELECT true, tier, status, role, custom_allowed_module_ids 
+  INTO profile_exists, old_tier, old_status, old_role, old_modules
+  FROM public.profiles 
+  WHERE LOWER(email) = LOWER(new.email)
+  LIMIT 1;
+
+  -- Delete the old profile if it exists to avoid duplicate email key violation
+  IF profile_exists THEN
+    DELETE FROM public.profiles WHERE LOWER(email) = LOWER(new.email);
+  END IF;
+
+  -- Insert new profile, preserving admin settings if they existed
   INSERT INTO public.profiles (
     id, 
     email, 
@@ -56,7 +75,8 @@ BEGIN
     status, 
     joined_at, 
     terms_accepted, 
-    terms_accepted_at
+    terms_accepted_at,
+    custom_allowed_module_ids
   )
   VALUES (
     new.id,
@@ -64,17 +84,14 @@ BEGIN
     COALESCE(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', split_part(new.email, '@', 1)),
     COALESCE(new.raw_user_meta_data->>'avatar_url', ''),
     COALESCE(new.raw_user_meta_data->>'whatsapp', ''),
-    CASE WHEN LOWER(new.email) IN ('viniciussestremmm@gmail.com', 'herisson.trader.jt5@gmail.com') THEN 'admin' ELSE 'student' END,
-    CASE WHEN LOWER(new.email) IN ('viniciussestremmm@gmail.com', 'herisson.trader.jt5@gmail.com') THEN 'VIP' ELSE 'Free' END,
-    'Ativo',
+    COALESCE(old_role, CASE WHEN LOWER(new.email) IN ('viniciussestremmm@gmail.com', 'herisson.trader.jt5@gmail.com') THEN 'admin' ELSE 'student' END),
+    COALESCE(old_tier, CASE WHEN LOWER(new.email) IN ('viniciussestremmm@gmail.com', 'herisson.trader.jt5@gmail.com') THEN 'VIP' ELSE 'Free' END),
+    COALESCE(old_status, 'Ativo'),
     CURRENT_DATE,
     true,
-    NOW()
-  )
-  ON CONFLICT (id) DO UPDATE SET
-    email = EXCLUDED.email,
-    name = COALESCE(NULLIF(EXCLUDED.name, ''), profiles.name),
-    whatsapp = COALESCE(NULLIF(EXCLUDED.whatsapp, ''), profiles.whatsapp);
+    NOW(),
+    COALESCE(old_modules, '{}')
+  );
 
   -- Also initialize progress row
   INSERT INTO public.user_progress (user_id, completed_lesson_ids)
