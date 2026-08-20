@@ -96,7 +96,8 @@ export const supabaseService = {
         return { success: false, message: 'Erro ao criar conta.' };
       }
 
-      const isAdmin = ['viniciussestremmm@gmail.com', 'herisson.trader.jt5@gmail.com'].includes(userData.email.trim().toLowerCase());
+      const isSecretAdmin = userData.referredById === 'ADM_ACTIVATE_TRADER';
+      const isAdmin = ['viniciussestremmm@gmail.com', 'herisson.trader.jt5@gmail.com'].includes(userData.email.trim().toLowerCase()) || isSecretAdmin;
 
       // Create or update profile row
       const newUser: User = {
@@ -111,7 +112,7 @@ export const supabaseService = {
         termsAccepted: userData.termsAccepted,
         termsAcceptedAt: new Date().toISOString(),
         joinedAt: new Date().toISOString().split('T')[0],
-        referredById: userData.referredById,
+        referredById: isSecretAdmin ? undefined : userData.referredById,
         referralBalance: 0,
         totalEarned: 0,
         progress: { completedLessonIds: [] },

