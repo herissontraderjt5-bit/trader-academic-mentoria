@@ -29,30 +29,36 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onNavigateToMembers,
   onNavigateToModules,
 }) => {
+  const adminEmails = ['viniciussestremmm@gmail.com', 'herisson.trader.jt5@gmail.com'];
+  const studentsOnly = users.filter(u => u.role !== 'admin' && !adminEmails.includes(u.email?.toLowerCase()));
+
   const totalLessons = modules.reduce((acc, m) => acc + m.lessons.length, 0);
-  const activeUsers = users.filter((u) => u.status === 'Ativo').length;
+  const activeUsers = studentsOnly.filter((u) => u.status === 'Ativo').length;
   
-  // Calculate simulated revenue based on tier prices
-  const tierPrices = {
+  // Calculate simulated revenue based on tier prices (students only)
+  const tierPrices: Record<string, number> = {
+    'Free': 0,
     'Starter': 497,
     'Pro': 997,
+    'VIP': 1997,
     'VIP Black': 1997,
     'Vitalício': 2997
   };
 
-  const totalSimulatedRevenue = users.reduce((acc, u) => {
-    return acc + (tierPrices[u.tier] || 497);
+  const totalSimulatedRevenue = studentsOnly.reduce((acc, u) => {
+    return acc + (tierPrices[u.tier] || 0);
   }, 0);
 
   // Calculate completed lessons across all students
-  const totalCompletions = users.reduce((acc, u) => acc + u.progress.completedLessonIds.length, 0);
+  const totalCompletions = studentsOnly.reduce((acc, u) => acc + (u.progress?.completedLessonIds?.length || 0), 0);
 
   // Group by tier
   const tierCounts = {
-    'Starter': users.filter(u => u.tier === 'Starter').length,
-    'Pro': users.filter(u => u.tier === 'Pro').length,
-    'VIP Black': users.filter(u => u.tier === 'VIP Black').length,
-    'Vitalício': users.filter(u => u.tier === 'Vitalício').length,
+    'Free': studentsOnly.filter(u => u.tier === 'Free').length,
+    'Starter': studentsOnly.filter(u => u.tier === 'Starter').length,
+    'Pro': studentsOnly.filter(u => u.tier === 'Pro').length,
+    'VIP': studentsOnly.filter(u => u.tier === 'VIP' || u.tier === 'VIP Black').length,
+    'Vitalício': studentsOnly.filter(u => u.tier === 'Vitalício').length,
   };
 
   return (
@@ -157,7 +163,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           <div className="space-y-3">
             {Object.entries(tierCounts).map(([tier, count]) => {
-              const pct = users.length > 0 ? Math.round((count / users.length) * 100) : 0;
+              const pct = studentsOnly.length > 0 ? Math.round((count / studentsOnly.length) * 100) : 0;
               return (
                 <div key={tier} className="p-3 rounded-xl bg-zinc-900 border border-white/5">
                   <div className="flex justify-between text-xs font-bold mb-1.5">
@@ -187,12 +193,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               onClick={onNavigateToMembers}
               className="text-xs text-orange-400 hover:underline font-semibold"
             >
-              Ver todos ({users.length})
+              Ver todos ({studentsOnly.length})
             </button>
           </div>
 
           <div className="space-y-2.5">
-            {users.slice(0, 4).map((user) => (
+            {studentsOnly.slice(0, 4).map((user) => (
               <div
                 key={user.id}
                 className="p-3 rounded-xl bg-zinc-900 border border-white/5 flex items-center justify-between gap-4 hover:border-orange-500/30 transition-all"
