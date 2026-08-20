@@ -77,9 +77,7 @@ export default function App() {
   // Current User Object
   const currentUser = useMemo(() => {
     let found = users.find(u => u.id === currentUserId || u.email?.toLowerCase() === currentUserId?.toLowerCase());
-    if (!found && users && users.length > 0) {
-      found = users.find(u => u.email?.toLowerCase() === 'viniciussestremmm@gmail.com') || users[0];
-    }
+    
     if (found) {
       const emailLower = found.email?.toLowerCase() || '';
       const isAdminEmail = ['viniciussestremmm@gmail.com', 'herisson.trader.jt5@gmail.com'].includes(emailLower);
@@ -98,9 +96,9 @@ export default function App() {
     }
 
     return {
-      id: 'usr-guest',
-      name: 'Visitante',
-      email: '',
+      id: currentUserId || 'usr-guest',
+      name: 'Aluno',
+      email: currentUserId?.includes('@') ? currentUserId : '',
       avatar: '',
       role: 'student',
       tier: 'Free',
