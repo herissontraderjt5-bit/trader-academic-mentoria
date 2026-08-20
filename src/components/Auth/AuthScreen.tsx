@@ -133,8 +133,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           setTimeout(() => {
             onAuthSuccess(res.user!);
           }, 500);
-          return;
+        } else {
+          setErrorMessage(res.message || 'Erro ao realizar login. Verifique suas credenciais.');
+          setIsLoading(false);
         }
+        return;
       }
 
       // Fallback local
