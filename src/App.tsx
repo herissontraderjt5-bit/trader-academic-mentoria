@@ -7,7 +7,7 @@ import { VideoPlayerView } from './components/VideoPlayerView';
 import { AdminLayout } from './components/Admin/AdminLayout';
 import { RiskCalculatorModal } from './components/Tools/RiskCalculatorModal';
 import { CertificateModal } from './components/Tools/CertificateModal';
-import { LiveRoomModal } from './components/Tools/LiveRoomModal';
+import { EconomicCalendarModal } from './components/Tools/EconomicCalendarModal';
 import { UpgradeModal } from './components/Tools/UpgradeModal';
 import { AuthScreen } from './components/Auth/AuthScreen';
 import { EditProfileModal } from './components/Profile/EditProfileModal';
@@ -27,7 +27,8 @@ import {
   MessageCircle,
   Phone,
   Compass,
-  Sparkles
+  Sparkles,
+  Calendar
 } from 'lucide-react';
 
 const AnnouncementBanner: React.FC<{ announcements: Announcement[] }> = ({ announcements }) => {
@@ -70,7 +71,7 @@ export default function App() {
   // Tools Modal States
   const [isRiskCalcOpen, setIsRiskCalcOpen] = useState(false);
   const [isCertificateOpen, setIsCertificateOpen] = useState(false);
-  const [isLiveOpen, setIsLiveOpen] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [upgradeTargetModule, setUpgradeTargetModule] = useState<Module | null>(null);
@@ -428,7 +429,7 @@ export default function App() {
             overallProgress={overallProgress}
             onOpenRiskCalc={() => setIsRiskCalcOpen(true)}
             onOpenCertificate={() => setIsCertificateOpen(true)}
-            onOpenLive={() => setIsLiveOpen(true)}
+            onOpenCalendar={() => setIsCalendarOpen(true)}
             onOpenEditProfile={() => setIsEditProfileOpen(true)}
             onOpenUpgrade={() => handleOpenUpgrade()}
             onLogout={handleLogout}
@@ -448,7 +449,7 @@ export default function App() {
               overallProgress={overallProgress}
               onResumeWatching={handleResumeWatching}
               onOpenUpgrade={() => handleOpenUpgrade()}
-              onOpenLive={() => setIsLiveOpen(true)}
+              onOpenCalendar={() => setIsCalendarOpen(true)}
             />
 
             {/* Course Modules Grid */}
@@ -555,11 +556,11 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => setIsLiveOpen(true)}
-              className="flex flex-col items-center gap-1 text-[10px] font-bold text-red-400"
+              onClick={() => setIsCalendarOpen(true)}
+              className="flex flex-col items-center gap-1 text-[10px] font-bold text-orange-400"
             >
-              <Radio className="w-5 h-5 animate-pulse" />
-              <span>Ao Vivo</span>
+              <Calendar className="w-5 h-5" />
+              <span>Notícias</span>
             </button>
 
             <button
@@ -621,15 +622,9 @@ export default function App() {
         overallProgress={overallProgress}
       />
 
-      <LiveRoomModal
-        isOpen={isLiveOpen}
-        onClose={() => setIsLiveOpen(false)}
-        liveSessions={liveSessions}
-        currentUser={currentUser}
-        onUpdateLiveSessions={(sess) => {
-          setLiveSessions(sess);
-          storageService.saveLiveSessions(sess);
-        }}
+      <EconomicCalendarModal
+        isOpen={isCalendarOpen}
+        onClose={() => setIsCalendarOpen(false)}
       />
 
       <EditProfileModal

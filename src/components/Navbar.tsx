@@ -14,7 +14,8 @@ import {
   ChevronDown,
   LogOut,
   Settings,
-  Edit3
+  Edit3,
+  Calendar
 } from 'lucide-react';
 import { User, Module, Announcement, PlatformSettings } from '../types';
 import { BrandLogo } from './BrandLogo';
@@ -34,7 +35,7 @@ interface NavbarProps {
   overallProgress: { completed: number; total: number; percentage: number };
   onOpenRiskCalc: () => void;
   onOpenCertificate: () => void;
-  onOpenLive: () => void;
+  onOpenCalendar: () => void;
   onOpenEditProfile: () => void;
   onOpenUpgrade?: () => void;
   onLogout: () => void;
@@ -54,7 +55,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   overallProgress,
   onOpenRiskCalc,
   onOpenCertificate,
-  onOpenLive,
+  onOpenCalendar,
   onOpenEditProfile,
   onOpenUpgrade,
   onLogout,
@@ -96,11 +97,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Desktop Navigation Badges */}
             <div className="hidden lg:flex items-center gap-2 ml-6">
               <button
-                onClick={onOpenLive}
-                className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-red-950/40 border border-red-500/30 text-red-400 text-xs font-semibold hover:bg-red-900/40 transition-all cursor-pointer"
+                onClick={onOpenCalendar}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#1b1b2a] border border-[#2d2d44] text-orange-400 text-xs font-semibold hover:text-white hover:bg-zinc-800 transition-all cursor-pointer animate-pulse"
               >
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
-                <span>Sala Ao Vivo</span>
+                <span className="w-2 h-2 rounded-full bg-orange-500 animate-ping"></span>
+                <span>Calendário Econômico</span>
               </button>
 
               <button
@@ -429,13 +430,13 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div className="grid grid-cols-2 gap-2 pt-2">
               <button
                 onClick={() => {
-                  onOpenLive();
+                  onOpenCalendar();
                   setIsMobileMenuOpen(false);
                 }}
-                className="flex items-center justify-center gap-1.5 p-2.5 rounded-xl bg-red-950/40 border border-red-500/30 text-red-400 text-xs font-bold"
+                className="flex items-center justify-center gap-1.5 p-2.5 rounded-xl bg-[#1c1c2a] border border-[#2d2d44] text-orange-400 text-xs font-bold"
               >
-                <Radio className="w-4 h-4" />
-                <span>Ao Vivo</span>
+                <Calendar className="w-4 h-4" />
+                <span>Notícias</span>
               </button>
 
               <button

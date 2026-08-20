@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, TrendingUp, Radio, Users, CheckCircle, Sparkles, ArrowRight, Flame } from 'lucide-react';
+import { Play, TrendingUp, Radio, Users, CheckCircle, Sparkles, ArrowRight, Flame, Calendar } from 'lucide-react';
 import { User, Module, PlatformSettings } from '../types';
 
 interface HeroBannerProps {
@@ -8,7 +8,7 @@ interface HeroBannerProps {
   settings: PlatformSettings;
   overallProgress: { completed: number; total: number; percentage: number };
   onResumeWatching: () => void;
-  onOpenLive: () => void;
+  onOpenCalendar: () => void;
   onOpenUpgrade?: () => void;
 }
 
@@ -18,7 +18,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
   settings,
   overallProgress,
   onResumeWatching,
-  onOpenLive,
+  onOpenCalendar,
   onOpenUpgrade,
 }) => {
   // Find last watched or next uncompleted lesson
@@ -88,10 +88,10 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
 
             <div className="p-3.5 rounded-2xl bg-zinc-900/80 border border-white/5 shadow-lg">
               <div className="flex items-center gap-1.5 text-zinc-400 text-xs font-bold uppercase mb-1">
-                <Radio className="w-3.5 h-3.5 text-red-500" />
-                <span>Sala Ao Vivo</span>
+                <Calendar className="w-3.5 h-3.5 text-orange-500" />
+                <span>Calendário</span>
               </div>
-              <p className="text-xl sm:text-2xl font-black text-white">08:45 BRT</p>
+              <p className="text-xl sm:text-2xl font-black text-white">Notícias do Dia</p>
             </div>
           </div>
 
@@ -108,11 +108,11 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
             </button>
 
             <button
-              onClick={onOpenLive}
+              onClick={onOpenCalendar}
               className="flex items-center gap-2 px-5 py-3.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
             >
-              <Radio className="w-4 h-4 text-red-500 animate-pulse" />
-              <span>Sala Operacional</span>
+              <Calendar className="w-4 h-4 text-orange-500" />
+              <span>Calendário Econômico</span>
               <ArrowRight className="w-4 h-4 text-zinc-400 ml-1" />
             </button>
           </div>
