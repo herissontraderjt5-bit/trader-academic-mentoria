@@ -35,19 +35,36 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const totalLessons = modules.reduce((acc, m) => acc + m.lessons.length, 0);
   const activeUsers = studentsOnly.filter((u) => u.status === 'Ativo').length;
   
-  // Calculate simulated revenue based on tier prices (students only)
-  const tierPrices: Record<string, number> = {
-    'Free': 0,
-    'Starter': 497,
-    'Pro': 997,
-    'VIP': 1997,
-    'VIP Black': 1997,
-    'Vitalício': 2997
+  // Helper to calculate exact revenue per student based on custom unlocked modules or tier
+  const getUserRevenue = (u: User): number => {
+    // If student has custom allowed modules specified by admin
+    if (u.customAllowedModuleIds && u.customAllowedModuleIds.length > 0) {
+      const unlockedPaidModules = modules.filter(
+        m => u.customAllowedModuleIds!.includes(m.id) && m.requiredTier !== 'Free'
+      );
+      if (unlockedPaidModules.length === 0) return 0;
+      return unlockedPaidModules.reduce((sum, m) => sum + (m.price || 497), 0);
+    }
+
+    // Default by Tier
+    switch (u.tier) {
+      case 'VIP':
+        return 499.90;
+      case 'VIP Black':
+        return 1997;
+      case 'Vitalício':
+        return 2997;
+      case 'Pro':
+        return 997;
+      case 'Starter':
+        return 497;
+      case 'Free':
+      default:
+        return 0;
+    }
   };
 
-  const totalSimulatedRevenue = studentsOnly.reduce((acc, u) => {
-    return acc + (tierPrices[u.tier] || 0);
-  }, 0);
+  const totalSimulatedRevenue = studentsOnly.reduce((acc, u) => acc + getUserRevenue(u), 0);
 
   // Calculate completed lessons across all students
   const totalCompletions = studentsOnly.reduce((acc, u) => acc + (u.progress?.completedLessonIds?.length || 0), 0);
@@ -217,7 +234,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                 <div className="flex items-center gap-2">
                   <span className="text-xs px-2.5 py-0.5 rounded bg-orange-600/20 text-orange-400 font-bold border border-orange-500/30 font-mono">
-                    {user.tier}
+                    {user.customAllowedModuleIds && user.customAllowedModuleIds.length > 0 
+                      ? `${user.customAllowedModuleIds.length} Mód. Liberado${user.customAllowedModuleIds.length > 1 ? 's' : ''}` 
+                      : user.tier}
                   </span>
                   <span className={`text-xs px-2.5 py-0.5 rounded font-bold ${
                     user.status === 'Ativo' ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/30' : 'bg-red-950 text-red-400 border border-red-500/30'
