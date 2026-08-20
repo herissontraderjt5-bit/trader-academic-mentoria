@@ -12,7 +12,7 @@ import { UpgradeModal } from './components/Tools/UpgradeModal';
 import { AuthScreen } from './components/Auth/AuthScreen';
 import { EditProfileModal } from './components/Profile/EditProfileModal';
 
-import { Module, User, Lesson, Announcement, LiveSession, PlatformSettings } from './types';
+import { Module, User, Lesson, Announcement, LiveSession, PlatformSettings, Role, Tier, StudentStatus } from './types';
 import { storageService } from './services/storage';
 import { supabase } from './lib/supabase';
 import { supabaseService } from './services/supabaseService';

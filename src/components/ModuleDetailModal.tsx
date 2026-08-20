@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Play, Lock, CheckCircle2, Clock, FileText, ArrowRight, ShieldCheck, Download } from 'lucide-react';
+import { X, Play, Lock, CheckCircle2, Clock, FileText, ArrowRight, ShieldCheck, Download, MessageSquare } from 'lucide-react';
 import { Module, User, Lesson, PlatformSettings } from '../types';
 import { storageService } from '../services/storage';
 
