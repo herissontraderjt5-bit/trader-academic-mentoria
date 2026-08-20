@@ -58,6 +58,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [regReferral, setRegReferral] = useState(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('ref') || localStorage.getItem('trader_academic_referred_by') || '';
+  });
 
   // Modals & UI States
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
@@ -191,7 +195,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     setIsLoading(true);
 
     try {
-      const referredBy = localStorage.getItem('trader_academic_referred_by') || undefined;
+      const referredBy = regReferral.trim() || undefined;
       if (supabaseService.isConfigured()) {
         const res = await supabaseService.registerWithEmail({
           name: regName,
@@ -615,6 +619,23 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                     )}
                   </div>
                 )}
+              </div>
+
+              {/* Código de Indicação (Opcional) */}
+              <div>
+                <label className="block text-[11px] font-bold text-zinc-400 uppercase font-mono mb-1">
+                  Código de Indicação (Opcional)
+                </label>
+                <div className="relative">
+                  <Sparkles className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Código de quem indicou você"
+                    value={regReferral}
+                    onChange={(e) => setRegReferral(e.target.value)}
+                    className="w-full pl-10 pr-3.5 py-2.5 rounded-2xl bg-zinc-950/80 border border-white/10 text-white placeholder:text-zinc-600 text-xs font-medium focus:outline-none focus:border-orange-500"
+                  />
+                </div>
               </div>
 
               {/* Termos de Responsabilidade Checkbox */}
