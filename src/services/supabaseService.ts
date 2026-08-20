@@ -47,6 +47,14 @@ export const supabaseService = {
         };
         await this.upsertProfile(profile);
       }
+      if (profile.status === 'Bloqueado' || profile.status === 'Expirado') {
+        await supabase.auth.signOut();
+        return { 
+          success: false, 
+          message: 'Esta conta está bloqueada pelo administrador. Entre em contato com o suporte.' 
+        };
+      }
+
       return { success: true, user: profile };
     } catch (e: any) {
       return { success: false, message: e.message || 'Erro ao realizar login.' };

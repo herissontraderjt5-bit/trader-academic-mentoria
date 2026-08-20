@@ -153,6 +153,13 @@ export default function App() {
           profile.role = 'student';
           await supabaseService.upsertProfile(profile);
         }
+        if (profile.status === 'Bloqueado' || profile.status === 'Expirado') {
+          await supabase.auth.signOut();
+          storageService.setAuthenticated(false);
+          setIsAuthenticated(false);
+          alert('Sua conta foi bloqueada pelo administrador. Entre em contato com o suporte.');
+          return;
+        }
         setCurrentUserId(profile.id);
         setIsAuthenticated(true);
       };
