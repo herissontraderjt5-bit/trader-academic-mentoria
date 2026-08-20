@@ -24,6 +24,9 @@ export interface User {
   termsAcceptedAt?: string;
   customAllowedModuleIds?: string[]; // If defined, overrides tier default
   allowedCertificates?: ('b3' | 'binarias' | 'forex')[]; // Explicitly unlocked certificates by Admin
+  referredById?: string;
+  referralBalance?: number;
+  totalEarned?: number;
   progress: {
     completedLessonIds: string[];
     lastWatchedLessonId?: string;
@@ -140,4 +143,19 @@ export interface PlatformSettings {
   primaryColor: string;
   caktoCheckoutUrl?: string;
   lifetimePrice?: number;
+  referralCommissionPercent?: number;
+  minWithdrawalAmount?: number;
+}
+
+export interface WithdrawalRequest {
+  id: string;
+  userId: string;
+  amount: number;
+  pixKeyType: string;
+  pixKey: string;
+  fullName: string;
+  cpf: string;
+  status: 'Pendente' | 'Realizado' | 'Cancelado';
+  createdAt: string;
+  updatedAt?: string;
 }

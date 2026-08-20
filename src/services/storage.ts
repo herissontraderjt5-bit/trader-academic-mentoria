@@ -1,4 +1,4 @@
-import { Module, User, Announcement, LiveSession, PlatformSettings, TradeJournalEntry, LessonComment } from '../types';
+import { Module, User, Announcement, LiveSession, PlatformSettings, TradeJournalEntry, LessonComment, WithdrawalRequest } from '../types';
 import { INITIAL_MODULES, INITIAL_STUDENTS, INITIAL_ANNOUNCEMENTS, INITIAL_LIVE_SESSIONS, INITIAL_SETTINGS, INITIAL_JOURNAL } from '../data/initialData';
 import { supabaseService } from './supabaseService';
 
@@ -11,6 +11,7 @@ const STORAGE_KEYS = {
   LIVE_SESSIONS: 'trader_academic_live_sessions_v1',
   SETTINGS: 'trader_academic_settings_v1',
   JOURNAL: 'trader_academic_journal_v1',
+  WITHDRAWALS: 'trader_academic_withdrawals_v1',
 };
 
 // Unified storage wrapper (LocalStorage + Supabase sync)
@@ -34,17 +35,19 @@ export const storageService = {
     liveSessions?: LiveSession[];
     settings?: PlatformSettings;
     journal?: TradeJournalEntry[];
+    withdrawals?: WithdrawalRequest[];
   } | null> {
     if (!supabaseService.isConfigured()) return null;
 
     try {
-      const [remoteModules, remoteProfiles, remoteAnnouncements, remoteLive, remoteSettings, remoteJournal] = await Promise.all([
+      const [remoteModules, remoteProfiles, remoteAnnouncements, remoteLive, remoteSettings, remoteJournal, remoteWithdrawals] = await Promise.all([
         supabaseService.getModules(),
         supabaseService.getProfiles(),
         supabaseService.getAnnouncements(),
         supabaseService.getLiveSessions(),
         supabaseService.getSettings(),
         supabaseService.getJournal(),
+        supabaseService.getWithdrawalRequests(),
       ]);
 
       const result: any = {};
@@ -78,6 +81,10 @@ export const storageService = {
       if (remoteJournal && remoteJournal.length > 0) {
         this.saveJournal(remoteJournal);
         result.journal = remoteJournal;
+      }
+      if (remoteWithdrawals) {
+        this.saveWithdrawalRequests(remoteWithdrawals);
+        result.withdrawals = remoteWithdrawals;
       }
 
       return result;
@@ -119,6 +126,7 @@ export const storageService = {
     whatsapp: string;
     password?: string;
     termsAccepted: boolean;
+    referredById?: string;
   }): { success: boolean; message?: string; user?: User } {
     const students = this.getStudents();
     const cleanEmail = userData.email.trim().toLowerCase();
@@ -140,6 +148,9 @@ export const storageService = {
       role: 'student',
       tier: 'Free',
       status: 'Ativo',
+      referredById: userData.referredById,
+      referralBalance: 0,
+      totalEarned: 0,
       joinedAt: new Date().toISOString().split('T')[0],
       progress: {
         completedLessonIds: [],
@@ -169,6 +180,7 @@ export const storageService = {
     let user = students.find((s) => s.email.toLowerCase() === cleanEmail);
 
     if (!user) {
+      const referredBy = localStorage.getItem('trader_academic_referred_by') || undefined;
       user = {
         id: 'usr-g-' + Date.now(),
         name: googleData.name,
@@ -177,6 +189,9 @@ export const storageService = {
         role: 'student',
         tier: 'Free',
         status: 'Ativo',
+        referredById: referredBy,
+        referralBalance: 0,
+        totalEarned: 0,
         joinedAt: new Date().toISOString().split('T')[0],
         termsAccepted: true,
         termsAcceptedAt: new Date().toISOString(),
@@ -432,6 +447,17 @@ export const storageService = {
     }
   },
 
+  clearLocalStorage(): void {
+    localStorage.setItem(STORAGE_KEYS.MODULES, JSON.stringify(INITIAL_MODULES));
+    localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(INITIAL_STUDENTS));
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, 'usr-current');
+    localStorage.setItem(STORAGE_KEYS.ANNOUNCEMENTS, JSON.stringify(INITIAL_ANNOUNCEMENTS));
+    localStorage.setItem(STORAGE_KEYS.LIVE_SESSIONS, JSON.stringify(INITIAL_LIVE_SESSIONS));
+    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(INITIAL_SETTINGS));
+    localStorage.setItem(STORAGE_KEYS.JOURNAL, JSON.stringify(INITIAL_JOURNAL));
+    localStorage.setItem(STORAGE_KEYS.WITHDRAWALS, JSON.stringify([]));
+  },
+
   resetAllData(): void {
     localStorage.setItem(STORAGE_KEYS.MODULES, JSON.stringify(INITIAL_MODULES));
     localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(INITIAL_STUDENTS));
@@ -440,6 +466,7 @@ export const storageService = {
     localStorage.setItem(STORAGE_KEYS.LIVE_SESSIONS, JSON.stringify(INITIAL_LIVE_SESSIONS));
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(INITIAL_SETTINGS));
     localStorage.setItem(STORAGE_KEYS.JOURNAL, JSON.stringify(INITIAL_JOURNAL));
+    localStorage.setItem(STORAGE_KEYS.WITHDRAWALS, JSON.stringify([]));
     if (supabaseService.isConfigured()) {
       supabaseService.saveModules(INITIAL_MODULES);
       supabaseService.saveAnnouncements(INITIAL_ANNOUNCEMENTS);
@@ -541,5 +568,121 @@ export const storageService = {
     };
     lesson.comments.unshift(newComment);
     this.saveModules(modules);
+  },
+
+  getWithdrawalRequests(): WithdrawalRequest[] {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.WITHDRAWALS);
+      if (data) return JSON.parse(data);
+    } catch (e) {
+      console.error(e);
+    }
+    return [];
+  },
+
+  saveWithdrawalRequests(requests: WithdrawalRequest[]): void {
+    try {
+      localStorage.setItem(STORAGE_KEYS.WITHDRAWALS, JSON.stringify(requests));
+    } catch (e) {
+      console.warn(e);
+    }
+  },
+
+  async createWithdrawalRequest(userId: string, amount: number, pixKeyType: string, pixKey: string, fullName: string, cpf: string): Promise<WithdrawalRequest | null> {
+    const newReq: Partial<WithdrawalRequest> = {
+      userId,
+      amount,
+      pixKeyType,
+      pixKey,
+      fullName,
+      cpf,
+    };
+
+    let result: WithdrawalRequest | null = null;
+    if (supabaseService.isConfigured()) {
+      result = await supabaseService.createWithdrawalRequest(newReq);
+    }
+
+    if (!result) {
+      result = {
+        id: 'wr-' + Date.now(),
+        userId,
+        amount,
+        pixKeyType,
+        pixKey,
+        fullName,
+        cpf,
+        status: 'Pendente',
+        createdAt: new Date().toISOString(),
+      };
+    }
+
+    const currentRequests = this.getWithdrawalRequests();
+    this.saveWithdrawalRequests([result, ...currentRequests]);
+
+    const students = this.getStudents();
+    const idx = students.findIndex(s => s.id === userId);
+    if (idx >= 0) {
+      const user = students[idx];
+      user.referralBalance = Math.max(0, Number(((user.referralBalance || 0) - amount).toFixed(2)));
+      this.saveStudents(students);
+      if (supabaseService.isConfigured()) {
+        await supabaseService.upsertProfile(user);
+      }
+    }
+
+    return result;
+  },
+
+  async updateWithdrawalRequestStatus(reqId: string, status: 'Pendente' | 'Realizado' | 'Cancelado'): Promise<void> {
+    const requests = this.getWithdrawalRequests();
+    const idx = requests.findIndex(r => r.id === reqId);
+    if (idx === -1) return;
+
+    const req = requests[idx];
+    const oldStatus = req.status;
+    req.status = status;
+    this.saveWithdrawalRequests(requests);
+
+    if (supabaseService.isConfigured()) {
+      await supabaseService.updateWithdrawalRequestStatus(reqId, status);
+    }
+
+    if (status === 'Cancelado' && oldStatus === 'Pendente') {
+      const students = this.getStudents();
+      const sIdx = students.findIndex(s => s.id === req.userId);
+      if (sIdx >= 0) {
+        const user = students[sIdx];
+        user.referralBalance = Number(((user.referralBalance || 0) + req.amount).toFixed(2));
+        this.saveStudents(students);
+        if (supabaseService.isConfigured()) {
+          await supabaseService.upsertProfile(user);
+        }
+      }
+    }
+  },
+
+  async processCommission(buyerId: string, value: number): Promise<void> {
+    const students = this.getStudents();
+    const buyer = students.find(s => s.id === buyerId);
+    if (!buyer || !buyer.referredById) return;
+
+    const referrerId = buyer.referredById;
+    const settings = this.getSettings();
+    const percent = settings.referralCommissionPercent ?? 10.00;
+    const commissionAmount = Number((value * (percent / 100)).toFixed(2));
+
+    const referrerIdx = students.findIndex(s => s.id === referrerId);
+    if (referrerIdx >= 0) {
+      const referrer = students[referrerIdx];
+      referrer.referralBalance = Number(((referrer.referralBalance || 0) + commissionAmount).toFixed(2));
+      referrer.totalEarned = Number(((referrer.totalEarned || 0) + commissionAmount).toFixed(2));
+      
+      this.saveStudents(students);
+      if (supabaseService.isConfigured()) {
+        await supabaseService.upsertProfile(referrer);
+      }
+      console.log(`Comissão de R$ ${commissionAmount} creditada para o indicador ${referrer.name} referente ao comprador ${buyer.name}`);
+    }
   }
 };

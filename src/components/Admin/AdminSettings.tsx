@@ -136,6 +136,34 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
                 className="w-full p-3 rounded-xl bg-[#171724] border border-[#272738] text-white text-xs focus:outline-none focus:border-[#ff6b00]"
               />
             </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-300 mb-1 font-mono uppercase">
+                Comissão por Indicação (%)
+              </label>
+              <input
+                type="number"
+                step="0.1"
+                required
+                value={formData.referralCommissionPercent ?? 10.0}
+                onChange={(e) => setFormData({ ...formData, referralCommissionPercent: parseFloat(e.target.value) || 0 })}
+                className="w-full p-3 rounded-xl bg-[#171724] border border-[#272738] text-white text-xs focus:outline-none focus:border-[#ff6b00]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-300 mb-1 font-mono uppercase">
+                Valor Mínimo para Saque (R$)
+              </label>
+              <input
+                type="number"
+                step="1"
+                required
+                value={formData.minWithdrawalAmount ?? 50.0}
+                onChange={(e) => setFormData({ ...formData, minWithdrawalAmount: parseFloat(e.target.value) || 0 })}
+                className="w-full p-3 rounded-xl bg-[#171724] border border-[#272738] text-white text-xs focus:outline-none focus:border-[#ff6b00]"
+              />
+            </div>
           </div>
         </div>
 

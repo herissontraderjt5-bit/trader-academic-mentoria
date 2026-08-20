@@ -188,6 +188,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     setIsLoading(true);
 
     try {
+      const referredBy = localStorage.getItem('trader_academic_referred_by') || undefined;
       if (supabaseService.isConfigured()) {
         const res = await supabaseService.registerWithEmail({
           name: regName,
@@ -195,6 +196,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           whatsapp: regPhone,
           password: regPassword,
           termsAccepted: true,
+          referredById: referredBy,
         });
 
         if (res.success && res.user) {
@@ -220,7 +222,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
         email: regEmail,
         whatsapp: regPhone,
         password: regPassword,
-        termsAccepted: true
+        termsAccepted: true,
+        referredById: referredBy,
       });
 
       if (res.success && res.user) {

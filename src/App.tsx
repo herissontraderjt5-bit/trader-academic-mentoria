@@ -11,8 +11,9 @@ import { EconomicCalendarModal } from './components/Tools/EconomicCalendarModal'
 import { UpgradeModal } from './components/Tools/UpgradeModal';
 import { AuthScreen } from './components/Auth/AuthScreen';
 import { EditProfileModal } from './components/Profile/EditProfileModal';
+import { ReferralModal } from './components/Tools/ReferralModal';
 
-import { Module, User, Lesson, Announcement, LiveSession, PlatformSettings, Role, Tier, StudentStatus } from './types';
+import { Module, User, Lesson, Announcement, LiveSession, PlatformSettings, Role, Tier, StudentStatus, WithdrawalRequest } from './types';
 import { storageService } from './services/storage';
 import { supabase } from './lib/supabase';
 import { supabaseService } from './services/supabaseService';
@@ -75,10 +76,32 @@ export default function App() {
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [upgradeTargetModule, setUpgradeTargetModule] = useState<Module | null>(null);
+  const [isReferralOpen, setIsReferralOpen] = useState(false);
+  const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequest[]>([]);
 
   const handleOpenUpgrade = (mod?: Module | null) => {
     setUpgradeTargetModule(mod || null);
     setIsUpgradeModalOpen(true);
+  };
+
+  const handleCreateWithdrawalRequest = async (amount: number, pixKeyType: string, pixKey: string, fullName: string, cpf: string): Promise<boolean> => {
+    if (!currentUserId) return false;
+    const result = await storageService.createWithdrawalRequest(currentUserId, amount, pixKeyType, pixKey, fullName, cpf);
+    if (result) {
+      setWithdrawalRequests(prev => [result, ...prev]);
+      const updatedStudents = storageService.getStudents();
+      setUsers(updatedStudents);
+      return true;
+    }
+    return false;
+  };
+
+  const handleUpdateWithdrawalRequestStatus = async (reqId: string, status: 'Pendente' | 'Realizado' | 'Cancelado') => {
+    await storageService.updateWithdrawalRequestStatus(reqId, status);
+    const updatedReqs = storageService.getWithdrawalRequests();
+    setWithdrawalRequests(updatedReqs);
+    const updatedStudents = storageService.getStudents();
+    setUsers(updatedStudents);
   };
 
   // Current User Object
@@ -118,6 +141,16 @@ export default function App() {
 
   // Sync with Supabase on mount and listen to Auth state changes (including Google OAuth redirect)
   React.useEffect(() => {
+    // Capture referral code if present in the URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const ref = urlParams.get('ref');
+    if (ref) {
+      localStorage.setItem('trader_academic_referred_by', ref);
+      // Clean up URL query parameters for clean look
+      const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+      window.history.replaceState({ path: newUrl }, '', newUrl);
+    }
+
     // 1. Initial data sync
     storageService.syncWithSupabase().then(synced => {
       if (synced) {
@@ -126,8 +159,12 @@ export default function App() {
         if (synced.announcements) setAnnouncements(synced.announcements);
         if (synced.liveSessions) setLiveSessions(synced.liveSessions);
         if (synced.settings) setSettings(synced.settings);
+        if (synced.withdrawals) setWithdrawalRequests(synced.withdrawals);
       }
     });
+
+    const localWithdrawals = storageService.getWithdrawalRequests();
+    setWithdrawalRequests(localWithdrawals);
 
     // 2. Real Supabase Auth listener (Google OAuth & Email session detection)
     if (supabase) {
@@ -138,6 +175,7 @@ export default function App() {
         
         let profile = await supabaseService.getProfileById(sessionUser.id);
         if (!profile) {
+          const referredBy = localStorage.getItem('trader_academic_referred_by') || undefined;
           const newProfile: User = {
             id: sessionUser.id,
             name: sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || sessionUser.email?.split('@')[0] || 'Aluno',
@@ -146,6 +184,9 @@ export default function App() {
             role: isAdminEmail ? 'admin' : 'student',
             tier: isAdminEmail ? 'VIP' : 'Free',
             status: 'Ativo',
+            referredById: referredBy,
+            referralBalance: 0,
+            totalEarned: 0,
             joinedAt: new Date().toISOString().split('T')[0],
             progress: { completedLessonIds: [] },
             notes: {},
@@ -388,11 +429,13 @@ export default function App() {
           announcements={announcements}
           liveSessions={liveSessions}
           settings={settings}
+          withdrawalRequests={withdrawalRequests}
           onUpdateModules={handleUpdateModules}
           onUpdateUsers={handleUpdateUsers}
           onUpdateAnnouncements={(ann) => { setAnnouncements(ann); storageService.saveAnnouncements(ann); }}
           onUpdateLiveSessions={(sess) => { setLiveSessions(sess); storageService.saveLiveSessions(sess); }}
           onUpdateSettings={(sett) => { setSettings(sett); storageService.saveSettings(sett); }}
+          onUpdateWithdrawalRequestStatus={handleUpdateWithdrawalRequestStatus}
           onBackToStudentView={() => setActiveView('home')}
           onLogout={handleLogout}
         />
@@ -430,6 +473,7 @@ export default function App() {
             onOpenRiskCalc={() => setIsRiskCalcOpen(true)}
             onOpenCertificate={() => setIsCertificateOpen(true)}
             onOpenCalendar={() => setIsCalendarOpen(true)}
+            onOpenReferral={() => setIsReferralOpen(true)}
             onOpenEditProfile={() => setIsEditProfileOpen(true)}
             onOpenUpgrade={() => handleOpenUpgrade()}
             onLogout={handleLogout}
@@ -632,6 +676,16 @@ export default function App() {
         onClose={() => setIsEditProfileOpen(false)}
         currentUser={currentUser}
         onSaveProfile={handleUpdateProfile}
+      />
+
+      <ReferralModal
+        isOpen={isReferralOpen}
+        onClose={() => setIsReferralOpen(false)}
+        currentUser={currentUser}
+        allUsers={users}
+        settings={settings}
+        requests={withdrawalRequests}
+        onCreateRequest={handleCreateWithdrawalRequest}
       />
 
     </div>

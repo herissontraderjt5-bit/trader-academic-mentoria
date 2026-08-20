@@ -204,7 +204,8 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
   };
 
   // Change Tier
-  const handleChangeTier = (userId: string, newTier: Tier) => {
+  const handleChangeTier = async (userId: string, newTier: Tier) => {
+    const oldUser = users.find(u => u.id === userId);
     let targetUpdated: User | null = null;
     const updated = users.map((u) => {
       if (u.id === userId) {
@@ -218,7 +219,14 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
     });
     onUpdateUsers(updated);
     if (targetUpdated && supabaseService.isConfigured()) {
-      supabaseService.upsertProfile(targetUpdated);
+      await supabaseService.upsertProfile(targetUpdated);
+    }
+
+    // Process commission if they upgrade from Free to VIP or Vitalício
+    if (oldUser && oldUser.referredById && oldUser.tier === 'Free' && (newTier === 'VIP' || newTier === 'Vitalício')) {
+      const settings = storageService.getSettings();
+      const price = newTier === 'Vitalício' ? (settings.lifetimePrice ?? 499.90) : 197.00;
+      await storageService.processCommission(userId, price);
     }
   };
 
@@ -391,12 +399,31 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
                               )}
                             </h4>
                             <p className="text-zinc-400 text-[11px]">{user.email}</p>
-                            {user.whatsapp && (
-                              <span className="text-[10px] text-orange-400 flex items-center gap-1 mt-0.5">
-                                <Phone className="w-2.5 h-2.5" />
-                                {user.whatsapp}
-                              </span>
-                            )}
+                            
+                            <div className="flex flex-wrap gap-2 items-center mt-1 text-[10px]">
+                              {user.whatsapp && (
+                                <span className="text-orange-400 flex items-center gap-1">
+                                  <Phone className="w-2.5 h-2.5" />
+                                  {user.whatsapp}
+                                </span>
+                              )}
+                              {(() => {
+                                const referrer = users.find(u => u.id === user.referredById);
+                                return referrer ? (
+                                  <span className="text-zinc-400">
+                                    • Ind. por: <strong className="text-zinc-300">{referrer.name.split(' ')[0]}</strong>
+                                  </span>
+                                ) : null;
+                              })()}
+                              {(() => {
+                                const userReferrals = users.filter(u => u.referredById === user.id);
+                                return userReferrals.length > 0 ? (
+                                  <span className="text-emerald-400 font-bold">
+                                    • Indicou: {userReferrals.length} {userReferrals.length === 1 ? 'pessoa' : 'pessoas'}
+                                  </span>
+                                ) : null;
+                              })()}
+                            </div>
                           </div>
                         </div>
                       </td>

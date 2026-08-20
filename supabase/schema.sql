@@ -28,6 +28,9 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   terms_accepted BOOLEAN DEFAULT false,
   terms_accepted_at TIMESTAMP WITH TIME ZONE,
   custom_allowed_module_ids TEXT[] DEFAULT '{}',
+  referred_by_id TEXT REFERENCES public.profiles(id),
+  referral_balance NUMERIC NOT NULL DEFAULT 0.00,
+  total_earned NUMERIC NOT NULL DEFAULT 0.00,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -337,6 +340,8 @@ CREATE TABLE IF NOT EXISTS public.platform_settings (
   banner_subtext TEXT DEFAULT '',
   primary_color TEXT DEFAULT '#ff6b00',
   lifetime_price NUMERIC DEFAULT 499.90,
+  referral_commission_percent NUMERIC NOT NULL DEFAULT 10.00,
+  min_withdrawal_amount NUMERIC NOT NULL DEFAULT 50.00,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -386,7 +391,7 @@ CREATE TRIGGER on_auth_user_created
 -- ------------------------------------------
 -- INITIAL SEED DATA
 -- ------------------------------------------
-INSERT INTO public.platform_settings (id, platform_name, mentor_name, tagline, support_whatsapp, telegram_vip_url, discord_vip_url, instagram_url, banner_headline, banner_subtext, primary_color, lifetime_price)
+INSERT INTO public.platform_settings (id, platform_name, mentor_name, tagline, support_whatsapp, telegram_vip_url, discord_vip_url, instagram_url, banner_headline, banner_subtext, primary_color, lifetime_price, referral_commission_percent, min_withdrawal_amount)
 VALUES (
   'default',
   'Trader Academic',
@@ -399,7 +404,9 @@ VALUES (
   'DOMINE O MERCADO COM MÉTODO E DISCIPLINA',
   'Acesse o curso gratuito de Opções Binárias e faça o upgrade para a Formação Completa VIP por apenas R$ 499,90.',
   '#ff6b00',
-  499.90
+  499.90,
+  10.00,
+  50.00
 )
 ON CONFLICT (id) DO NOTHING;
 
@@ -633,3 +640,26 @@ VALUES
   ARRAY['Aguarde a primeira barra de 5 minutos do Payroll se definir.']
 )
 ON CONFLICT (id) DO NOTHING;
+
+-- ------------------------------------------
+-- 12. WITHDRAWAL REQUESTS TABLE
+-- ------------------------------------------
+CREATE TABLE IF NOT EXISTS public.withdrawal_requests (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  user_id TEXT NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  amount NUMERIC NOT NULL,
+  pix_key_type TEXT NOT NULL,
+  pix_key TEXT NOT NULL,
+  full_name TEXT NOT NULL,
+  cpf TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'Pendente', -- 'Pendente' | 'Realizado' | 'Cancelado'
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE public.withdrawal_requests ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Withdrawal requests full access" ON public.withdrawal_requests;
+CREATE POLICY "Withdrawal requests full access"
+  ON public.withdrawal_requests FOR ALL USING (true) WITH CHECK (true);
+

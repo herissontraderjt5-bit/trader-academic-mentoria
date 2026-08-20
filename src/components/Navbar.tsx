@@ -15,7 +15,8 @@ import {
   LogOut,
   Settings,
   Edit3,
-  Calendar
+  Calendar,
+  Sparkles
 } from 'lucide-react';
 import { User, Module, Announcement, PlatformSettings } from '../types';
 import { BrandLogo } from './BrandLogo';
@@ -36,6 +37,7 @@ interface NavbarProps {
   onOpenRiskCalc: () => void;
   onOpenCertificate: () => void;
   onOpenCalendar: () => void;
+  onOpenReferral: () => void;
   onOpenEditProfile: () => void;
   onOpenUpgrade?: () => void;
   onLogout: () => void;
@@ -56,6 +58,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenRiskCalc,
   onOpenCertificate,
   onOpenCalendar,
+  onOpenReferral,
   onOpenEditProfile,
   onOpenUpgrade,
   onLogout,
@@ -102,6 +105,14 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 <span className="w-2 h-2 rounded-full bg-orange-500 animate-ping"></span>
                 <span>Calendário Econômico</span>
+              </button>
+
+              <button
+                onClick={onOpenReferral}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-orange-950/20 border border-orange-500/20 text-orange-400 text-xs font-semibold hover:text-white hover:bg-orange-500/30 transition-all cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-orange-500" />
+                <span>Indique e Ganhe</span>
               </button>
 
               <button
@@ -450,6 +461,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span>Calc. Lote</span>
               </button>
             </div>
+
+            <button
+              onClick={() => {
+                onOpenReferral();
+                setIsMobileMenuOpen(false);
+              }}
+              className="w-full flex items-center justify-center gap-1.5 p-2.5 mt-2 rounded-xl bg-orange-950/20 border border-orange-500/20 text-orange-400 text-xs font-bold transition-all cursor-pointer"
+            >
+              <Sparkles className="w-4 h-4 text-orange-500" />
+              <span>Indique e Ganhe</span>
+            </button>
 
             <button
               onClick={() => {

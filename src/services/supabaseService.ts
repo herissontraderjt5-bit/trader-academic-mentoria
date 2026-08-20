@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { User, Module, Lesson, Announcement, LiveSession, PlatformSettings, TradeJournalEntry, LessonComment } from '../types';
+import { User, Module, Lesson, Announcement, LiveSession, PlatformSettings, TradeJournalEntry, LessonComment, WithdrawalRequest } from '../types';
 
 export const supabaseService = {
   isConfigured(): boolean {
@@ -67,6 +67,7 @@ export const supabaseService = {
     whatsapp: string;
     password?: string;
     termsAccepted: boolean;
+    referredById?: string;
   }): Promise<{ success: boolean; message?: string; user?: User }> {
     if (!supabase) return { success: false, message: 'Supabase não está configurado.' };
 
@@ -110,6 +111,9 @@ export const supabaseService = {
         termsAccepted: userData.termsAccepted,
         termsAcceptedAt: new Date().toISOString(),
         joinedAt: new Date().toISOString().split('T')[0],
+        referredById: userData.referredById,
+        referralBalance: 0,
+        totalEarned: 0,
         progress: { completedLessonIds: [] },
         notes: {},
       };
@@ -191,6 +195,9 @@ export const supabaseService = {
           termsAccepted: p.terms_accepted,
           termsAcceptedAt: p.terms_accepted_at,
           customAllowedModuleIds: p.custom_allowed_module_ids,
+          referredById: p.referred_by_id,
+          referralBalance: Number(p.referral_balance || 0),
+          totalEarned: Number(p.total_earned || 0),
           progress: {
             completedLessonIds: userProgress?.completed_lesson_ids || [],
             lastWatchedLessonId: userProgress?.last_watched_lesson_id,
@@ -232,6 +239,9 @@ export const supabaseService = {
         terms_accepted: user.termsAccepted,
         terms_accepted_at: user.termsAcceptedAt,
         custom_allowed_module_ids: user.customAllowedModuleIds,
+        referred_by_id: user.referredById,
+        referral_balance: user.referralBalance || 0,
+        total_earned: user.totalEarned || 0,
         updated_at: new Date().toISOString(),
       });
 
@@ -558,6 +568,8 @@ export const supabaseService = {
         bannerSubtext: data.banner_subtext,
         primaryColor: data.primary_color,
         lifetimePrice: data.lifetime_price,
+        referralCommissionPercent: Number(data.referral_commission_percent ?? 10.00),
+        minWithdrawalAmount: Number(data.min_withdrawal_amount ?? 50.00),
       };
     } catch (e) {
       console.error('Error fetching settings:', e);
@@ -581,6 +593,8 @@ export const supabaseService = {
         banner_subtext: settings.bannerSubtext,
         primary_color: settings.primaryColor,
         lifetime_price: settings.lifetimePrice,
+        referral_commission_percent: settings.referralCommissionPercent,
+        min_withdrawal_amount: settings.minWithdrawalAmount,
         updated_at: new Date().toISOString(),
       });
     } catch (e) {
@@ -642,6 +656,80 @@ export const supabaseService = {
       }
     } catch (e) {
       console.error('Error saving trade journal:', e);
+    }
+  },
+
+  // ------------------------------------------
+  // WITHDRAWAL REQUESTS
+  // ------------------------------------------
+  async getWithdrawalRequests(): Promise<WithdrawalRequest[]> {
+    if (!supabase) return [];
+    try {
+      const { data, error } = await supabase.from('withdrawal_requests').select('*').order('created_at', { ascending: false });
+      if (error || !data) return [];
+      return data.map((w: any) => ({
+        id: w.id,
+        userId: w.user_id,
+        amount: Number(w.amount),
+        pixKeyType: w.pix_key_type,
+        pixKey: w.pix_key,
+        fullName: w.full_name,
+        cpf: w.cpf,
+        status: w.status as any,
+        createdAt: w.created_at,
+        updatedAt: w.updated_at,
+      }));
+    } catch (e) {
+      console.error('Error fetching withdrawal requests:', e);
+      return [];
+    }
+  },
+
+  async createWithdrawalRequest(req: Partial<WithdrawalRequest>): Promise<WithdrawalRequest | null> {
+    if (!supabase) return null;
+    try {
+      const { data, error } = await supabase.from('withdrawal_requests').insert({
+        user_id: req.userId,
+        amount: req.amount,
+        pix_key_type: req.pixKeyType,
+        pix_key: req.pixKey,
+        full_name: req.fullName,
+        cpf: req.cpf,
+        status: 'Pendente',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }).select().single();
+
+      if (error || !data) return null;
+      return {
+        id: data.id,
+        userId: data.user_id,
+        amount: Number(data.amount),
+        pixKeyType: data.pix_key_type,
+        pixKey: data.pix_key,
+        fullName: data.full_name,
+        cpf: data.cpf,
+        status: data.status,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+      };
+    } catch (e) {
+      console.error('Error creating withdrawal request:', e);
+      return null;
+    }
+  },
+
+  async updateWithdrawalRequestStatus(reqId: string, status: 'Pendente' | 'Realizado' | 'Cancelado'): Promise<boolean> {
+    if (!supabase) return false;
+    try {
+      const { error } = await supabase.from('withdrawal_requests').update({
+        status,
+        updated_at: new Date().toISOString()
+      }).eq('id', reqId);
+      return !error;
+    } catch (e) {
+      console.error('Error updating withdrawal request status:', e);
+      return false;
     }
   }
 };

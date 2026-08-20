@@ -17,6 +17,7 @@ import {
   ArrowUpRight
 } from 'lucide-react';
 import { User, Module, Tier } from '../../types';
+import { storageService } from '../../services/storage';
 
 interface AdminSimulatorProps {
   users: User[];
@@ -127,6 +128,7 @@ export const AdminSimulator: React.FC<AdminSimulatorProps> = ({
         const existingUser = users.find(u => u.email.toLowerCase() === buyerEmail.toLowerCase());
         const targetStatus = eventType === 'refund' ? 'Bloqueado' : 'Ativo';
         const targetTier = eventType === 'refund' ? 'Free' : buyerTier;
+        let finalUserId = '';
 
         if (existingUser) {
           const updatedUser: User = {
@@ -135,9 +137,11 @@ export const AdminSimulator: React.FC<AdminSimulatorProps> = ({
             status: targetStatus,
           };
           onAddUser(updatedUser);
+          finalUserId = existingUser.id;
         } else {
+          const newUserId = resData.user?.id || ('usr-' + Date.now());
           const newUser: User = {
-            id: resData.user?.id || ('usr-' + Date.now()),
+            id: newUserId,
             name: buyerName,
             email: buyerEmail,
             whatsapp: buyerPhone,
@@ -150,6 +154,14 @@ export const AdminSimulator: React.FC<AdminSimulatorProps> = ({
             notes: {},
           };
           onAddUser(newUser);
+          finalUserId = newUserId;
+        }
+
+        // Process commission for new/updated users under referrals
+        if (targetTier !== 'Free' && eventType !== 'refund' && finalUserId) {
+          const settings = storageService.getSettings();
+          const price = parseFloat(productAmount) || (targetTier === 'Vitalício' ? (settings.lifetimePrice ?? 499.90) : 197.00);
+          storageService.processCommission(finalUserId, price);
         }
 
         setSimulationLogs(prev => [
