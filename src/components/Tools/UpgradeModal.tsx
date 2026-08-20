@@ -28,8 +28,8 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
 
   if (!isOpen) return null;
 
-  const modulePriceNum = targetModule?.price ?? 499.90;
-  const modulePriceFormatted = modulePriceNum.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+  const modulePriceNum = Number(targetModule?.price ?? 499.90);
+  const modulePriceFormatted = isNaN(modulePriceNum) ? '499,90' : modulePriceNum.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const moduleTitle = targetModule?.title || 'Formação VIP Completa - Mentoria';
   const studentName = currentUser?.name || 'Aluno';
 

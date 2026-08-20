@@ -123,7 +123,7 @@ export const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({
                     <Lock className="w-4 h-4 text-orange-400 shrink-0" />
                     <span>
                       {module.price 
-                        ? `Módulo Avulso: R$ ${module.price.toFixed(2).replace('.', ',')}` 
+                        ? `Módulo Avulso: R$ ${Number(module.price).toFixed(2).replace('.', ',')}` 
                         : `Módulo exclusivo do Plano ${module.requiredTier}`}
                     </span>
                   </div>
@@ -132,7 +132,7 @@ export const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({
                     className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-500 hover:to-green-400 text-white font-extrabold text-xs shadow-lg shadow-emerald-600/30 cursor-pointer uppercase transition-all flex items-center justify-center gap-1.5"
                   >
                     <MessageSquare className="w-4 h-4 fill-current" />
-                    <span>Liberar Módulo (R$ {(module.price ?? 499.90).toLocaleString('pt-BR', { minimumFractionDigits: 2 })})</span>
+                    <span>Liberar Módulo (R$ ${Number(module.price ?? 499.90).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</span>
                   </button>
                 </div>
               )}

@@ -99,7 +99,7 @@ export const ModuleCard: React.FC<ModuleCardProps> = ({
               <Lock className="w-5 h-5 mx-auto mb-1 text-orange-400" />
               <p className="font-bold">{module.price ? 'Módulo Avulso' : `Plano ${module.requiredTier}`}</p>
               <p className="text-[10px] text-zinc-400">
-                {module.price ? `R$ ${module.price.toFixed(2).replace('.', ',')} • Acesso Imediato` : 'Requer upgrade de plano'}
+                {module.price ? `R$ ${Number(module.price).toFixed(2).replace('.', ',')} • Acesso Imediato` : 'Requer upgrade de plano'}
               </p>
             </div>
           )}
