@@ -135,21 +135,6 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
 
         {/* Bottom Support Box & Back Button */}
         <div className="p-4 border-t border-orange-900/20 space-y-3">
-          <div className="bg-orange-600/5 rounded-xl border border-orange-500/20 p-3.5">
-            <div className="flex items-center gap-2 text-xs font-bold text-orange-400 mb-1">
-              <HelpCircle className="w-4 h-4" />
-              <span>Precisa de Ajuda?</span>
-            </div>
-            <p className="text-[11px] text-zinc-400 mb-3">
-              Suporte para mentores e configuração avançada de webhooks.
-            </p>
-            <button
-              onClick={() => setActiveTab('simulator')}
-              className="w-full py-1.5 rounded-lg bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs transition-all shadow-md shadow-orange-600/20 cursor-pointer"
-            >
-              Testar Webhook
-            </button>
-          </div>
 
           <button
             onClick={onBackToStudentView}
