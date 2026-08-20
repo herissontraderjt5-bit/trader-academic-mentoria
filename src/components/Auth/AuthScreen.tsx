@@ -269,10 +269,26 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
 
   // FORGOT PASSWORD SUBMIT
-  const handleForgotSubmit = (e: React.FormEvent) => {
+  const handleForgotSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!forgotEmail) return;
-    setForgotSuccessMessage(`Um link seguro de redefinição de senha foi enviado para ${forgotEmail}. Verifique sua caixa de entrada.`);
+
+    try {
+      if (supabaseService.isConfigured()) {
+        const res = await supabaseService.resetPasswordForEmail(forgotEmail);
+        if (res.success) {
+          setForgotSuccessMessage(`Um link seguro de redefinição de senha foi enviado para ${forgotEmail}. Verifique sua caixa de entrada.`);
+        } else {
+          alert(`Erro ao solicitar recuperação: ${res.message || 'Verifique o e-mail informado.'}`);
+        }
+        return;
+      }
+
+      // Fallback local
+      setForgotSuccessMessage(`Um link de redefinição local foi simulado para ${forgotEmail}.`);
+    } catch (err: any) {
+      alert(`Erro: ${err.message || 'Ocorreu um erro inesperado.'}`);
+    }
   };
 
   return (

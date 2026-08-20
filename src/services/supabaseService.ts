@@ -141,6 +141,19 @@ export const supabaseService = {
     }
   },
 
+  async resetPasswordForEmail(email: string): Promise<{ success: boolean; message?: string }> {
+    if (!supabase) return { success: false, message: 'Supabase não está configurado.' };
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+        redirectTo: `${window.location.origin}/`,
+      });
+      if (error) return { success: false, message: error.message };
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, message: e.message || 'Erro ao enviar link de recuperação.' };
+    }
+  },
+
   async logout(): Promise<void> {
     if (supabase) {
       await supabase.auth.signOut();
