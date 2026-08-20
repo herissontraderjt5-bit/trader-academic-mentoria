@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   CheckCircle2, 
@@ -25,11 +25,20 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
   currentUser,
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [purchaseType, setPurchaseType] = useState<'module' | 'lifetime'>('lifetime');
+
+  useEffect(() => {
+    if (isOpen) {
+      setPurchaseType(targetModule ? 'module' : 'lifetime');
+    }
+  }, [isOpen, targetModule]);
 
   if (!isOpen) return null;
 
   const modulePriceNum = Number(targetModule?.price ?? 499.90);
   const modulePriceFormatted = isNaN(modulePriceNum) ? '499,90' : modulePriceNum.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const lifetimePriceNum = Number(settings.lifetimePrice ?? 499.90);
+  const lifetimePriceFormatted = isNaN(lifetimePriceNum) ? '499,90' : lifetimePriceNum.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const moduleTitle = targetModule?.title || 'Formação VIP Completa - Mentoria';
   const studentName = currentUser?.name || 'Aluno';
 
@@ -37,9 +46,9 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
     setIsProcessing(true);
     const phone = settings.supportWhatsapp || '5511999999999';
     
-    const messageText = targetModule
+    const messageText = purchaseType === 'module' && targetModule
       ? `Olá! Meu nome é ${studentName}. Gostaria de adquirir o "${moduleTitle}" pelo valor de R$ ${modulePriceFormatted}. Como realizo o pagamento?`
-      : `Olá! Meu nome é ${studentName}. Gostaria de assinar a Formação VIP Completa pelo valor de R$ 499,90. Como realizo o pagamento?`;
+      : `Olá! Meu nome é ${studentName}. Gostaria de assinar a Formação VIP Completa (Acesso Vitalício) pelo valor de R$ ${lifetimePriceFormatted}. Como realizo o pagamento?`;
 
     const message = encodeURIComponent(messageText);
     window.open(`https://wa.me/${phone.replace(/\D/g, '')}?text=${message}`, '_blank');
@@ -84,11 +93,58 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
         {/* Modal Body */}
         <div className="p-6 space-y-5">
           
+          {/* Selector options */}
+          {targetModule && (
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setPurchaseType('module')}
+                className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+                  purchaseType === 'module'
+                    ? 'bg-emerald-950/20 border-emerald-500 text-white shadow-lg shadow-emerald-500/10'
+                    : 'bg-zinc-900/40 border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[9px] font-black uppercase tracking-wider font-mono text-zinc-400">
+                    OPÇÃO 1
+                  </span>
+                  <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${purchaseType === 'module' ? 'border-emerald-500' : 'border-zinc-700'}`}>
+                    {purchaseType === 'module' && <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
+                  </div>
+                </div>
+                <p className="text-xs font-black line-clamp-1 mb-1">Apenas este Módulo</p>
+                <span className="text-sm font-black font-mono text-white">R$ {modulePriceFormatted}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPurchaseType('lifetime')}
+                className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+                  purchaseType === 'lifetime'
+                    ? 'bg-emerald-950/20 border-emerald-500 text-white shadow-lg shadow-emerald-500/10'
+                    : 'bg-zinc-900/40 border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[9px] font-black uppercase tracking-wider font-mono text-orange-400">
+                    RECOMENDADA
+                  </span>
+                  <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${purchaseType === 'lifetime' ? 'border-emerald-500' : 'border-zinc-700'}`}>
+                    {purchaseType === 'lifetime' && <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
+                  </div>
+                </div>
+                <p className="text-xs font-black line-clamp-1 mb-1">Formação VIP Vitalícia</p>
+                <span className="text-sm font-black font-mono text-orange-400">R$ {lifetimePriceFormatted}</span>
+              </button>
+            </div>
+          )}
+
           {/* Featured Module / VIP Box */}
           <div className="p-6 rounded-2xl bg-gradient-to-b from-emerald-950/50 via-zinc-900 to-black border-2 border-emerald-500 flex flex-col justify-between shadow-xl shadow-emerald-950/40 relative">
             <div className="flex items-center justify-between mb-3">
               <span className="px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-400 font-bold text-xs uppercase tracking-wider font-mono border border-emerald-500/30">
-                {targetModule?.category || 'Acesso VIP'}
+                {purchaseType === 'module' ? (targetModule?.category || 'Módulo Avulso') : 'Acesso VIP Vitalício'}
               </span>
               <span className="text-xs text-zinc-400 font-mono flex items-center gap-1">
                 <Lock className="w-3.5 h-3.5 text-orange-400" />
@@ -97,24 +153,39 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
             </div>
 
             <h3 className="text-xl font-black text-white leading-snug mb-2">
-              {moduleTitle}
+              {purchaseType === 'module' ? moduleTitle : 'Formação VIP Completa - Acesso Vitalício'}
             </h3>
 
-            {targetModule?.subtitle && (
+            {(purchaseType === 'module' ? targetModule?.subtitle : 'Acesso ilimitado a todos os módulos, planilhas, atualizações e suporte VIP') && (
               <p className="text-xs text-emerald-300 font-medium mb-4 leading-relaxed">
-                {targetModule.subtitle}
+                {purchaseType === 'module' ? targetModule?.subtitle : 'Acesso ilimitado a todos os módulos, planilhas, atualizações e suporte VIP.'}
               </p>
             )}
 
             <ul className="space-y-2.5 text-xs text-zinc-200 mb-6">
-              <li className="flex items-center gap-2 text-emerald-400 font-bold">
-                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
-                <span>Acesso vitalício a todas as aulas gravadas do módulo</span>
-              </li>
-              <li className="flex items-center gap-2 text-emerald-400 font-medium">
-                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
-                <span>Download de planilhas, indicadores e materiais em PDF</span>
-              </li>
+              {purchaseType === 'module' ? (
+                <>
+                  <li className="flex items-center gap-2 text-emerald-400 font-bold">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                    <span>Acesso completo às aulas gravadas deste módulo</span>
+                  </li>
+                  <li className="flex items-center gap-2 text-emerald-400 font-medium">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                    <span>Download de planilhas, indicadores e materiais em PDF do módulo</span>
+                  </li>
+                </>
+              ) : (
+                <>
+                  <li className="flex items-center gap-2 text-emerald-400 font-bold">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                    <span>Acesso vitalício completo a todos os módulos da plataforma</span>
+                  </li>
+                  <li className="flex items-center gap-2 text-emerald-400 font-medium">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                    <span>Download de planilhas, indicadores e materiais em PDF de todos os cursos</span>
+                  </li>
+                </>
+              )}
               <li className="flex items-center gap-2 text-emerald-400 font-medium">
                 <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
                 <span>Suporte tirar-dúvidas direto com os mentores</span>
@@ -128,8 +199,12 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
             {/* Price Box */}
             <div className="pt-4 border-t border-emerald-500/30 flex items-baseline justify-between">
               <div>
-                <span className="text-xs text-zinc-400 block font-mono">VALOR DO MÓDULO</span>
-                <span className="text-3xl font-black text-white font-mono">R$ {modulePriceFormatted}</span>
+                <span className="text-xs text-zinc-400 block font-mono">
+                  {purchaseType === 'module' ? 'VALOR DO MÓDULO' : 'VALOR DA FORMAÇÃO COMPLETA'}
+                </span>
+                <span className="text-3xl font-black text-white font-mono">
+                  R$ {purchaseType === 'module' ? modulePriceFormatted : lifetimePriceFormatted}
+                </span>
               </div>
               <span className="text-xs font-bold text-emerald-400 bg-emerald-950 px-3 py-1 rounded-full border border-emerald-500/40">
                 PAGAMENTO ÚNICO
@@ -145,7 +220,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
             <div className="text-xs text-zinc-300">
               <p className="font-bold text-white mb-0.5">Pagamento Seguro via WhatsApp (PIX ou Cartão)</p>
               <p className="text-[11px] text-zinc-400">
-                Ao clicar no botão abaixo, você enviará uma mensagem no WhatsApp do suporte com o nome do módulo e seu nome para receber a chave PIX ou o link de pagamento.
+                Ao clicar no botão abaixo, você enviará uma mensagem no WhatsApp do suporte com o produto selecionado e seu nome para receber a chave PIX ou o link de pagamento.
               </p>
             </div>
           </div>
@@ -175,7 +250,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
             ) : (
               <>
                 <MessageSquare className="w-4 h-4 fill-current" />
-                <span>Pagar R$ {modulePriceFormatted} no WhatsApp</span>
+                <span>Pagar R$ {purchaseType === 'module' ? modulePriceFormatted : lifetimePriceFormatted} no WhatsApp</span>
               </>
             )}
           </button>

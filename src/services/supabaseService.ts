@@ -557,6 +557,7 @@ export const supabaseService = {
         bannerHeadline: data.banner_headline,
         bannerSubtext: data.banner_subtext,
         primaryColor: data.primary_color,
+        lifetimePrice: data.lifetime_price,
       };
     } catch (e) {
       console.error('Error fetching settings:', e);
@@ -579,6 +580,7 @@ export const supabaseService = {
         banner_headline: settings.bannerHeadline,
         banner_subtext: settings.bannerSubtext,
         primary_color: settings.primaryColor,
+        lifetime_price: settings.lifetimePrice,
         updated_at: new Date().toISOString(),
       });
     } catch (e) {

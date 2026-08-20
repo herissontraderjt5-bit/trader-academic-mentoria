@@ -116,6 +116,29 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
           </div>
         </div>
 
+        {/* Prices & Plans */}
+        <div className="space-y-4 pt-6 border-t border-[#222230]">
+          <h3 className="text-sm font-bold text-[#ff8800] uppercase tracking-wider font-mono">
+            Configuração de Preços
+          </h3>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-300 mb-1 font-mono uppercase">
+                Valor do Plano Vitalício (R$)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                required
+                value={formData.lifetimePrice ?? 499.90}
+                onChange={(e) => setFormData({ ...formData, lifetimePrice: parseFloat(e.target.value) || 0 })}
+                className="w-full p-3 rounded-xl bg-[#171724] border border-[#272738] text-white text-xs focus:outline-none focus:border-[#ff6b00]"
+              />
+            </div>
+          </div>
+        </div>
+
         {/* Support & Community Links */}
         <div className="space-y-4 pt-6 border-t border-[#222230]">
           <h3 className="text-sm font-bold text-[#ff8800] uppercase tracking-wider font-mono">

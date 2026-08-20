@@ -336,6 +336,7 @@ CREATE TABLE IF NOT EXISTS public.platform_settings (
   banner_headline TEXT DEFAULT '',
   banner_subtext TEXT DEFAULT '',
   primary_color TEXT DEFAULT '#ff6b00',
+  lifetime_price NUMERIC DEFAULT 499.90,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -385,7 +386,7 @@ CREATE TRIGGER on_auth_user_created
 -- ------------------------------------------
 -- INITIAL SEED DATA
 -- ------------------------------------------
-INSERT INTO public.platform_settings (id, platform_name, mentor_name, tagline, support_whatsapp, telegram_vip_url, discord_vip_url, instagram_url, banner_headline, banner_subtext, primary_color)
+INSERT INTO public.platform_settings (id, platform_name, mentor_name, tagline, support_whatsapp, telegram_vip_url, discord_vip_url, instagram_url, banner_headline, banner_subtext, primary_color, lifetime_price)
 VALUES (
   'default',
   'Trader Academic',
@@ -397,7 +398,8 @@ VALUES (
   'https://instagram.com/traderacademic',
   'DOMINE O MERCADO COM MÉTODO E DISCIPLINA',
   'Acesse o curso gratuito de Opções Binárias e faça o upgrade para a Formação Completa VIP por apenas R$ 499,90.',
-  '#ff6b00'
+  '#ff6b00',
+  499.90
 )
 ON CONFLICT (id) DO NOTHING;
 

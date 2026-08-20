@@ -139,4 +139,5 @@ export interface PlatformSettings {
   bannerSubtext: string;
   primaryColor: string;
   caktoCheckoutUrl?: string;
+  lifetimePrice?: number;
 }
