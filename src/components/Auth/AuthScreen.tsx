@@ -14,6 +14,7 @@ import {
   Sparkles,
   ExternalLink,
   HelpCircle,
+  Headphones,
   KeyRound,
   Check,
   X
@@ -649,6 +650,20 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               </button>
             </form>
           )}
+
+          {/* Suporte WhatsApp Button */}
+          <div className="pt-4 mt-4 border-t border-white/5 text-center">
+            <a
+              href={`https://wa.me/${(settings.supportWhatsapp || '5511999999999').replace(/\D/g, '')}?text=Olá!%20Preciso%20de%20suporte%20para%20acessar%20minha%20conta%20na%20plataforma.`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-2.5 px-4 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/60 border border-emerald-500/30 text-emerald-400 hover:text-emerald-300 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer hover:scale-[1.02]"
+              title="Falar com o Suporte pelo WhatsApp"
+            >
+              <Headphones className="w-4 h-4 text-emerald-400" />
+              <span>Precisa de ajuda? Falar com Suporte no WhatsApp</span>
+            </a>
+          </div>
 
         </div>
 
