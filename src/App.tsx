@@ -73,6 +73,12 @@ export default function App() {
   const [isLiveOpen, setIsLiveOpen] = useState(false);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [upgradeTargetModule, setUpgradeTargetModule] = useState<Module | null>(null);
+
+  const handleOpenUpgrade = (mod?: Module | null) => {
+    setUpgradeTargetModule(mod || null);
+    setIsUpgradeModalOpen(true);
+  };
 
   // Current User Object
   const currentUser = useMemo(() => {
@@ -424,7 +430,7 @@ export default function App() {
             onOpenCertificate={() => setIsCertificateOpen(true)}
             onOpenLive={() => setIsLiveOpen(true)}
             onOpenEditProfile={() => setIsEditProfileOpen(true)}
-            onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
+            onOpenUpgrade={() => handleOpenUpgrade()}
             onLogout={handleLogout}
           />
 
@@ -441,7 +447,7 @@ export default function App() {
               settings={settings}
               overallProgress={overallProgress}
               onResumeWatching={handleResumeWatching}
-              onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
+              onOpenUpgrade={() => handleOpenUpgrade()}
               onOpenLive={() => setIsLiveOpen(true)}
             />
 
@@ -584,17 +590,22 @@ export default function App() {
         settings={settings}
         onClose={() => setSelectedModuleForModal(null)}
         onSelectLesson={handleSelectLesson}
-        onOpenSupport={() => {
+        onOpenSupport={(mod) => {
           setSelectedModuleForModal(null);
-          setIsUpgradeModalOpen(true);
+          handleOpenUpgrade(mod || selectedModuleForModal);
         }}
       />
 
       {/* Tools Modals */}
       <UpgradeModal
         isOpen={isUpgradeModalOpen}
-        onClose={() => setIsUpgradeModalOpen(false)}
+        onClose={() => {
+          setIsUpgradeModalOpen(false);
+          setUpgradeTargetModule(null);
+        }}
         settings={settings}
+        targetModule={upgradeTargetModule}
+        currentUser={currentUser}
       />
 
       <RiskCalculatorModal

@@ -9,7 +9,7 @@ interface ModuleDetailModalProps {
   settings: PlatformSettings;
   onClose: () => void;
   onSelectLesson: (moduleId: string, lessonId: string) => void;
-  onOpenSupport: () => void;
+  onOpenSupport: (module?: Module | null) => void;
 }
 
 export const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({
@@ -127,17 +127,11 @@ export const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({
                     </span>
                   </div>
                   <button
-                    onClick={() => {
-                      if (module.price) {
-                        const message = encodeURIComponent(`Olá, gostaria de adquirir o módulo: ${module.title}`);
-                        window.open(`https://wa.me/${settings.supportWhatsapp}?text=${message}`, '_blank');
-                      } else {
-                        onOpenSupport();
-                      }
-                    }}
-                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white font-extrabold text-xs shadow-lg shadow-orange-600/30 cursor-pointer uppercase transition-all"
+                    onClick={() => onOpenSupport(module)}
+                    className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-500 hover:to-green-400 text-white font-extrabold text-xs shadow-lg shadow-emerald-600/30 cursor-pointer uppercase transition-all flex items-center justify-center gap-1.5"
                   >
-                    {module.price ? 'Comprar Módulo' : 'Fazer Upgrade'}
+                    <MessageSquare className="w-4 h-4 fill-current" />
+                    <span>Liberar Módulo (R$ {(module.price ?? 499.90).toLocaleString('pt-BR', { minimumFractionDigits: 2 })})</span>
                   </button>
                 </div>
               )}
@@ -168,7 +162,7 @@ export const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({
                       onSelectLesson(module.id, lesson.id);
                       onClose();
                     } else {
-                      onOpenSupport();
+                      onOpenSupport(module);
                     }
                   }}
                   className={`p-4 rounded-2xl border transition-all flex items-center justify-between gap-4 cursor-pointer group ${
