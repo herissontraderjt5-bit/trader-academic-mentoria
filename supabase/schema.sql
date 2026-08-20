@@ -159,6 +159,7 @@ CREATE TABLE IF NOT EXISTS public.modules (
   order_index INT NOT NULL DEFAULT 0,
   required_tier TEXT NOT NULL DEFAULT 'Free',
   badge_text TEXT DEFAULT '',
+  price NUMERIC DEFAULT 0,
   is_new BOOLEAN DEFAULT false,
   is_live_module BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

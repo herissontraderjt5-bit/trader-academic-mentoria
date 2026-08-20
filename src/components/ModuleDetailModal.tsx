@@ -22,9 +22,10 @@ export const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({
 }) => {
   if (!module) return null;
 
+  const lessons = module.lessons || [];
   const hasAccess = storageService.hasAccessToModule(currentUser, module);
   const { completed, total, percentage } = storageService.calculateModuleProgress(currentUser, module);
-  const totalDuration = module.lessons.reduce((acc, curr) => acc + curr.durationMinutes, 0);
+  const totalDuration = lessons.reduce((acc, curr) => acc + (curr?.durationMinutes || 0), 0);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-y-auto">

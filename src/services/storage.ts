@@ -451,6 +451,7 @@ export const storageService = {
   },
 
   hasAccessToModule(user: User, module: Module): boolean {
+    if (!user || !module) return false;
     if (user.role === 'admin') return true;
     if (user.status !== 'Ativo') return false;
 
@@ -465,28 +466,30 @@ export const storageService = {
     };
 
     const userTierLevel = tierHierarchy[user.tier] || 1;
-    const requiredLevel = tierHierarchy[module.requiredTier] || 1;
+    const requiredLevel = tierHierarchy[module?.requiredTier || 'Free'] || 1;
 
     return userTierLevel >= requiredLevel;
   },
 
   calculateOverallProgress(user: User, modules: Module[]): { completed: number; total: number; percentage: number } {
     let totalLessons = 0;
-    modules.forEach(m => {
-      totalLessons += m.lessons.length;
+    (modules || []).forEach(m => {
+      totalLessons += (m?.lessons || []).length;
     });
 
-    const completed = user.progress.completedLessonIds.length;
+    const completed = user?.progress?.completedLessonIds?.length || 0;
     const percentage = totalLessons > 0 ? Math.min(100, Math.round((completed / totalLessons) * 100)) : 0;
 
     return { completed, total: totalLessons, percentage };
   },
 
   calculateModuleProgress(user: User, module: Module): { completed: number; total: number; percentage: number } {
-    const total = module.lessons.length;
+    const lessons = module?.lessons || [];
+    const total = lessons.length;
     if (total === 0) return { completed: 0, total: 0, percentage: 0 };
     
-    const completed = module.lessons.filter(l => user.progress.completedLessonIds.includes(l.id)).length;
+    const completedLessonIds = user?.progress?.completedLessonIds || [];
+    const completed = lessons.filter(l => completedLessonIds.includes(l.id)).length;
     const percentage = Math.round((completed / total) * 100);
     return { completed, total, percentage };
   },

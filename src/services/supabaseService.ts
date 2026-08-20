@@ -336,6 +336,7 @@ export const supabaseService = {
           order: m.order_index || 0,
           requiredTier: m.required_tier as any,
           badgeText: m.badge_text,
+          price: m.price ? Number(m.price) : undefined,
           isNew: m.is_new,
           isLiveModule: m.is_live_module,
           lessons: moduleLessons,
@@ -370,6 +371,7 @@ export const supabaseService = {
           order_index: m.order,
           required_tier: m.requiredTier,
           badge_text: m.badgeText,
+          price: m.price ? Number(m.price) : null,
           is_new: m.isNew,
           is_live_module: m.isLiveModule,
         });
