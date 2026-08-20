@@ -37,7 +37,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   allUsers
 }) => {
   // Mode: 'login' | 'register'
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'register'>(() => {
+    const hasRef = new URLSearchParams(window.location.search).has('ref') || !!localStorage.getItem('trader_academic_referred_by');
+    return hasRef ? 'register' : 'login';
+  });
 
   // Login Form States
   const [loginEmail, setLoginEmail] = useState('');

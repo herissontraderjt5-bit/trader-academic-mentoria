@@ -210,6 +210,7 @@ export default function App() {
         }
         setCurrentUserId(profile.id);
         setIsAuthenticated(true);
+        localStorage.removeItem('trader_academic_referred_by');
       };
 
       // Check current session
