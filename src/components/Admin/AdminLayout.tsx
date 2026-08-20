@@ -63,7 +63,6 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     { id: 'modules', label: 'Módulos & Aulas (YouTube)', icon: Layers },
     { id: 'members', label: 'Gestão de Alunos & Acessos', icon: Users, badge: allUsers.length },
     { id: 'announcements', label: 'Avisos & Salas Ao Vivo', icon: Radio, badge: liveSessions.length },
-    { id: 'simulator', label: 'Webhooks & Vendas (Cakto / Kiwify)', icon: CreditCard },
     { id: 'settings', label: 'Configurações da Plataforma', icon: Settings },
   ];
 
@@ -205,14 +204,6 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             liveSessions={liveSessions}
             onUpdateAnnouncements={onUpdateAnnouncements}
             onUpdateLiveSessions={onUpdateLiveSessions}
-          />
-        )}
-
-        {activeTab === 'simulator' && (
-          <AdminSimulator
-            users={allUsers}
-            modules={modules}
-            onAddUser={(newUser) => onUpdateUsers([...allUsers, newUser])}
           />
         )}
 
