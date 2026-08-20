@@ -358,12 +358,14 @@ BEGIN
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'name', NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1)),
     COALESCE(NEW.raw_user_meta_data->>'avatar_url', NEW.raw_user_meta_data->>'avatar', 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop'),
-    'student',
-    'Free',
+    CASE WHEN LOWER(NEW.email) IN ('viniciussestremmm@gmail.com', 'herisson.trader.jt5@gmail.com') THEN 'admin' ELSE 'student' END,
+    CASE WHEN LOWER(NEW.email) IN ('viniciussestremmm@gmail.com', 'herisson.trader.jt5@gmail.com') THEN 'VIP' ELSE 'Free' END,
     'Ativo',
     CURRENT_DATE
   )
-  ON CONFLICT (id) DO NOTHING;
+  ON CONFLICT (id) DO UPDATE SET
+    role = EXCLUDED.role,
+    tier = EXCLUDED.tier;
 
   INSERT INTO public.user_progress (user_id)
   VALUES (NEW.id::text)
