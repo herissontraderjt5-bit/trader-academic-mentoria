@@ -93,6 +93,7 @@ export const LiveRoomModal: React.FC<LiveRoomModalProps> = ({
   };
 
   const videoId = extractYouTubeId(currentLive.youtubeUrl || '');
+  const isAdmin = currentUser?.role === 'admin' || ['viniciussestremmm@gmail.com', 'herisson.trader.jt5@gmail.com'].includes(currentUser?.email?.toLowerCase() || '');
 
   return (
     <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
@@ -121,7 +122,7 @@ export const LiveRoomModal: React.FC<LiveRoomModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            {onUpdateLiveSessions && (
+            {isAdmin && onUpdateLiveSessions && (
               <button
                 onClick={() => {
                   setEditForm({
