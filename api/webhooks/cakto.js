@@ -50,8 +50,8 @@ export default async function handler(req, res) {
     const isPaid = status === 'paid' || status === 'approved' || event === 'order.paid' || event === 'order_approved' || event === 'purchase_approved';
     const isRefunded = status === 'refunded' || status === 'refund' || event === 'order.refunded' || event === 'order_refunded' || event === 'refund';
 
-    const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://gopxkuvjwyxevyexhujs.supabase.co';
-    const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_hocqoUx4wYq7lzbgIBb8gA_nT4JGoO1';
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://oqdbvbhxpejckppluais.supabase.co';
+    const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_XM5f4o0sUyOFET4HiUjlsA_G1No7fA-';
 
     const targetStatus = isRefunded ? 'Bloqueado' : 'Ativo';
     const targetTier = isPaid ? tier : 'Free';
