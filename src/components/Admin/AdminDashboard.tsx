@@ -35,33 +35,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const totalLessons = modules.reduce((acc, m) => acc + m.lessons.length, 0);
   const activeUsers = studentsOnly.filter((u) => u.status === 'Ativo').length;
   
-  // Helper to calculate exact revenue per student based on custom unlocked modules or tier
+  // Helper to calculate exact revenue per student based on module prices of their unlocked modules
   const getUserRevenue = (u: User): number => {
-    // If student has custom allowed modules specified by admin
-    if (u.customAllowedModuleIds && u.customAllowedModuleIds.length > 0) {
-      const unlockedPaidModules = modules.filter(
-        m => u.customAllowedModuleIds!.includes(m.id) && m.requiredTier !== 'Free'
-      );
-      if (unlockedPaidModules.length === 0) return 0;
-      return unlockedPaidModules.reduce((sum, m) => sum + (m.price || 497), 0);
-    }
+    const accessibleModules = modules.filter(m => {
+      if (u.customAllowedModuleIds && u.customAllowedModuleIds.length > 0) {
+        return u.customAllowedModuleIds.includes(m.id);
+      }
+      if (u.tier === 'VIP' || u.tier === 'Vitalício') {
+        return true;
+      }
+      return m.requiredTier === 'Free';
+    });
 
-    // Default by Tier
-    switch (u.tier) {
-      case 'VIP':
-        return 499.90;
-      case 'VIP Black':
-        return 1997;
-      case 'Vitalício':
-        return 2997;
-      case 'Pro':
-        return 997;
-      case 'Starter':
-        return 497;
-      case 'Free':
-      default:
-        return 0;
-    }
+    const paidModules = accessibleModules.filter(m => m.requiredTier !== 'Free');
+    return paidModules.reduce((sum, m) => sum + (m.price ?? 499.90), 0);
   };
 
   const totalSimulatedRevenue = studentsOnly.reduce((acc, u) => acc + getUserRevenue(u), 0);
@@ -69,13 +56,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   // Calculate completed lessons across all students
   const totalCompletions = studentsOnly.reduce((acc, u) => acc + (u.progress?.completedLessonIds?.length || 0), 0);
 
-  // Group by tier
+  // Group by real plans and custom module access
   const tierCounts = {
-    'Free': studentsOnly.filter(u => u.tier === 'Free').length,
-    'Starter': studentsOnly.filter(u => u.tier === 'Starter').length,
-    'Pro': studentsOnly.filter(u => u.tier === 'Pro').length,
-    'VIP': studentsOnly.filter(u => u.tier === 'VIP' || u.tier === 'VIP Black').length,
-    'Vitalício': studentsOnly.filter(u => u.tier === 'Vitalício').length,
+    'Plano Free (Gratuito)': studentsOnly.filter(u => (!u.customAllowedModuleIds || u.customAllowedModuleIds.length === 0) && u.tier === 'Free').length,
+    'Plano VIP (Acesso Completo)': studentsOnly.filter(u => (!u.customAllowedModuleIds || u.customAllowedModuleIds.length === 0) && (u.tier === 'VIP' || u.tier === 'Vitalício')).length,
+    'Módulos Liberados Sob Medida': studentsOnly.filter(u => u.customAllowedModuleIds && u.customAllowedModuleIds.length > 0).length,
   };
 
   return (
