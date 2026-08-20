@@ -61,9 +61,14 @@ export const EconomicCalendarModal: React.FC<EconomicCalendarModalProps> = ({
         <div className="flex-1 bg-[#12121a] relative p-1 sm:p-4">
           <iframe
             key={iframeKey}
-            src="https://s.tradingview.com/embed-widget/events/?locale=pt&colorTheme=dark&isTransparent=true&width=100%25&height=100%25"
-            style={{ width: '100%', height: '100%', border: 'none' }}
-            title="TradingView Economic Calendar"
+            src="https://sslecal2.investing.com?columns=exc_flags,exc_currency,exc_importance,exc_actual,exc_forecast,exc_previous&features=datepicker,timezone&countries=110,17,29,25,32,6,37,36,26,5,22,39,14,48,10,35,7,43&calType=day&timeZone=12&lang=12"
+            style={{ 
+              width: '100%', 
+              height: '100%', 
+              border: 'none', 
+              filter: 'invert(0.88) hue-rotate(180deg)' 
+            }}
+            title="Investing.com Economic Calendar"
           ></iframe>
         </div>
       </div>
