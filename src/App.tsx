@@ -276,6 +276,18 @@ export default function App() {
     setActiveView('home');
   };
 
+  const handleRefreshData = async () => {
+    const synced = await storageService.syncWithSupabase();
+    if (synced) {
+      if (synced.modules) setModules(synced.modules);
+      if (synced.users) setUsers(synced.users);
+      if (synced.announcements) setAnnouncements(synced.announcements);
+      if (synced.liveSessions) setLiveSessions(synced.liveSessions);
+      if (synced.settings) setSettings(synced.settings);
+      if (synced.withdrawals) setWithdrawalRequests(synced.withdrawals);
+    }
+  };
+
   const handleUpdateProfile = (updatedData: Partial<User>) => {
     const updated = storageService.updateUser(currentUserId, updatedData);
     if (updated) {
@@ -704,6 +716,7 @@ export default function App() {
         settings={settings}
         requests={withdrawalRequests}
         onCreateRequest={handleCreateWithdrawalRequest}
+        onRefresh={handleRefreshData}
       />
 
     </div>

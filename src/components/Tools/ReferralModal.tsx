@@ -10,6 +10,7 @@ interface ReferralModalProps {
   settings: PlatformSettings;
   requests: WithdrawalRequest[];
   onCreateRequest: (amount: number, pixKeyType: string, pixKey: string, fullName: string, cpf: string) => Promise<boolean>;
+  onRefresh?: () => Promise<void>;
 }
 
 export const ReferralModal: React.FC<ReferralModalProps> = ({
@@ -20,6 +21,7 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
   settings,
   requests,
   onCreateRequest,
+  onRefresh,
 }) => {
   const [copied, setCopied] = useState(false);
   const [pixType, setPixType] = useState('CPF');
@@ -28,8 +30,30 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
   const [cpf, setCpf] = useState('');
   const [amount, setAmount] = useState<number>(currentUser.referralBalance || 0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+
+  // Sync state whenever the modal opens or balance updates
+  React.useEffect(() => {
+    if (isOpen) {
+      setAmount(currentUser.referralBalance || 0);
+      setErrorMsg('');
+      setSuccessMsg('');
+    }
+  }, [isOpen, currentUser.referralBalance]);
+
+  const handleRefresh = async () => {
+    if (!onRefresh) return;
+    setIsRefreshing(true);
+    try {
+      await onRefresh();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -109,12 +133,24 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl bg-[#222230] text-zinc-400 hover:text-white border border-white/5 transition-colors cursor-pointer"
-          >
-            <X className="w-4.5 h-4.5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {onRefresh && (
+              <button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="p-2 rounded-xl bg-[#222230] text-zinc-400 hover:text-white border border-white/5 transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center"
+                title="Atualizar Saldo"
+              >
+                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl bg-[#222230] text-zinc-400 hover:text-white border border-white/5 transition-colors cursor-pointer flex items-center justify-center"
+            >
+              <X className="w-4.5 h-4.5" />
+            </button>
+          </div>
         </div>
 
         {/* Scrollable Content */}
