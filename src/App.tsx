@@ -192,14 +192,39 @@ export default function App() {
           
           let parentId: string | undefined = undefined;
           if (referredBy) {
-            const students = storageService.getStudents();
-            const parent = students.find(s => 
-              s.id === referredBy || 
-              (s.referralCode && s.referralCode.toUpperCase() === referredBy.toUpperCase()) ||
-              s.id.substring(0, 5).toUpperCase() === referredBy.toUpperCase()
-            );
-            if (parent) {
-              parentId = parent.id;
+            let parentProfiles: any[] | null = null;
+            if (supabaseService.isConfigured()) {
+              const { data: withCode, error: errWithCode } = await supabase
+                .from('profiles')
+                .select('id, referral_code');
+              
+              if (!errWithCode && withCode) {
+                parentProfiles = withCode;
+              } else {
+                const { data: onlyId } = await supabase
+                  .from('profiles')
+                  .select('id');
+                parentProfiles = onlyId;
+              }
+            }
+
+            if (parentProfiles) {
+              const parent = parentProfiles.find(p => 
+                p.id === referredBy || 
+                (p.referral_code && p.referral_code.toUpperCase() === referredBy.toUpperCase()) ||
+                p.id.substring(0, 5).toUpperCase() === referredBy.toUpperCase()
+              );
+              if (parent) parentId = parent.id;
+            }
+
+            if (!parentId) {
+              const students = storageService.getStudents();
+              const parent = students.find(s => 
+                s.id === referredBy || 
+                (s.referralCode && s.referralCode.toUpperCase() === referredBy.toUpperCase()) ||
+                s.id.substring(0, 5).toUpperCase() === referredBy.toUpperCase()
+              );
+              if (parent) parentId = parent.id;
             }
           }
 

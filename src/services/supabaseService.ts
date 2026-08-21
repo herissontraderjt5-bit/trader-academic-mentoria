@@ -101,9 +101,19 @@ export const supabaseService = {
 
       let parentId: string | undefined = undefined;
       if (userData.referredById && !isSecretAdmin) {
-        const { data: parentProfiles } = await supabase
+        let parentProfiles: any[] | null = null;
+        const { data: withCode, error: errWithCode } = await supabase
           .from('profiles')
           .select('id, referral_code');
+        
+        if (!errWithCode && withCode) {
+          parentProfiles = withCode;
+        } else {
+          const { data: onlyId } = await supabase
+            .from('profiles')
+            .select('id');
+          parentProfiles = onlyId;
+        }
 
         if (parentProfiles) {
           const parent = parentProfiles.find(p => 
@@ -273,7 +283,6 @@ export const supabaseService = {
         terms_accepted_at: user.termsAcceptedAt,
         custom_allowed_module_ids: user.customAllowedModuleIds,
         referred_by_id: user.referredById,
-        referral_code: user.referralCode || user.id.substring(0, 5).toUpperCase(),
         referral_balance: user.referralBalance || 0,
         total_earned: user.totalEarned || 0,
         updated_at: new Date().toISOString(),
