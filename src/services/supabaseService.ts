@@ -273,6 +273,7 @@ export const supabaseService = {
         terms_accepted_at: user.termsAcceptedAt,
         custom_allowed_module_ids: user.customAllowedModuleIds,
         referred_by_id: user.referredById,
+        referral_code: user.referralCode || user.id.substring(0, 5).toUpperCase(),
         referral_balance: user.referralBalance || 0,
         total_earned: user.totalEarned || 0,
         updated_at: new Date().toISOString(),
