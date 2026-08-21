@@ -82,9 +82,20 @@ export const storageService = {
         this.saveJournal(remoteJournal);
         result.journal = remoteJournal;
       }
-      if (remoteWithdrawals) {
+      if (remoteWithdrawals && remoteWithdrawals.length > 0) {
         this.saveWithdrawalRequests(remoteWithdrawals);
         result.withdrawals = remoteWithdrawals;
+      } else if (remoteWithdrawals) {
+        const localWithdrawals = this.getWithdrawalRequests();
+        if (localWithdrawals && localWithdrawals.length > 0) {
+          for (const w of localWithdrawals) {
+            await supabaseService.createWithdrawalRequest(w);
+          }
+          result.withdrawals = localWithdrawals;
+        } else {
+          this.saveWithdrawalRequests([]);
+          result.withdrawals = [];
+        }
       }
 
       return result;
