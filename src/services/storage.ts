@@ -730,5 +730,15 @@ export const storageService = {
       }
       console.log(`Comissão de R$ ${commissionAmount} creditada para o indicador ${referrer.name} referente ao comprador ${buyer.name}`);
     }
+  },
+
+  async deleteWithdrawalRequest(reqId: string): Promise<void> {
+    const requests = this.getWithdrawalRequests();
+    const filtered = requests.filter(r => r.id !== reqId);
+    this.saveWithdrawalRequests(filtered);
+
+    if (supabaseService.isConfigured()) {
+      await supabaseService.deleteWithdrawalRequest(reqId);
+    }
   }
 };

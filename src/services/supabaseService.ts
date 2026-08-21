@@ -775,5 +775,19 @@ export const supabaseService = {
       console.error('Error updating withdrawal request status:', e);
       return false;
     }
+  },
+
+  async deleteWithdrawalRequest(reqId: string): Promise<boolean> {
+    if (!supabase) return false;
+    try {
+      const { error } = await supabase
+        .from('withdrawal_requests')
+        .delete()
+        .eq('id', reqId);
+      return !error;
+    } catch (e) {
+      console.error('Error deleting withdrawal request:', e);
+      return false;
+    }
   }
 };

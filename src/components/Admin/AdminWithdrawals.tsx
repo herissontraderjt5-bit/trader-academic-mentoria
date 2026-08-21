@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
-import { CheckCircle2, XCircle, Clock, Landmark, Copy, Check, Filter } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, Landmark, Copy, Check, Filter, Trash2 } from 'lucide-react';
 import { WithdrawalRequest, User } from '../../types';
 
 interface AdminWithdrawalsProps {
   requests: WithdrawalRequest[];
   users: User[];
   onUpdateStatus: (reqId: string, status: 'Pendente' | 'Realizado' | 'Cancelado') => Promise<void>;
+  onDeleteRequest?: (reqId: string) => Promise<void>;
 }
 
 export const AdminWithdrawals: React.FC<AdminWithdrawalsProps> = ({
   requests,
   users,
   onUpdateStatus,
+  onDeleteRequest,
 }) => {
   const [filterStatus, setFilterStatus] = useState<'Todos' | 'Pendente' | 'Realizado' | 'Cancelado'>('Pendente');
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -28,6 +30,21 @@ export const AdminWithdrawals: React.FC<AdminWithdrawalsProps> = ({
       setProcessingId(reqId);
       try {
         await onUpdateStatus(reqId, newStatus);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setProcessingId(null);
+      }
+    }
+  };
+
+  const handleDeleteClick = async (reqId: string) => {
+    if (window.confirm('Deseja realmente excluir permanentemente esta solicitação de saque (ela será deletada também do Supabase)?')) {
+      setProcessingId(reqId);
+      try {
+        if (onDeleteRequest) {
+          await onDeleteRequest(reqId);
+        }
       } catch (e) {
         console.error(e);
       } finally {
@@ -190,28 +207,39 @@ export const AdminWithdrawals: React.FC<AdminWithdrawalsProps> = ({
                         </span>
                       </td>
                       <td className="p-4 text-right">
-                        {req.status === 'Pendente' ? (
-                          <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              disabled={isProcessing}
-                              onClick={() => handleStatusChange(req.id, 'Realizado')}
-                              className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow shadow-emerald-600/20 disabled:opacity-50"
-                            >
-                              Pagar
-                            </button>
-                            <button
-                              disabled={isProcessing}
-                              onClick={() => handleStatusChange(req.id, 'Cancelado')}
-                              className="px-2.5 py-1.5 rounded-lg bg-red-950/40 border border-red-500/20 hover:bg-red-900/40 text-red-400 text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50"
-                            >
-                              Recusar
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-[10px] text-zinc-500 font-mono">
-                            Processado
-                          </span>
-                        )}
+                        <div className="flex items-center justify-end gap-2">
+                          {req.status === 'Pendente' ? (
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                disabled={isProcessing}
+                                onClick={() => handleStatusChange(req.id, 'Realizado')}
+                                className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow shadow-emerald-600/20 disabled:opacity-50"
+                              >
+                                Pagar
+                              </button>
+                              <button
+                                disabled={isProcessing}
+                                onClick={() => handleStatusChange(req.id, 'Cancelado')}
+                                className="px-2.5 py-1.5 rounded-lg bg-red-950/40 border border-red-500/20 hover:bg-red-900/40 text-red-400 text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50"
+                              >
+                                Recusar
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-zinc-500 font-mono mr-2">
+                              {req.status === 'Realizado' ? 'Pago' : 'Recusado'}
+                            </span>
+                          )}
+
+                          <button
+                            disabled={isProcessing}
+                            onClick={() => handleDeleteClick(req.id)}
+                            className="p-1.5 rounded-lg bg-zinc-850 text-zinc-400 hover:text-red-400 hover:bg-red-950/20 transition-all cursor-pointer disabled:opacity-50"
+                            title="Excluir Solicitação"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

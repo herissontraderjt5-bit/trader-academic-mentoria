@@ -104,6 +104,12 @@ export default function App() {
     setUsers(updatedStudents);
   };
 
+  const handleDeleteWithdrawalRequest = async (reqId: string) => {
+    await storageService.deleteWithdrawalRequest(reqId);
+    const updatedReqs = storageService.getWithdrawalRequests();
+    setWithdrawalRequests(updatedReqs);
+  };
+
   // Current User Object
   const currentUser = useMemo(() => {
     let found = users.find(u => u.id === currentUserId || u.email?.toLowerCase() === currentUserId?.toLowerCase());
@@ -506,6 +512,7 @@ export default function App() {
           onUpdateLiveSessions={(sess) => { setLiveSessions(sess); storageService.saveLiveSessions(sess); }}
           onUpdateSettings={(sett) => { setSettings(sett); storageService.saveSettings(sett); }}
           onUpdateWithdrawalRequestStatus={handleUpdateWithdrawalRequestStatus}
+          onDeleteWithdrawalRequest={handleDeleteWithdrawalRequest}
           onBackToStudentView={() => setActiveView('home')}
           onLogout={handleLogout}
         />

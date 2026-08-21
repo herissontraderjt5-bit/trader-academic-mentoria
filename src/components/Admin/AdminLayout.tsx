@@ -40,6 +40,7 @@ interface AdminLayoutProps {
   onUpdateLiveSessions: (sessions: LiveSession[]) => void;
   onUpdateSettings: (settings: PlatformSettings) => void;
   onUpdateWithdrawalRequestStatus: (reqId: string, status: 'Pendente' | 'Realizado' | 'Cancelado') => Promise<void>;
+  onDeleteWithdrawalRequest?: (reqId: string) => Promise<void>;
   onBackToStudentView: () => void;
   onLogout?: () => void;
 }
@@ -58,6 +59,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   onUpdateLiveSessions,
   onUpdateSettings,
   onUpdateWithdrawalRequestStatus,
+  onDeleteWithdrawalRequest,
   onBackToStudentView,
   onLogout,
 }) => {
@@ -212,6 +214,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             requests={withdrawalRequests}
             users={allUsers}
             onUpdateStatus={onUpdateWithdrawalRequestStatus}
+            onDeleteRequest={onDeleteWithdrawalRequest}
           />
         )}
 
