@@ -741,7 +741,6 @@ export const supabaseService = {
         cpf: req.cpf,
         status: req.status || 'Pendente',
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       }).select().single();
 
       if (error || !data) return null;
@@ -767,8 +766,7 @@ export const supabaseService = {
     if (!supabase) return false;
     try {
       const { error } = await supabase.from('withdrawal_requests').update({
-        status,
-        updated_at: new Date().toISOString()
+        status
       }).eq('id', reqId);
       return !error;
     } catch (e) {
