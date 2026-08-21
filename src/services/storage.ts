@@ -285,6 +285,9 @@ export const storageService = {
     } catch (e) {
       console.warn('LocalStorage error for students:', e);
     }
+    if (supabaseService.isConfigured()) {
+      students.forEach((s) => supabaseService.upsertProfile(s));
+    }
   },
 
   deleteStudent(userId: string): void {

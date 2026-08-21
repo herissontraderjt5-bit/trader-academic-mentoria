@@ -23,6 +23,7 @@ import { AdminAnnouncements } from './AdminAnnouncements';
 import { AdminSimulator } from './AdminSimulator';
 import { AdminSettings } from './AdminSettings';
 import { AdminWithdrawals } from './AdminWithdrawals';
+import { AdminAffiliates } from './AdminAffiliates';
 import { BrandLogo } from '../BrandLogo';
 
 interface AdminLayoutProps {
@@ -60,13 +61,14 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   onBackToStudentView,
   onLogout,
 }) => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'modules' | 'members' | 'announcements' | 'simulator' | 'settings' | 'withdrawals'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'modules' | 'members' | 'announcements' | 'simulator' | 'settings' | 'withdrawals' | 'affiliates'>('dashboard');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard & Métricas', icon: BarChart3 },
     { id: 'modules', label: 'Módulos & Aulas (YouTube)', icon: Layers },
     { id: 'members', label: 'Gestão de Alunos & Acessos', icon: Users, badge: allUsers.length },
+    { id: 'affiliates', label: 'Afiliados & Indicações', icon: Users },
     { id: 'announcements', label: 'Avisos & Salas Ao Vivo', icon: Radio, badge: liveSessions.length },
     { id: 'withdrawals', label: 'Solicitações de Saque', icon: CreditCard, badge: withdrawalRequests.filter(w => w.status === 'Pendente').length },
     { id: 'settings', label: 'Configurações da Plataforma', icon: Settings },
@@ -210,6 +212,15 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             requests={withdrawalRequests}
             users={allUsers}
             onUpdateStatus={onUpdateWithdrawalRequestStatus}
+          />
+        )}
+
+        {activeTab === 'affiliates' && (
+          <AdminAffiliates
+            users={allUsers}
+            settings={settings}
+            onUpdateUsers={onUpdateUsers}
+            onUpdateSettings={onUpdateSettings}
           />
         )}
       </main>
