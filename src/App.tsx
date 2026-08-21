@@ -189,6 +189,20 @@ export default function App() {
         let profile = await supabaseService.getProfileById(sessionUser.id);
         if (!profile) {
           const referredBy = localStorage.getItem('trader_academic_referred_by') || undefined;
+          
+          let parentId: string | undefined = undefined;
+          if (referredBy) {
+            const students = storageService.getStudents();
+            const parent = students.find(s => 
+              s.id === referredBy || 
+              (s.referralCode && s.referralCode.toUpperCase() === referredBy.toUpperCase()) ||
+              s.id.substring(0, 5).toUpperCase() === referredBy.toUpperCase()
+            );
+            if (parent) {
+              parentId = parent.id;
+            }
+          }
+
           const newProfile: User = {
             id: sessionUser.id,
             name: sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || sessionUser.email?.split('@')[0] || 'Aluno',
@@ -197,7 +211,8 @@ export default function App() {
             role: isAdminEmail ? 'admin' : 'student',
             tier: isAdminEmail ? 'VIP' : 'Free',
             status: 'Ativo',
-            referredById: referredBy,
+            referredById: parentId,
+            referralCode: sessionUser.id.substring(0, 5).toUpperCase(),
             referralBalance: 0,
             totalEarned: 0,
             joinedAt: new Date().toISOString().split('T')[0],
