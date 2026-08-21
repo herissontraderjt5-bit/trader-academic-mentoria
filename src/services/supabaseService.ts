@@ -732,13 +732,14 @@ export const supabaseService = {
     if (!supabase) return null;
     try {
       const { data, error } = await supabase.from('withdrawal_requests').insert({
+        id: req.id || 'wr-' + Date.now(),
         user_id: req.userId,
         amount: req.amount,
         pix_key_type: req.pixKeyType,
         pix_key: req.pixKey,
         full_name: req.fullName,
         cpf: req.cpf,
-        status: 'Pendente',
+        status: req.status || 'Pendente',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }).select().single();
