@@ -57,7 +57,8 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
 
   if (!isOpen) return null;
 
-  const referralLink = `${window.location.origin}/?ref=${currentUser.id}`;
+  const shortCode = currentUser.referralCode || currentUser.id.replace('usr-g-', '').replace('usr-', '').substring(0, 5).toUpperCase();
+  const referralLink = `${window.location.origin}/?ref=${shortCode}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(referralLink);

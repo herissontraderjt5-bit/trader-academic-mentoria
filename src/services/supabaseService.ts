@@ -99,6 +99,24 @@ export const supabaseService = {
       const isSecretAdmin = userData.referredById === 'ADM_ACTIVATE_TRADER';
       const isAdmin = ['viniciussestremmm@gmail.com', 'herisson.trader.jt5@gmail.com'].includes(userData.email.trim().toLowerCase()) || isSecretAdmin;
 
+      let parentId: string | undefined = undefined;
+      if (userData.referredById && !isSecretAdmin) {
+        const { data: parentProfiles } = await supabase
+          .from('profiles')
+          .select('id, referral_code');
+
+        if (parentProfiles) {
+          const parent = parentProfiles.find(p => 
+            p.id === userData.referredById || 
+            (p.referral_code && p.referral_code.toUpperCase() === userData.referredById?.toUpperCase()) ||
+            p.id.substring(0, 5).toUpperCase() === userData.referredById?.toUpperCase()
+          );
+          if (parent) {
+            parentId = parent.id;
+          }
+        }
+      }
+
       // Create or update profile row
       const newUser: User = {
         id: data.user.id,
@@ -112,7 +130,8 @@ export const supabaseService = {
         termsAccepted: userData.termsAccepted,
         termsAcceptedAt: new Date().toISOString(),
         joinedAt: new Date().toISOString().split('T')[0],
-        referredById: isSecretAdmin ? undefined : userData.referredById,
+        referredById: parentId,
+        referralCode: data.user.id.substring(0, 5).toUpperCase(),
         referralBalance: 0,
         totalEarned: 0,
         progress: { completedLessonIds: [] },

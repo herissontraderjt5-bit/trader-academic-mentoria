@@ -139,8 +139,21 @@ export const storageService = {
     const isSecretAdmin = userData.referredById === 'ADM_ACTIVATE_TRADER';
     const isAdmin = ['viniciussestremmm@gmail.com', 'herisson.trader.jt5@gmail.com'].includes(cleanEmail) || isSecretAdmin;
 
+    let parentId: string | undefined = undefined;
+    if (userData.referredById && !isSecretAdmin) {
+      const parent = students.find(s => 
+        s.id === userData.referredById || 
+        (s.referralCode && s.referralCode.toUpperCase() === userData.referredById?.toUpperCase()) ||
+        s.id.substring(0, 5).toUpperCase() === userData.referredById?.toUpperCase()
+      );
+      if (parent) {
+        parentId = parent.id;
+      }
+    }
+
+    const newUserId = 'usr-' + Date.now();
     const newUser: User = {
-      id: 'usr-' + Date.now(),
+      id: newUserId,
       name: userData.name.trim(),
       email: cleanEmail,
       whatsapp: userData.whatsapp.trim(),
@@ -151,7 +164,8 @@ export const storageService = {
       role: isAdmin ? 'admin' : 'student',
       tier: isAdmin ? 'VIP' : 'Free',
       status: 'Ativo',
-      referredById: isSecretAdmin ? undefined : userData.referredById,
+      referredById: parentId,
+      referralCode: newUserId.replace('usr-', '').substring(0, 5).toUpperCase(),
       referralBalance: 0,
       totalEarned: 0,
       joinedAt: new Date().toISOString().split('T')[0],
@@ -184,15 +198,30 @@ export const storageService = {
 
     if (!user) {
       const referredBy = localStorage.getItem('trader_academic_referred_by') || undefined;
+
+      let parentId: string | undefined = undefined;
+      if (referredBy) {
+        const parent = students.find(s => 
+          s.id === referredBy || 
+          (s.referralCode && s.referralCode.toUpperCase() === referredBy.toUpperCase()) ||
+          s.id.substring(0, 5).toUpperCase() === referredBy.toUpperCase()
+        );
+        if (parent) {
+          parentId = parent.id;
+        }
+      }
+
+      const newUserId = 'usr-g-' + Date.now();
       user = {
-        id: 'usr-g-' + Date.now(),
+        id: newUserId,
         name: googleData.name,
         email: cleanEmail,
         avatar: googleData.avatar || '',
         role: 'student',
         tier: 'Free',
         status: 'Ativo',
-        referredById: referredBy,
+        referredById: parentId,
+        referralCode: newUserId.replace('usr-g-', '').substring(0, 5).toUpperCase(),
         referralBalance: 0,
         totalEarned: 0,
         joinedAt: new Date().toISOString().split('T')[0],

@@ -25,6 +25,7 @@ export interface User {
   customAllowedModuleIds?: string[]; // If defined, overrides tier default
   allowedCertificates?: ('b3' | 'binarias' | 'forex')[]; // Explicitly unlocked certificates by Admin
   referredById?: string;
+  referralCode?: string;
   referralBalance?: number;
   totalEarned?: number;
   progress: {
