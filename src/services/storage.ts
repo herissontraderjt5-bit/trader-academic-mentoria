@@ -66,11 +66,11 @@ export const storageService = {
         this.saveStudents(remoteProfiles);
         result.users = remoteProfiles;
       }
-      if (remoteAnnouncements && remoteAnnouncements.length > 0) {
+      if (remoteAnnouncements !== null) {
         this.saveAnnouncements(remoteAnnouncements);
         result.announcements = remoteAnnouncements;
       }
-      if (remoteLive && remoteLive.length > 0) {
+      if (remoteLive !== null) {
         this.saveLiveSessions(remoteLive);
         result.liveSessions = remoteLive;
       }
@@ -78,7 +78,7 @@ export const storageService = {
         this.saveSettings(remoteSettings);
         result.settings = remoteSettings;
       }
-      if (remoteJournal && remoteJournal.length > 0) {
+      if (remoteJournal !== null) {
         this.saveJournal(remoteJournal);
         result.journal = remoteJournal;
       }

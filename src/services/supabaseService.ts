@@ -486,11 +486,15 @@ export const supabaseService = {
   // ------------------------------------------
   // ANNOUNCEMENTS
   // ------------------------------------------
-  async getAnnouncements(): Promise<Announcement[]> {
-    if (!supabase) return [];
+  async getAnnouncements(): Promise<Announcement[] | null> {
+    if (!supabase) return null;
     try {
       const { data, error } = await supabase.from('announcements').select('*');
-      if (error || !data) return [];
+      if (error) {
+        console.error('Error fetching announcements:', error);
+        return null;
+      }
+      if (!data) return [];
       return data.map((a) => ({
         id: a.id,
         title: a.title,
@@ -503,7 +507,7 @@ export const supabaseService = {
       }));
     } catch (e) {
       console.error('Error fetching announcements:', e);
-      return [];
+      return null;
     }
   },
 
@@ -539,11 +543,15 @@ export const supabaseService = {
   // ------------------------------------------
   // LIVE SESSIONS
   // ------------------------------------------
-  async getLiveSessions(): Promise<LiveSession[]> {
-    if (!supabase) return [];
+  async getLiveSessions(): Promise<LiveSession[] | null> {
+    if (!supabase) return null;
     try {
       const { data, error } = await supabase.from('live_sessions').select('*');
-      if (error || !data) return [];
+      if (error) {
+        console.error('Error fetching live sessions:', error);
+        return null;
+      }
+      if (!data) return [];
       return data.map((l) => ({
         id: l.id,
         title: l.title,
@@ -557,7 +565,7 @@ export const supabaseService = {
       }));
     } catch (e) {
       console.error('Error fetching live sessions:', e);
-      return [];
+      return null;
     }
   },
 
@@ -648,15 +656,19 @@ export const supabaseService = {
   // ------------------------------------------
   // TRADE JOURNAL
   // ------------------------------------------
-  async getJournal(userId?: string): Promise<TradeJournalEntry[]> {
-    if (!supabase) return [];
+  async getJournal(userId?: string): Promise<TradeJournalEntry[] | null> {
+    if (!supabase) return null;
     try {
       let query = supabase.from('trade_journal').select('*').order('date', { ascending: false });
       if (userId) {
         query = query.eq('user_id', userId);
       }
       const { data, error } = await query;
-      if (error || !data) return [];
+      if (error) {
+        console.error('Error fetching trade journal:', error);
+        return null;
+      }
+      if (!data) return [];
       return data.map((j) => ({
         id: j.id,
         date: j.date,
@@ -673,7 +685,7 @@ export const supabaseService = {
       }));
     } catch (e) {
       console.error('Error fetching trade journal:', e);
-      return [];
+      return null;
     }
   },
 
