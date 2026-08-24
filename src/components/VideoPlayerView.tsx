@@ -9,7 +9,6 @@ import {
   MessageSquare, 
   FileText, 
   Edit3, 
-  Bot, 
   Send, 
   ThumbsUp, 
   Share2, 
@@ -24,7 +23,6 @@ import {
 import { Module, Lesson, User, PlatformSettings } from '../types';
 import { extractYouTubeId, formatDuration } from '../utils/youtube';
 import { storageService } from '../services/storage';
-import { geminiService } from '../services/geminiService';
 
 interface VideoPlayerViewProps {
   currentModule: Module;
@@ -51,18 +49,10 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
   onSaveNote,
   onAddComment,
 }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'materials' | 'comments' | 'notes' | 'ai'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'materials' | 'comments' | 'notes'>('overview');
   const [commentInput, setCommentInput] = useState('');
   const [userNote, setUserNote] = useState('');
   const [isNoteSaved, setIsNoteSaved] = useState(false);
-  const [aiQuestion, setAiQuestion] = useState('');
-  const [aiChat, setAiChat] = useState<Array<{ sender: 'user' | 'ai'; text: string }>>([
-    {
-      sender: 'ai',
-      text: `Olá, ${currentUser.name.split(' ')[0]}! Sou o Trader AI Mentor. Tem alguma dúvida sobre a "${currentLesson.title}" ou quer entender o cálculo de risco desse setup? Estou aqui para ajudar!`
-    }
-  ]);
-  const [isAiLoading, setIsAiLoading] = useState(false);
   const [isTheaterMode, setIsTheaterMode] = useState(false);
 
   // Load private note for this lesson
@@ -109,50 +99,6 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
 
     onAddComment(currentModule.id, currentLesson.id, commentInput.trim());
     setCommentInput('');
-  };
-
-  // Handle AI Mentor question
-  const handleSendAi = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!aiQuestion.trim()) return;
-
-    const q = aiQuestion.trim();
-    setAiChat(prev => [...prev, { sender: 'user', text: q }]);
-    setAiQuestion('');
-    setIsAiLoading(true);
-
-    try {
-      let response = '';
-      if (geminiService.isConfigured()) {
-        response = await geminiService.askMentor(q, currentLesson.title);
-      } else {
-        // Fallback warning + mock response if API Key is not set
-        response = `⚠️ **[Trader AI em Modo de Demonstração]** Para respostas reais e personalizadas, configure a sua chave de API no arquivo \`.env\` ou \`.env.local\` com a variável \`GEMINI_API_KEY\`.
-        
-Aqui está uma resposta simulada para sua pergunta:
-`;
-        const qLower = q.toLowerCase();
-        if (qLower.includes('stop') || qLower.includes('risco')) {
-          response += `Na metodologia Trader Academic, seu Stop Loss deve ser estritamente técnico (atrás do candle de referência ou VWAP) e nunca exceder 1.5% a 2% do seu capital total por operação. Sempre busque uma relação Risco:Retorno de pelo menos 2:1.`;
-        } else if (qLower.includes('setup') || qLower.includes('entrada') || qLower.includes('gatilho')) {
-          response += `Para o setup ensinado nesta aula ("${currentLesson.title}"), aguarde sempre a confirmação do fechamento do candle no gráfico de 5 ou 15 minutos, validando o aumento de volume financeiro antes de apertar a boleta.`;
-        } else if (qLower.includes('índice') || qLower.includes('win') || qLower.includes('dólar') || qLower.includes('wdo')) {
-          response += `No Mini-Índice (WIN), cada ponto vale R$ 0,20 por contrato. No Mini-Dólar (WDO), cada ponto vale R$ 10,00 por contrato. Certifique-se de ajustar o número de contratos na sua planilha de gestão antes de entrar!`;
-        } else {
-          response += `Com base no conteúdo de "${currentLesson.title}", a chave para a consistência é a repetição disciplinada do plano. Pratique pelo menos 20 operações desse padrão no simulador antes de operar na conta real!`;
-        }
-      }
-
-      setAiChat(prev => [...prev, { sender: 'ai', text: response }]);
-    } catch (err: any) {
-      console.error(err);
-      setAiChat(prev => [...prev, { 
-        sender: 'ai', 
-        text: `Erro ao processar a pergunta: ${err.message || 'Erro de rede ou chave de API inválida.'}` 
-      }]);
-    } finally {
-      setIsAiLoading(false);
-    }
   };
 
   const youtubeVideoId = extractYouTubeId(currentLesson.youtubeUrl);
@@ -347,18 +293,6 @@ Aqui está uma resposta simulada para sua pergunta:
                 <Edit3 className="w-4 h-4" />
                 <span>Minhas Anotações</span>
               </button>
-
-              <button
-                onClick={() => setActiveTab('ai')}
-                className={`flex items-center gap-2 px-4 py-3 text-xs font-bold whitespace-nowrap border-b-2 transition-all cursor-pointer ${
-                  activeTab === 'ai'
-                    ? 'border-[#ff6b00] text-[#ff8800] bg-[#171722]'
-                    : 'border-transparent text-gray-400 hover:text-[#ffaa40]'
-                }`}
-              >
-                <Bot className="w-4 h-4 text-[#ff8800]" />
-                <span>Trader AI Mentor</span>
-              </button>
             </div>
 
             {/* Tab Contents */}
@@ -549,68 +483,6 @@ Aqui está uma resposta simulada para sua pergunta:
                       Salvar Minhas Anotações
                     </button>
                   </div>
-                </div>
-              )}
-
-              {/* Tab 5: Trader AI Assistant */}
-              {activeTab === 'ai' && (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 pb-3 border-b border-[#222230]">
-                    <div className="w-8 h-8 rounded-xl bg-[#ff6b00]/15 flex items-center justify-center text-[#ff8800]">
-                      <Bot className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-white">Trader Academic AI</h4>
-                      <p className="text-[10px] text-gray-400">Tire dúvidas sobre gerenciamento, indicadores e lógica operacional.</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
-                    {aiChat.map((msg, idx) => (
-                      <div
-                        key={idx}
-                        className={`flex gap-2.5 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                      >
-                        {msg.sender === 'ai' && (
-                          <div className="w-6 h-6 rounded-lg bg-[#ff6b00] flex items-center justify-center text-black shrink-0 mt-1">
-                            <Bot className="w-3.5 h-3.5" />
-                          </div>
-                        )}
-                        <div
-                          className={`p-3 rounded-2xl text-xs leading-relaxed max-w-[85%] ${
-                            msg.sender === 'user'
-                              ? 'bg-[#ff6b00] text-black font-medium rounded-tr-none'
-                              : 'bg-[#181825] text-gray-200 border border-[#2b2b3d] rounded-tl-none'
-                          }`}
-                        >
-                          {msg.text}
-                        </div>
-                      </div>
-                    ))}
-                    {isAiLoading && (
-                      <div className="flex items-center gap-2 text-xs text-gray-400 italic">
-                        <div className="w-2 h-2 rounded-full bg-[#ff6b00] animate-bounce"></div>
-                        <span>Trader AI analisando sua dúvida...</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <form onSubmit={handleSendAi} className="flex gap-2 pt-2 border-t border-[#222230]">
-                    <input
-                      type="text"
-                      value={aiQuestion}
-                      onChange={(e) => setAiQuestion(e.target.value)}
-                      placeholder="Ex: Como calcular o stop técnico no Mini-Índice?"
-                      className="flex-1 px-3 py-2 rounded-xl bg-[#161622] border border-[#272738] text-white text-xs focus:outline-none focus:border-[#ff6b00]"
-                    />
-                    <button
-                      type="submit"
-                      disabled={isAiLoading}
-                      className="px-4 py-2 rounded-xl bg-[#ff6b00] text-black font-bold text-xs hover:bg-[#ff8800] transition-colors cursor-pointer"
-                    >
-                      Enviar
-                    </button>
-                  </form>
                 </div>
               )}
 
