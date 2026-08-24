@@ -663,3 +663,22 @@ DROP POLICY IF EXISTS "Withdrawal requests full access" ON public.withdrawal_req
 CREATE POLICY "Withdrawal requests full access"
   ON public.withdrawal_requests FOR ALL USING (true) WITH CHECK (true);
 
+-- ------------------------------------------
+-- 13. STORAGE BUCKET CONFIGURATION (Copy & paste in Supabase SQL Editor)
+-- ------------------------------------------
+-- 1. Criar o bucket público 'materials' se ele não existir
+-- INSERT INTO storage.buckets (id, name, public)
+-- VALUES ('materials', 'materials', true)
+-- ON CONFLICT (id) DO NOTHING;
+--
+-- 2. Habilitar upload público para o bucket 'materials'
+-- CREATE POLICY "Permitir upload para qualquer pessoa"
+-- ON storage.objects FOR INSERT
+-- WITH CHECK (bucket_id = 'materials');
+--
+-- 3. Habilitar leitura pública para o bucket 'materials'
+-- CREATE POLICY "Permitir leitura pública"
+-- ON storage.objects FOR SELECT
+-- USING (bucket_id = 'materials');
+
+
