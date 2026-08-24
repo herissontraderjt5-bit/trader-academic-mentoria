@@ -24,6 +24,15 @@ import { Module, Lesson, User, PlatformSettings } from '../types';
 import { extractYouTubeId, formatDuration } from '../utils/youtube';
 import { storageService } from '../services/storage';
 
+const ensureExternalLink = (url: string) => {
+  if (!url || url === '#') return '#';
+  const trimmed = url.trim();
+  if (/^(https?:)?\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+  return `https://${trimmed}`;
+};
+
 interface VideoPlayerViewProps {
   currentModule: Module;
   currentLesson: Lesson;
@@ -369,7 +378,7 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
                         </div>
 
                         <a
-                          href={mat.url}
+                          href={ensureExternalLink(mat.url)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#222233] hover:bg-[#ff6b00] text-gray-200 hover:text-black font-bold text-xs transition-colors"
