@@ -26,9 +26,17 @@ export const ModuleCard: React.FC<ModuleCardProps> = ({
 
   return (
     <div
-      onClick={() => onSelectModule(module)}
+      onClick={() => {
+        if (module.isComingSoon) {
+          alert('Este módulo de mentoria está sendo preparado e estará disponível em breve! Fique atento.');
+          return;
+        }
+        onSelectModule(module);
+      }}
       className={`group relative rounded-xl overflow-hidden cursor-pointer bg-zinc-900 border-2 transition-all duration-300 flex flex-col ${
-        hasAccess 
+        module.isComingSoon
+          ? 'border-transparent opacity-60 hover:opacity-85'
+          : hasAccess 
           ? 'border-transparent hover:border-orange-500 hover:shadow-[0_15px_30px_-5px_rgba(234,88,12,0.3)] hover:-translate-y-1.5'
           : 'border-white/5 opacity-75 hover:opacity-100 hover:border-zinc-700'
       }`}
@@ -69,7 +77,12 @@ export const ModuleCard: React.FC<ModuleCardProps> = ({
           )}
 
           {/* Locked or Tier Badge */}
-          {!hasAccess ? (
+          {module.isComingSoon ? (
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-800/90 border border-zinc-500/50 text-zinc-300 text-[10px] font-bold">
+              <Clock className="w-3 h-3 text-[#ff6b00]" />
+              <span>Em Breve</span>
+            </div>
+          ) : !hasAccess ? (
             <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-red-950/90 border border-red-500/50 text-red-300 text-[10px] font-bold">
               <Lock className="w-3 h-3" />
               <span>{module.requiredTier}</span>
@@ -84,7 +97,15 @@ export const ModuleCard: React.FC<ModuleCardProps> = ({
 
         {/* Hover Center Play / Lock Button */}
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
-          {hasAccess ? (
+          {module.isComingSoon ? (
+            <div className="p-3 rounded-xl bg-black/95 border border-[#ff6b00]/40 text-center text-xs text-orange-200 shadow-xl">
+              <Clock className="w-5 h-5 mx-auto mb-1 text-[#ff6b00] animate-pulse" />
+              <p className="font-bold">Lançamento em Breve</p>
+              <p className="text-[10px] text-zinc-400">
+                Conteúdo sendo preparado
+              </p>
+            </div>
+          ) : hasAccess ? (
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -132,7 +153,11 @@ export const ModuleCard: React.FC<ModuleCardProps> = ({
         </p>
 
         {/* Progress bar inside card */}
-        {hasAccess && (
+        {module.isComingSoon ? (
+          <div className="mt-auto py-1.5 px-2 rounded-lg bg-zinc-800/40 border border-zinc-700/30 text-[10px] text-zinc-400 font-bold text-center uppercase tracking-wider font-mono">
+            Breve Lançamento
+          </div>
+        ) : hasAccess ? (
           <div className="mt-auto">
             <div className="flex items-center justify-between text-[10px] text-zinc-400 mb-1 font-mono">
               <span>{completed} de {total} aulas</span>
@@ -147,9 +172,7 @@ export const ModuleCard: React.FC<ModuleCardProps> = ({
               ></div>
             </div>
           </div>
-        )}
-
-        {!hasAccess && (
+        ) : (
           <div className="mt-auto py-1 px-2 rounded-lg bg-red-950/40 border border-red-500/20 text-[11px] text-red-300 font-semibold text-center">
             Bloqueado no seu plano atual
           </div>

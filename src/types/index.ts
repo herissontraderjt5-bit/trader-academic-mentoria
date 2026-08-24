@@ -90,6 +90,7 @@ export interface Module {
   badgeText?: string;
   isNew?: boolean;
   isLiveModule?: boolean;
+  isComingSoon?: boolean;
   lessons: Lesson[];
 }
 

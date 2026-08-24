@@ -392,6 +392,7 @@ export const supabaseService = {
           price: m.price ? Number(m.price) : undefined,
           isNew: m.is_new,
           isLiveModule: m.is_live_module,
+          isComingSoon: m.is_coming_soon,
           lessons: moduleLessons,
         };
       });
@@ -427,6 +428,7 @@ export const supabaseService = {
           price: m.price ? Number(m.price) : null,
           is_new: m.isNew,
           is_live_module: m.isLiveModule,
+          is_coming_soon: m.isComingSoon,
         });
 
         const { data: existingLessons } = await supabase.from('lessons').select('id').eq('module_id', m.id);

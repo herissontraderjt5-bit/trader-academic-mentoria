@@ -116,6 +116,7 @@ export const AdminModules: React.FC<AdminModulesProps> = ({
     requiredTier: Tier;
     badgeText: string;
     price: number | '';
+    isComingSoon: boolean;
   }>({
     title: '',
     subtitle: '',
@@ -125,6 +126,7 @@ export const AdminModules: React.FC<AdminModulesProps> = ({
     requiredTier: 'VIP',
     badgeText: '',
     price: '',
+    isComingSoon: false,
   });
 
   // Form states for Lesson
@@ -210,6 +212,7 @@ export const AdminModules: React.FC<AdminModulesProps> = ({
         requiredTier: mod.requiredTier,
         badgeText: mod.badgeText || '',
         price: mod.price || '',
+        isComingSoon: mod.isComingSoon || false,
       });
     } else {
       setEditingModule(null);
@@ -222,6 +225,7 @@ export const AdminModules: React.FC<AdminModulesProps> = ({
         requiredTier: 'Starter' as Tier,
         badgeText: 'NOVO',
         price: '',
+        isComingSoon: false,
       });
     }
     setIsModuleModalOpen(true);
@@ -245,6 +249,7 @@ export const AdminModules: React.FC<AdminModulesProps> = ({
               requiredTier: moduleForm.requiredTier,
               badgeText: moduleForm.badgeText,
               price: moduleForm.price === '' ? undefined : Number(moduleForm.price),
+              isComingSoon: moduleForm.isComingSoon,
             }
           : m
       );
@@ -261,6 +266,7 @@ export const AdminModules: React.FC<AdminModulesProps> = ({
         requiredTier: moduleForm.requiredTier,
         badgeText: moduleForm.badgeText,
         price: moduleForm.price === '' ? undefined : Number(moduleForm.price),
+        isComingSoon: moduleForm.isComingSoon,
         lessons: [],
       };
       onUpdateModules([...modules, newMod]);
@@ -903,6 +909,24 @@ export const AdminModules: React.FC<AdminModulesProps> = ({
                       </button>
                     ))}
                   </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 p-4 rounded-2xl bg-[#161622] border border-[#272738] hover:border-orange-500/20 transition-all">
+                <input
+                  type="checkbox"
+                  id="isComingSoon"
+                  checked={moduleForm.isComingSoon}
+                  onChange={(e) => setModuleForm({ ...moduleForm, isComingSoon: e.target.checked })}
+                  className="w-4 h-4 rounded border-zinc-700 bg-zinc-800 text-[#ff6b00] focus:ring-[#ff6b00] accent-[#ff6b00] cursor-pointer"
+                />
+                <div>
+                  <label htmlFor="isComingSoon" className="text-xs font-bold text-white cursor-pointer select-none flex items-center gap-1.5">
+                    Módulo em Breve (Breve Lançamento)
+                  </label>
+                  <p className="text-[10px] text-zinc-400 mt-0.5">
+                    Marque esta opção se o conteúdo ainda não foi liberado. Isso exibirá uma etiqueta de "Em Breve" na área de membros e evitará o acesso antecipado às aulas.
+                  </p>
                 </div>
               </div>
 
