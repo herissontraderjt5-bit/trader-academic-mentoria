@@ -150,6 +150,53 @@ export const AdminModules: React.FC<AdminModulesProps> = ({
     materialType: 'pdf',
   });
 
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleMaterialFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 15 * 1024 * 1024) {
+      alert('O tamanho do arquivo excede o limite de 15MB.');
+      return;
+    }
+
+    setIsUploadingFile(true);
+    try {
+      if (!supabaseService.isConfigured()) {
+        throw new Error('Supabase não está configurado. Por favor, adicione as credenciais do Supabase no arquivo .env.');
+      }
+      
+      const fileUrl = await supabaseService.uploadMaterialFile(file);
+      
+      const ext = file.name.split('.').pop()?.toLowerCase() || '';
+      let detectedType: 'pdf' | 'spreadsheet' | 'indicator' | 'link' = 'pdf';
+      if (['xlsx', 'xls', 'csv', 'ods'].includes(ext)) {
+        detectedType = 'spreadsheet';
+      } else if (['nel', 'txt'].includes(ext)) {
+        detectedType = 'indicator';
+      } else if (['zip', 'rar', 'pdf'].includes(ext)) {
+        detectedType = 'pdf';
+      }
+
+      setLessonForm(prev => ({
+        ...prev,
+        materialTitle: file.name,
+        materialUrl: fileUrl,
+        materialType: detectedType
+      }));
+
+      alert('Arquivo enviado com sucesso!');
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Erro ao realizar upload do arquivo.');
+    } finally {
+      setIsUploadingFile(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   // Open Create / Edit Module Modal
   const handleOpenModuleModal = (mod?: Module) => {
     if (mod) {
@@ -1016,13 +1063,42 @@ export const AdminModules: React.FC<AdminModulesProps> = ({
                   <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase font-mono">
                     URL / Link de Download do Arquivo
                   </label>
-                  <input
-                    type="text"
-                    value={lessonForm.materialUrl}
-                    onChange={(e) => setLessonForm({ ...lessonForm, materialUrl: e.target.value })}
-                    placeholder="Cole aqui a URL de download (Google Drive, Dropbox, ou link externo)"
-                    className="w-full p-2.5 rounded-xl bg-[#111118] border border-[#272738] text-white text-xs focus:outline-none focus:border-[#ff6b00]"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={lessonForm.materialUrl}
+                      onChange={(e) => setLessonForm({ ...lessonForm, materialUrl: e.target.value })}
+                      placeholder="Cole o link ou clique em 'Enviar Arquivo' para carregar do seu dispositivo..."
+                      className="flex-1 p-2.5 rounded-xl bg-[#111118] border border-[#272738] text-white text-xs focus:outline-none focus:border-[#ff6b00]"
+                    />
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleMaterialFileUpload}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      disabled={isUploadingFile}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-4 py-2.5 rounded-xl bg-[#ff6b00] hover:bg-[#ff8800] text-black font-extrabold text-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors uppercase tracking-wider shrink-0 animate-in fade-in"
+                    >
+                      {isUploadingFile ? (
+                        <>
+                          <div className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
+                          <span>Enviando...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>Enviar Arquivo</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-zinc-500 mt-1 font-mono">
+                    Opcional: Envie PDFs, planilhas ou indicadores diretamente para o Storage do seu Supabase.
+                  </p>
                 </div>
               </div>
 

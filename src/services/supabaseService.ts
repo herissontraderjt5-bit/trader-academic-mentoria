@@ -787,5 +787,35 @@ export const supabaseService = {
       console.error('Error deleting withdrawal request:', e);
       return false;
     }
+  },
+
+  async uploadMaterialFile(file: File): Promise<string> {
+    if (!supabase) throw new Error('Supabase não está configurado.');
+
+    const fileExt = file.name.split('.').pop() || '';
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 10)}.${fileExt}`;
+    const filePath = `lessons/${fileName}`;
+
+    const { data, error } = await supabase.storage
+      .from('materials')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: true,
+      });
+
+    if (error) {
+      if (error.message.toLowerCase().includes('bucket') || error.message.toLowerCase().includes('does not exist') || error.message.toLowerCase().includes('not found')) {
+        throw new Error(
+          'O bucket de armazenamento "materials" não foi encontrado no seu Supabase. Por favor, crie um bucket público chamado "materials" no painel do seu Supabase (seção Storage > New Bucket > selecione "Public") para permitir uploads.'
+        );
+      }
+      throw error;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from('materials')
+      .getPublicUrl(filePath);
+
+    return urlData.publicUrl;
   }
 };
