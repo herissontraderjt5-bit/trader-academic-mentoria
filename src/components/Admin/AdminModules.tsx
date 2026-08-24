@@ -984,6 +984,9 @@ export const AdminModules: React.FC<AdminModulesProps> = ({
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="sm:col-span-2">
+                    <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase font-mono">
+                      Nome do Material
+                    </label>
                     <input
                       type="text"
                       value={lessonForm.materialTitle}
@@ -993,6 +996,9 @@ export const AdminModules: React.FC<AdminModulesProps> = ({
                     />
                   </div>
                   <div>
+                    <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase font-mono">
+                      Tipo de Arquivo
+                    </label>
                     <select
                       value={lessonForm.materialType}
                       onChange={(e) => setLessonForm({ ...lessonForm, materialType: e.target.value as any })}
@@ -1004,6 +1010,19 @@ export const AdminModules: React.FC<AdminModulesProps> = ({
                       <option value="link">Link Externo</option>
                     </select>
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase font-mono">
+                    URL / Link de Download do Arquivo
+                  </label>
+                  <input
+                    type="text"
+                    value={lessonForm.materialUrl}
+                    onChange={(e) => setLessonForm({ ...lessonForm, materialUrl: e.target.value })}
+                    placeholder="Cole aqui a URL de download (Google Drive, Dropbox, ou link externo)"
+                    className="w-full p-2.5 rounded-xl bg-[#111118] border border-[#272738] text-white text-xs focus:outline-none focus:border-[#ff6b00]"
+                  />
                 </div>
               </div>
 
