@@ -428,6 +428,29 @@ export default function App() {
     handleUpdateUsers(updatedUsers);
   };
 
+  const handleSaveNote = (lessonId: string, noteText: string) => {
+    storageService.saveLessonNote(currentUser.id, lessonId, noteText);
+    const updatedUsers = users.map(u => {
+      if (u.id === currentUser.id) {
+        return {
+          ...u,
+          notes: {
+            ...u.notes,
+            [lessonId]: noteText
+          }
+        };
+      }
+      return u;
+    });
+    setUsers(updatedUsers);
+  };
+
+  const handleAddComment = (moduleId: string, lessonId: string, text: string) => {
+    storageService.addComment(moduleId, lessonId, text, currentUser);
+    const updatedModules = storageService.getModules();
+    handleUpdateModules(updatedModules);
+  };
+
   // Quick Resume from banner
   const handleResumeWatching = () => {
     if (currentUser.progress.lastWatchedModuleId && currentUser.progress.lastWatchedLessonId) {
@@ -529,6 +552,8 @@ export default function App() {
           onBackToHome={() => setActiveView('home')}
           onSelectLesson={handleSelectLesson}
           onToggleComplete={handleToggleLessonComplete}
+          onSaveNote={handleSaveNote}
+          onAddComment={handleAddComment}
         />
       )}
 

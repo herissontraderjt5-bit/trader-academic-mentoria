@@ -24,6 +24,7 @@ import {
 import { Module, Lesson, User, PlatformSettings } from '../types';
 import { extractYouTubeId, formatDuration } from '../utils/youtube';
 import { storageService } from '../services/storage';
+import { geminiService } from '../services/geminiService';
 
 interface VideoPlayerViewProps {
   currentModule: Module;
@@ -34,6 +35,8 @@ interface VideoPlayerViewProps {
   onBackToHome: () => void;
   onSelectLesson: (moduleId: string, lessonId: string) => void;
   onToggleComplete: (lessonId: string) => void;
+  onSaveNote: (lessonId: string, noteText: string) => void;
+  onAddComment: (moduleId: string, lessonId: string, text: string) => void;
 }
 
 export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
@@ -45,6 +48,8 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
   onBackToHome,
   onSelectLesson,
   onToggleComplete,
+  onSaveNote,
+  onAddComment,
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'materials' | 'comments' | 'notes' | 'ai'>('overview');
   const [commentInput, setCommentInput] = useState('');
@@ -92,7 +97,7 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
 
   // Save private note
   const handleSaveNote = () => {
-    storageService.saveLessonNote(currentUser.id, currentLesson.id, userNote);
+    onSaveNote(currentLesson.id, userNote);
     setIsNoteSaved(true);
     setTimeout(() => setIsNoteSaved(false), 2500);
   };
@@ -102,12 +107,12 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
     e.preventDefault();
     if (!commentInput.trim()) return;
 
-    storageService.addComment(currentModule.id, currentLesson.id, commentInput.trim(), currentUser);
+    onAddComment(currentModule.id, currentLesson.id, commentInput.trim());
     setCommentInput('');
   };
 
   // Handle AI Mentor question
-  const handleSendAi = (e: React.FormEvent) => {
+  const handleSendAi = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!aiQuestion.trim()) return;
 
@@ -116,22 +121,38 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
     setAiQuestion('');
     setIsAiLoading(true);
 
-    setTimeout(() => {
+    try {
       let response = '';
-      const qLower = q.toLowerCase();
-      if (qLower.includes('stop') || qLower.includes('risco')) {
-        response = `Excelente pergunta! Na metodologia Trader Academic, seu Stop Loss deve ser estritamente técnico (atrás do candle de referência ou VWAP) e nunca exceder 1.5% a 2% do seu capital total por operação. Sempre busque uma relação Risco:Retorno de pelo menos 2:1.`;
-      } else if (qLower.includes('setup') || qLower.includes('entrada') || qLower.includes('gatilho')) {
-        response = `Para o setup ensinado nesta aula ("${currentLesson.title}"), aguarde sempre a confirmação do fechamento do candle no gráfico de 5 ou 15 minutos, validando o aumento de volume financeiro antes de apertar a boleta.`;
-      } else if (qLower.includes('índice') || qLower.includes('win') || qLower.includes('dólar') || qLower.includes('wdo')) {
-        response = `No Mini-Índice (WIN), cada ponto vale R$ 0,20 por contrato. No Mini-Dólar (WDO), cada ponto vale R$ 10,00 por contrato. Certifique-se de ajustar o número de contratos na sua planilha de gestão antes de entrar!`;
+      if (geminiService.isConfigured()) {
+        response = await geminiService.askMentor(q, currentLesson.title);
       } else {
-        response = `Com base no conteúdo de "${currentLesson.title}", a chave para a consistência é a repetição disciplinada do plano. Pratique pelo menos 20 operações desse padrão no simulador antes de operar na conta real!`;
+        // Fallback warning + mock response if API Key is not set
+        response = `⚠️ **[Trader AI em Modo de Demonstração]** Para respostas reais e personalizadas, configure a sua chave de API no arquivo \`.env\` ou \`.env.local\` com a variável \`GEMINI_API_KEY\`.
+        
+Aqui está uma resposta simulada para sua pergunta:
+`;
+        const qLower = q.toLowerCase();
+        if (qLower.includes('stop') || qLower.includes('risco')) {
+          response += `Na metodologia Trader Academic, seu Stop Loss deve ser estritamente técnico (atrás do candle de referência ou VWAP) e nunca exceder 1.5% a 2% do seu capital total por operação. Sempre busque uma relação Risco:Retorno de pelo menos 2:1.`;
+        } else if (qLower.includes('setup') || qLower.includes('entrada') || qLower.includes('gatilho')) {
+          response += `Para o setup ensinado nesta aula ("${currentLesson.title}"), aguarde sempre a confirmação do fechamento do candle no gráfico de 5 ou 15 minutos, validando o aumento de volume financeiro antes de apertar a boleta.`;
+        } else if (qLower.includes('índice') || qLower.includes('win') || qLower.includes('dólar') || qLower.includes('wdo')) {
+          response += `No Mini-Índice (WIN), cada ponto vale R$ 0,20 por contrato. No Mini-Dólar (WDO), cada ponto vale R$ 10,00 por contrato. Certifique-se de ajustar o número de contratos na sua planilha de gestão antes de entrar!`;
+        } else {
+          response += `Com base no conteúdo de "${currentLesson.title}", a chave para a consistência é a repetição disciplinada do plano. Pratique pelo menos 20 operações desse padrão no simulador antes de operar na conta real!`;
+        }
       }
 
       setAiChat(prev => [...prev, { sender: 'ai', text: response }]);
+    } catch (err: any) {
+      console.error(err);
+      setAiChat(prev => [...prev, { 
+        sender: 'ai', 
+        text: `Erro ao processar a pergunta: ${err.message || 'Erro de rede ou chave de API inválida.'}` 
+      }]);
+    } finally {
       setIsAiLoading(false);
-    }, 900);
+    }
   };
 
   const youtubeVideoId = extractYouTubeId(currentLesson.youtubeUrl);
@@ -399,12 +420,16 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
                       >
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-xl bg-[#ff6b00]/15 border border-[#ff6b00]/30 flex items-center justify-center text-[#ff8800]">
-                            <Download className="w-5 h-5" />
+                            {mat.type === 'link' ? (
+                              <ExternalLink className="w-5 h-5" />
+                            ) : (
+                              <Download className="w-5 h-5" />
+                            )}
                           </div>
                           <div>
                             <h4 className="text-sm font-bold text-white">{mat.title}</h4>
                             <p className="text-xs text-gray-400 uppercase font-mono">
-                              {mat.type} {mat.size ? `• ${mat.size}` : ''}
+                              {mat.type === 'link' ? 'Link Externo' : mat.type} {mat.size ? `• ${mat.size}` : ''}
                             </p>
                           </div>
                         </div>
@@ -415,7 +440,7 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
                           rel="noopener noreferrer"
                           className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#222233] hover:bg-[#ff6b00] text-gray-200 hover:text-black font-bold text-xs transition-colors"
                         >
-                          <span>Baixar</span>
+                          <span>{mat.type === 'link' ? 'Acessar' : 'Baixar'}</span>
                           <ExternalLink className="w-3.5 h-3.5" />
                         </a>
                       </div>
