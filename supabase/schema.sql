@@ -671,14 +671,15 @@ CREATE POLICY "Withdrawal requests full access"
 -- VALUES ('materials', 'materials', true)
 -- ON CONFLICT (id) DO NOTHING;
 --
--- 2. Habilitar upload público para o bucket 'materials'
--- CREATE POLICY "Permitir upload para qualquer pessoa"
--- ON storage.objects FOR INSERT
--- WITH CHECK (bucket_id = 'materials');
+-- 2. Limpar políticas antigas para o bucket 'materials'
+-- DROP POLICY IF EXISTS "Permitir upload para qualquer pessoa" ON storage.objects;
+-- DROP POLICY IF EXISTS "Permitir leitura pública" ON storage.objects;
 --
--- 3. Habilitar leitura pública para o bucket 'materials'
--- CREATE POLICY "Permitir leitura pública"
--- ON storage.objects FOR SELECT
--- USING (bucket_id = 'materials');
+-- 3. Habilitar controle total (SELECT, INSERT, UPDATE, DELETE) para o bucket 'materials'
+-- CREATE POLICY "Acesso total ao bucket materials"
+-- ON storage.objects FOR ALL
+-- USING (bucket_id = 'materials')
+-- WITH CHECK (bucket_id = 'materials');
+
 
 
