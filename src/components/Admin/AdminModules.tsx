@@ -17,7 +17,8 @@ import {
   Upload,
   Camera,
   RotateCcw,
-  Undo2
+  Undo2,
+  GripVertical
 } from 'lucide-react';
 import { Module, Lesson, Tier, Material } from '../../types';
 import { extractYouTubeId } from '../../utils/youtube';
@@ -54,6 +55,7 @@ export const AdminModules: React.FC<AdminModulesProps> = ({
   const [isCompressingCover, setIsCompressingCover] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const coverFileInputRef = useRef<HTMLInputElement>(null);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   const refreshFromSupabase = async () => {
     setIsRefreshing(true);
@@ -337,6 +339,71 @@ export const AdminModules: React.FC<AdminModulesProps> = ({
     }
   };
 
+  // Drag and Drop handlers
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    if (!selectedModuleForLessons || draggedIndex === null || draggedIndex === targetIndex) return;
+
+    const lessons = [...selectedModuleForLessons.lessons];
+    const draggedItem = lessons[draggedIndex];
+    
+    // Remove the item from its original position
+    lessons.splice(draggedIndex, 1);
+    // Insert the item at the target position
+    lessons.splice(targetIndex, 0, draggedItem);
+
+    // Re-adjust order property for each lesson
+    const updatedLessons = lessons.map((l, idx) => ({
+      ...l,
+      order: idx + 1,
+    }));
+
+    const updatedModules = modules.map(m => 
+      m.id === selectedModuleForLessons.id ? { ...m, lessons: updatedLessons } : m
+    );
+
+    onUpdateModules(updatedModules);
+    setSelectedModuleForLessons({ ...selectedModuleForLessons, lessons: updatedLessons });
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+  };
+
+  // Manual sorting handler (Up/Down buttons)
+  const handleMoveLesson = (index: number, direction: 'up' | 'down') => {
+    if (!selectedModuleForLessons) return;
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= selectedModuleForLessons.lessons.length) return;
+
+    const lessons = [...selectedModuleForLessons.lessons];
+    const item = lessons[index];
+    lessons.splice(index, 1);
+    lessons.splice(targetIndex, 0, item);
+
+    const updatedLessons = lessons.map((l, idx) => ({
+      ...l,
+      order: idx + 1,
+    }));
+
+    const updatedModules = modules.map(m => 
+      m.id === selectedModuleForLessons.id ? { ...m, lessons: updatedLessons } : m
+    );
+
+    onUpdateModules(updatedModules);
+    setSelectedModuleForLessons({ ...selectedModuleForLessons, lessons: updatedLessons });
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-200">
       
@@ -522,28 +589,59 @@ export const AdminModules: React.FC<AdminModulesProps> = ({
                 selectedModuleForLessons.lessons.map((les, index) => (
                   <div
                     key={les.id}
-                    className="p-4 rounded-2xl bg-[#161622] border border-[#272738] flex items-center justify-between gap-4 hover:border-[#ff6b00]/40 transition-colors"
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, index)}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDrop={(e) => handleDrop(e, index)}
+                    onDragEnd={handleDragEnd}
+                    className={`p-4 rounded-2xl bg-[#161622] border border-[#272738] flex items-center justify-between gap-4 hover:border-[#ff6b00]/40 transition-all cursor-move select-none ${
+                      draggedIndex === index ? 'opacity-40 border-dashed border-[#ff6b00]' : ''
+                    }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-xl bg-[#ff6b00]/15 flex items-center justify-center text-[#ff8800] font-bold text-xs">
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <GripVertical className="w-4 h-4 text-gray-500 cursor-grab active:cursor-grabbing shrink-0" />
+                      <div className="w-8 h-8 rounded-xl bg-[#ff6b00]/15 flex items-center justify-center text-[#ff8800] font-bold text-xs shrink-0">
                         {index + 1}
                       </div>
-                      <div>
-                        <h4 className="text-sm font-bold text-white">{les.title}</h4>
+                      <div className="overflow-hidden">
+                        <h4 className="text-sm font-bold text-white truncate">{les.title}</h4>
                         <div className="flex items-center gap-3 text-xs text-gray-400 mt-0.5">
-                          <span className="flex items-center gap-1 font-mono">
+                          <span className="flex items-center gap-1 font-mono shrink-0">
                             <Clock className="w-3 h-3 text-[#ff6b00]" />
                             {les.durationMinutes} min
                           </span>
-                          <span className="text-gray-500 truncate max-w-xs font-mono text-[11px]">
+                          <span className="text-gray-500 truncate max-w-xs font-mono text-[11px] hidden sm:inline">
                             {les.youtubeUrl}
                           </span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 shrink-0">
                       <button
+                        type="button"
+                        disabled={index === 0}
+                        onClick={() => handleMoveLesson(index, 'up')}
+                        className={`p-2 rounded-xl bg-[#20202e] hover:bg-[#252538] text-gray-400 hover:text-white transition-colors ${
+                          index === 0 ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
+                        }`}
+                        title="Mover para cima"
+                      >
+                        <ArrowUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={index === selectedModuleForLessons.lessons.length - 1}
+                        onClick={() => handleMoveLesson(index, 'down')}
+                        className={`p-2 rounded-xl bg-[#20202e] hover:bg-[#252538] text-gray-400 hover:text-white transition-colors ${
+                          index === selectedModuleForLessons.lessons.length - 1 ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
+                        }`}
+                        title="Mover para baixo"
+                      >
+                        <ArrowDown className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => handleOpenLessonModal(les)}
                         className="p-2 rounded-xl bg-[#20202e] hover:bg-[#ff6b00] text-gray-300 hover:text-black transition-colors cursor-pointer"
                         title="Editar Aula"
@@ -551,6 +649,7 @@ export const AdminModules: React.FC<AdminModulesProps> = ({
                         <Edit className="w-3.5 h-3.5" />
                       </button>
                       <button
+                        type="button"
                         onClick={() => handleDeleteLesson(les.id)}
                         className="p-2 rounded-xl bg-red-950/40 hover:bg-red-600 text-red-400 hover:text-white transition-colors cursor-pointer"
                         title="Excluir Aula"
