@@ -214,15 +214,16 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
     second: "2-digit",
   });
 
-  if (!analysis || !isVisible || isAnalyzing) return null;
-
   // Resolve direction
   const resolvedDirection = useMemo(() => {
     if (resolvedDir !== "NEUTRAL") return resolvedDir;
+    if (!analysis) return "NEUTRAL";
     return analysis.direction === "NEUTRAL"
       ? ((indicators?.rsi || 50) >= 50 ? "CALL" : "PUT")
       : analysis.direction;
-  }, [resolvedDir, analysis.direction, indicators]);
+  }, [resolvedDir, analysis, indicators]);
+
+  if (!analysis || !isVisible || isAnalyzing) return null;
 
   const isCall = resolvedDirection === "CALL";
   const isPut = resolvedDirection === "PUT";
