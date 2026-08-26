@@ -23,8 +23,9 @@ import {
   Radio,
   RefreshCw,
 } from "lucide-react";
-import { AiAnalysisResult, TechnicalIndicators, Candle } from "../../../types";
+import { AiAnalysisResult, TechnicalIndicators, Candle, TradeRecord } from "../../../types";
 import { soundManager } from "../utils/soundEffects";
+import confetti from "canvas-confetti";
 
 interface CenterSignalOverlayProps {
   analysis: AiAnalysisResult | null;
@@ -35,6 +36,8 @@ interface CenterSignalOverlayProps {
   isAnalyzing: boolean;
   onClose?: () => void;
   onReScan?: () => void;
+  onClearAnalysis?: () => void;
+  trades?: TradeRecord[];
 }
 
 type SignalStatus = "PRE_WAITING" | "AUDITING_10S" | "CONFIRMED" | "REJECTED";
@@ -48,6 +51,8 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
   isAnalyzing,
   onClose,
   onReScan,
+  onClearAnalysis,
+  trades = [],
 }) => {
   const [isVisible, setIsVisible] = useState<boolean>(true);
   const [isMinimized, setIsMinimized] = useState<boolean>(false);
@@ -59,6 +64,9 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
   const [resolvedDir, setResolvedDir] = useState<"CALL" | "PUT" | "NEUTRAL">("NEUTRAL");
   const [rejectionReason, setRejectionReason] = useState<string>("");
   const lastDecisionCandleStartRef = useRef<number | null>(null);
+
+  const [predictionResult, setPredictionResult] = useState<"WIN" | "LOSS" | "DRAW" | null>(null);
+  const [hasResolvedOutcome, setHasResolvedOutcome] = useState<boolean>(false);
 
   // Thresholds for confirmation and decision
   const { confirmationThreshold, decisionThreshold, candleLengthMs } = useMemo(() => {
@@ -92,6 +100,55 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
     return Math.floor(ms / candleLengthMs) * candleLengthMs;
   }, [currentTime, candleLengthMs]);
 
+  // Dates for start of next candle (entry) and end (expiry)
+  const entryDate = useMemo(() => {
+    return new Date(currentCandleStart + candleLengthMs);
+  }, [currentCandleStart, candleLengthMs]);
+
+  const expiryDate = useMemo(() => {
+    return new Date(currentCandleStart + 2 * candleLengthMs);
+  }, [currentCandleStart, candleLengthMs]);
+
+  const entryTimeStr = entryDate.toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+
+  const expiryTimeStr = expiryDate.toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+
+  const currentTimeStr = currentTime.toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+
+  // Resolve direction
+  const resolvedDirection = useMemo(() => {
+    if (resolvedDir !== "NEUTRAL") return resolvedDir;
+    if (!analysis) return "NEUTRAL";
+    return analysis.direction === "NEUTRAL"
+      ? ((indicators?.rsi || 50) >= 50 ? "CALL" : "PUT")
+      : analysis.direction;
+  }, [resolvedDir, analysis, indicators]);
+
+  const isCall = resolvedDirection === "CALL";
+  const isPut = resolvedDirection === "PUT";
+
+  // Map countdown and statuses to match render expectations
+  const secondsUntilEntry = Math.max(0, Math.ceil(secondsRemaining));
+
+  const signalStatus: SignalStatus = useMemo(() => {
+    if (decision === "CONFIRMED") return "CONFIRMED";
+    if (decision === "REJECTED") return "REJECTED";
+    if (secondsRemaining <= decisionThreshold) return "AUDITING_10S";
+    return "PRE_WAITING";
+  }, [decision, secondsRemaining, decisionThreshold]);
+
   // Live clock updating every 250ms for maximum real-time accuracy
   useEffect(() => {
     const timer = setInterval(() => {
@@ -110,6 +167,8 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
       setResolvedDir("NEUTRAL");
       setRejectionReason("");
       lastDecisionCandleStartRef.current = null;
+      setPredictionResult(null);
+      setHasResolvedOutcome(false);
     }
   }, [analysis, lastSignalTimestamp]);
 
@@ -118,6 +177,8 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
     setDecision("PENDING");
     setResolvedDir("NEUTRAL");
     setRejectionReason("");
+    setPredictionResult(null);
+    setHasResolvedOutcome(false);
   }, [currentCandleStart]);
 
   // Active Decision Engine when entering the decision window (no simulation!)
@@ -174,66 +235,68 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
     }
   }, [secondsRemaining, decisionThreshold, currentCandleStart, isAnalyzing, analysis, indicators, activeTicker, isVisible]);
 
-  // Auto-hide overlay 5 seconds after entry candle starts (secondsRemaining hits 0)
+  // Real-time prediction resolution when expiry is reached
   useEffect(() => {
-    if (secondsRemaining <= 0.5 && decision !== "PENDING" && isVisible) {
-      const hideTimer = setTimeout(() => {
-        setIsVisible(false);
-      }, 5000);
-      return () => clearTimeout(hideTimer);
+    if (!analysis || !isVisible || isAnalyzing || hasResolvedOutcome) return;
+
+    const expiryTime = expiryDate.getTime();
+    if (currentTime.getTime() >= expiryTime) {
+      const entryTimeSecs = entryDate.getTime() / 1000;
+      const candle = candles.find((c) => c.time === entryTimeSecs);
+
+      if (candle) {
+        setHasResolvedOutcome(true);
+        const openPrice = candle.open;
+        const closePrice = candle.close;
+
+        let outcome: "WIN" | "LOSS" | "DRAW" = "DRAW";
+        if (resolvedDirection === "CALL") {
+          if (closePrice > openPrice) outcome = "WIN";
+          else if (closePrice < openPrice) outcome = "LOSS";
+        } else if (resolvedDirection === "PUT") {
+          if (closePrice < openPrice) outcome = "WIN";
+          else if (closePrice > openPrice) outcome = "LOSS";
+        }
+
+        setPredictionResult(outcome);
+
+        // Play sounds and visual effects
+        if (outcome === "WIN") {
+          soundManager.playWin();
+          try {
+            confetti({
+              particleCount: 100,
+              spread: 70,
+              origin: { y: 0.6 }
+            });
+          } catch (e) {}
+        } else {
+          soundManager.playRejectAlert();
+        }
+
+        // Close and shutdown AI after 5 seconds
+        const timer = setTimeout(() => {
+          setIsVisible(false);
+          if (onClearAnalysis) onClearAnalysis();
+        }, 5000);
+
+        return () => clearTimeout(timer);
+      }
     }
-  }, [secondsRemaining, decision, isVisible]);
-
-  // Map countdown and statuses to match render expectations
-  const secondsUntilEntry = Math.max(0, Math.ceil(secondsRemaining));
-
-  const signalStatus: SignalStatus = useMemo(() => {
-    if (decision === "CONFIRMED") return "CONFIRMED";
-    if (decision === "REJECTED") return "REJECTED";
-    if (secondsRemaining <= decisionThreshold) return "AUDITING_10S";
-    return "PRE_WAITING";
-  }, [decision, secondsRemaining, decisionThreshold]);
-
-  // Dates for start of next candle (entry) and end (expiry)
-  const entryDate = useMemo(() => {
-    return new Date(currentCandleStart + candleLengthMs);
-  }, [currentCandleStart, candleLengthMs]);
-
-  const expiryDate = useMemo(() => {
-    return new Date(currentCandleStart + 2 * candleLengthMs);
-  }, [currentCandleStart, candleLengthMs]);
-
-  const entryTimeStr = entryDate.toLocaleTimeString("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-
-  const expiryTimeStr = expiryDate.toLocaleTimeString("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-
-  const currentTimeStr = currentTime.toLocaleTimeString("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-
-  // Resolve direction
-  const resolvedDirection = useMemo(() => {
-    if (resolvedDir !== "NEUTRAL") return resolvedDir;
-    if (!analysis) return "NEUTRAL";
-    return analysis.direction === "NEUTRAL"
-      ? ((indicators?.rsi || 50) >= 50 ? "CALL" : "PUT")
-      : analysis.direction;
-  }, [resolvedDir, analysis, indicators]);
+  }, [
+    currentTime,
+    expiryDate,
+    entryDate,
+    candles,
+    analysis,
+    isVisible,
+    isAnalyzing,
+    resolvedDirection,
+    hasResolvedOutcome,
+    onClearAnalysis,
+  ]);
 
   if (!analysis || !isVisible || isAnalyzing) return null;
-
-  const isCall = resolvedDirection === "CALL";
-  const isPut = resolvedDirection === "PUT";
 
   // Confluences
   const confluences = [
@@ -271,7 +334,15 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
       <div
         id="center-signal-hud-card"
         className={`pointer-events-auto transition-all duration-300 w-full max-w-lg bg-[#0C101A]/95 backdrop-blur-xl border-2 rounded-2xl shadow-[0_0_55px_rgba(0,0,0,0.85)] overflow-hidden select-none animate-in zoom-in-95 fade-in duration-300 ${
-          isRejected
+          predictionResult !== null
+            ? predictionResult === "WIN"
+              ? "border-emerald-500 shadow-[0_0_50px_rgba(16,185,129,0.6)]"
+              : predictionResult === "LOSS"
+              ? "border-rose-500 shadow-[0_0_50px_rgba(244,63,94,0.6)] animate-shake"
+              : "border-slate-500 shadow-[0_0_50px_rgba(148,163,184,0.4)]"
+            : currentTime.getTime() >= entryDate.getTime()
+            ? "border-amber-500 shadow-[0_0_50px_rgba(245,158,11,0.6)]"
+            : isRejected
             ? "border-rose-600 shadow-[0_0_50px_rgba(225,29,72,0.45)]"
             : isConfirmed
             ? isCall
@@ -283,7 +354,15 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         {/* Top Header Bar with Live Clock & Status Badge */}
         <div
           className={`px-4 py-2.5 flex items-center justify-between border-b ${
-            isRejected
+            predictionResult !== null
+              ? predictionResult === "WIN"
+                ? "bg-emerald-950/70 border-emerald-500/40"
+                : predictionResult === "LOSS"
+                ? "bg-rose-950/70 border-rose-500/40"
+                : "bg-slate-900 border-slate-700"
+              : currentTime.getTime() >= entryDate.getTime()
+              ? "bg-amber-950/70 border-amber-500/40"
+              : isRejected
               ? "bg-rose-950/70 border-rose-500/40"
               : isConfirmed
               ? isCall
@@ -295,7 +374,15 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
           <div className="flex items-center gap-2">
             <span
               className={`w-2.5 h-2.5 rounded-full animate-ping ${
-                isRejected
+                predictionResult !== null
+                  ? predictionResult === "WIN"
+                    ? "bg-emerald-400"
+                    : predictionResult === "LOSS"
+                    ? "bg-rose-400"
+                    : "bg-slate-400"
+                  : currentTime.getTime() >= entryDate.getTime()
+                  ? "bg-amber-400"
+                  : isRejected
                   ? "bg-rose-500"
                   : isConfirmed
                   ? isCall
@@ -305,7 +392,29 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
               }`}
             />
             <span className="text-xs font-mono font-black tracking-widest text-white uppercase flex items-center gap-1.5">
-              {isRejected ? (
+              {predictionResult !== null ? (
+                predictionResult === "WIN" ? (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                    VITÓRIA CONFIRMADA (WIN)
+                  </>
+                ) : predictionResult === "LOSS" ? (
+                  <>
+                    <Ban className="w-3.5 h-3.5 text-rose-400" />
+                    DERROTA REGISTRADA (LOSS)
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 text-slate-300" />
+                    EMPATE (DRAW)
+                  </>
+                )
+              ) : currentTime.getTime() >= entryDate.getTime() ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 text-amber-400 animate-spin" />
+                  AGUARDANDO RESULTADO...
+                </>
+              ) : isRejected ? (
                 <>
                   <Ban className="w-3.5 h-3.5 text-rose-400" />
                   ENTRADA REJEITADA PELA IA
@@ -332,14 +441,16 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
             </div>
 
             <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setIsMinimized(!isMinimized)}
-                className="p-1 rounded bg-[#141A26] hover:bg-[#1E2638] text-slate-300 hover:text-white transition-colors cursor-pointer border border-[#222E44]"
-                title={isMinimized ? "Expandir Sinal" : "Minimizar"}
-              >
-                {isMinimized ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
-              </button>
+              {predictionResult === null && currentTime.getTime() < entryDate.getTime() && (
+                <button
+                  type="button"
+                  onClick={() => setIsMinimized(!isMinimized)}
+                  className="p-1 rounded bg-[#141A26] hover:bg-[#1E2638] text-slate-300 hover:text-white transition-colors cursor-pointer border border-[#222E44]"
+                  title={isMinimized ? "Expandir Sinal" : "Minimizar"}
+                >
+                  {isMinimized ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => {
@@ -355,8 +466,100 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
           </div>
         </div>
 
-        {/* Minimized View */}
-        {isMinimized ? (
+        {/* Phase-based body rendering */}
+        {predictionResult !== null ? (
+          /* Render Result Screen */
+          <div className="p-6 text-center space-y-4 animate-in zoom-in-95 duration-300">
+            <div className={`w-20 h-20 rounded-full mx-auto flex items-center justify-center border-4 shadow-lg ${
+              predictionResult === "WIN"
+                ? "bg-emerald-500/20 border-emerald-500 text-emerald-400 shadow-[0_0_25px_rgba(16,185,129,0.5)]"
+                : predictionResult === "LOSS"
+                ? "bg-rose-500/20 border-rose-500 text-rose-400 shadow-[0_0_25px_rgba(244,63,94,0.5)] animate-shake"
+                : "bg-slate-700/20 border-slate-400 text-slate-300"
+            }`}>
+              {predictionResult === "WIN" ? (
+                <CheckCircle2 className="w-12 h-12 stroke-[3]" />
+              ) : predictionResult === "LOSS" ? (
+                <X className="w-12 h-12 stroke-[3]" />
+              ) : (
+                <AlertCircle className="w-12 h-12 stroke-[3]" />
+              )}
+            </div>
+            
+            <div className="space-y-1.5">
+              <h3 className={`text-3xl font-black tracking-wider uppercase ${
+                predictionResult === "WIN"
+                  ? "text-emerald-400"
+                  : predictionResult === "LOSS"
+                  ? "text-rose-400"
+                  : "text-slate-300"
+              }`}>
+                {predictionResult === "WIN" ? "VITÓRIA (WIN)" : predictionResult === "LOSS" ? "DERROTA (LOSS)" : "EMPATE (DRAW)"}
+              </h3>
+              <p className="text-xs text-slate-300 font-mono">
+                Par: <strong className="text-white">{activeTicker}</strong> &bull; Expiração {timeframe.toUpperCase()}
+              </p>
+            </div>
+
+            <div className="bg-[#090D15] p-3.5 rounded-xl border border-[#1E293B] max-w-sm mx-auto flex items-center justify-between text-xs font-mono">
+              <div className="text-left">
+                <span className="text-slate-400 block text-[10px] uppercase">Gatilho / Direção</span>
+                <strong className={isCall ? "text-emerald-400" : "text-rose-400"}>
+                  {isCall ? "COMPRA (CALL) ↗" : "VENDA (PUT) ↘"}
+                </strong>
+              </div>
+              <div className="text-right">
+                <span className="text-slate-400 block text-[10px] uppercase">Resultado Real</span>
+                <strong className={predictionResult === "WIN" ? "text-emerald-400" : predictionResult === "LOSS" ? "text-rose-400" : "text-slate-300"}>
+                  {predictionResult === "WIN" ? "VENDEDOR" : predictionResult === "LOSS" ? "PERDEDOR" : "EMPATE"}
+                </strong>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-400 italic">
+              A IA foi desligada automaticamente. Clique em "Analisar Mercado" para buscar novas oportunidades.
+            </p>
+          </div>
+        ) : currentTime.getTime() >= entryDate.getTime() ? (
+          /* Render Waiting Screen */
+          <div className="p-6 text-center space-y-4">
+            <div className="w-16 h-16 rounded-full border-4 border-amber-500/20 border-t-amber-500 animate-spin mx-auto flex items-center justify-center shadow-lg">
+              <Clock className="w-8 h-8 text-amber-400 animate-pulse" />
+            </div>
+            
+            <div className="space-y-1.5">
+              <h3 className="text-xl font-black text-amber-400 tracking-wider">
+                OPERAÇÃO EM ANDAMENTO
+              </h3>
+              <p className="text-xs text-slate-300 font-mono">
+                Aguardando encerramento da vela de sinal de {timeframe.toUpperCase()}...
+              </p>
+            </div>
+
+            {/* Progress bar of entry candle */}
+            <div className="bg-[#111726] p-3 rounded-xl border border-[#1E293B] space-y-2 max-w-sm mx-auto">
+              <div className="flex items-center justify-between text-xs font-mono text-slate-300">
+                <span>Tempo restante da operação:</span>
+                <span className="font-bold text-amber-400">
+                  {Math.max(0, Math.ceil((expiryDate.getTime() - currentTime.getTime()) / 1000))}s
+                </span>
+              </div>
+              <div className="h-2 w-full bg-[#1A2234] rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-amber-500 rounded-full transition-all duration-1000"
+                  style={{
+                    width: `${Math.max(0, Math.min(100, ((expiryDate.getTime() - currentTime.getTime()) / candleLengthMs) * 100))}%`
+                  }}
+                />
+              </div>
+            </div>
+            
+            <div className="bg-[#090D15] p-2.5 rounded-lg border border-[#1E293B] text-[11px] font-mono text-slate-400 max-w-sm mx-auto">
+              <span>Ativo: <strong className="text-white">{activeTicker}</strong> | Direção: <strong className={isCall ? "text-emerald-400" : "text-rose-400"}>{isCall ? "CALL" : "PUT"}</strong></span>
+            </div>
+          </div>
+        ) : isMinimized ? (
+          /* Minimized View */
           <div className="p-3 flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <span className="text-sm font-black text-white">{activeTicker}</span>

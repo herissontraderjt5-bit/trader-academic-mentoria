@@ -751,6 +751,8 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
               candles={candles}
               isAnalyzing={isAnalyzing}
               onReScan={() => runAiAnalysis(true)}
+              onClearAnalysis={() => setAiAnalysis(null)}
+              trades={trades}
             />
           </div>
         </main>
