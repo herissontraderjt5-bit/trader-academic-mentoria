@@ -100,14 +100,20 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
     return Math.floor(ms / candleLengthMs) * candleLengthMs;
   }, [currentTime, candleLengthMs]);
 
-  // Dates for start of next candle (entry) and end (expiry)
+  // Calculate the fixed start of the candle when the signal was generated
+  const signalCandleStart = useMemo(() => {
+    if (!analysis || !analysis.timestamp) return Date.now();
+    return Math.floor(analysis.timestamp / candleLengthMs) * candleLengthMs;
+  }, [analysis, candleLengthMs]);
+
+  // Dates for start of next candle (entry) and end (expiry) relative to the signal generation time
   const entryDate = useMemo(() => {
-    return new Date(currentCandleStart + candleLengthMs);
-  }, [currentCandleStart, candleLengthMs]);
+    return new Date(signalCandleStart + candleLengthMs);
+  }, [signalCandleStart, candleLengthMs]);
 
   const expiryDate = useMemo(() => {
-    return new Date(currentCandleStart + 2 * candleLengthMs);
-  }, [currentCandleStart, candleLengthMs]);
+    return new Date(signalCandleStart + 2 * candleLengthMs);
+  }, [signalCandleStart, candleLengthMs]);
 
   const entryTimeStr = entryDate.toLocaleTimeString("pt-BR", {
     hour: "2-digit",
@@ -172,15 +178,6 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
     }
   }, [analysis, lastSignalTimestamp]);
 
-  // Reset decision states when a new candle starts (clock boundary crossed)
-  useEffect(() => {
-    setDecision("PENDING");
-    setResolvedDir("NEUTRAL");
-    setRejectionReason("");
-    setPredictionResult(null);
-    setHasResolvedOutcome(false);
-  }, [currentCandleStart]);
-
   // Active Decision Engine when entering the decision window (no simulation!)
   useEffect(() => {
     if (isAnalyzing || !analysis || !isVisible) return;
@@ -237,7 +234,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
 
   // Real-time prediction resolution when expiry is reached
   useEffect(() => {
-    if (!analysis || !isVisible || isAnalyzing || hasResolvedOutcome) return;
+    if (!analysis || isAnalyzing || hasResolvedOutcome) return;
 
     const expiryTime = expiryDate.getTime();
     if (currentTime.getTime() >= expiryTime) {
