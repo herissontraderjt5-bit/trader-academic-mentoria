@@ -441,7 +441,7 @@ ${confluencesList}
               type="button"
               id="btn-analisar-mercado-round"
               onClick={onGenerateAnalysis}
-              disabled={isAnalyzing}
+              disabled={isAnalyzing || analysis !== null}
               className={`group relative w-36 h-36 rounded-full flex flex-col items-center justify-center p-3 text-center transition-all duration-300 cursor-pointer select-none active:scale-95 disabled:cursor-not-allowed ${
                 isAnalyzing
                   ? "bg-gradient-to-b from-[#1C160C] via-[#2A1B0E] to-[#120D08] border-2 border-amber-400/80 shadow-[0_0_35px_rgba(255,140,0,0.7)]"

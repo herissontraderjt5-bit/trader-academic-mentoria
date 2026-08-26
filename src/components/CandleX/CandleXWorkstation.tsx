@@ -294,8 +294,8 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
 
       const targetRemaining = isM5 ? 150 : 30; // 2m30s for M5, 30s for M1
 
-      // Trigger analysis when the candle hits the target window and it hasn't triggered for this candle yet
-      if (secondsRemaining <= targetRemaining && secondsRemaining > targetRemaining - 3) {
+      // Trigger analysis when the candle hits the target window, there is no active analysis in progress, and it hasn't triggered for this candle yet
+      if (!aiAnalysis && secondsRemaining <= targetRemaining && secondsRemaining > targetRemaining - 3) {
         if (lastTriggeredCandleStartRef.current !== currentCandleStart) {
           lastTriggeredCandleStartRef.current = currentCandleStart;
           runAiAnalysis(true);
