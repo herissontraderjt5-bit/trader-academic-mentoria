@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { User, Module, Lesson, Announcement, LiveSession, PlatformSettings, TradeJournalEntry, LessonComment, WithdrawalRequest } from '../types';
+import { User, Module, Lesson, Announcement, LiveSession, PlatformSettings, TradeJournalEntry, LessonComment, WithdrawalRequest, BankrollConfig, AutoTraderConfig, TradeRecord } from '../types';
 
 export const supabaseService = {
   isConfigured(): boolean {
@@ -238,6 +238,7 @@ export const supabaseService = {
           termsAccepted: p.terms_accepted,
           termsAcceptedAt: p.terms_accepted_at,
           customAllowedModuleIds: p.custom_allowed_module_ids,
+          allowedCertificates: p.allowed_certificates,
           referredById: p.referred_by_id,
           referralBalance: Number(p.referral_balance || 0),
           totalEarned: Number(p.total_earned || 0),
@@ -282,6 +283,7 @@ export const supabaseService = {
         terms_accepted: user.termsAccepted,
         terms_accepted_at: user.termsAcceptedAt,
         custom_allowed_module_ids: user.customAllowedModuleIds,
+        allowed_certificates: user.allowedCertificates,
         referred_by_id: user.referredById,
         referral_balance: user.referralBalance || 0,
         total_earned: user.totalEarned || 0,
@@ -831,5 +833,174 @@ export const supabaseService = {
       .getPublicUrl(filePath);
 
     return urlData.publicUrl;
+  },
+
+  // ------------------------------------------
+  // CANDLEX AI INTEGRATION METHODS
+  // ------------------------------------------
+  async syncCandleXData(userId: string): Promise<{ bankroll: BankrollConfig | null; autotrader: AutoTraderConfig | null; trades: TradeRecord[] }> {
+    if (!supabase) return { bankroll: null, autotrader: null, trades: [] };
+
+    try {
+      // Fetch Bankroll
+      const { data: brData, error: brErr } = await supabase
+        .from('candlex_bankroll')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      let bankroll: BankrollConfig | null = null;
+      if (!brErr && brData) {
+        bankroll = {
+          initialBalance: Number(brData.initial_balance),
+          currentBalance: Number(brData.current_balance),
+          currency: brData.currency as 'USD' | 'BRL',
+          dailyStopWin: Number(brData.daily_stop_win),
+          dailyStopLoss: Number(brData.daily_stop_loss),
+          baseStakePercent: Number(brData.base_stake_percent),
+          strategyMode: brData.strategy_mode as 'FIXED' | 'SOROS',
+          sorosLevel: Number(brData.soros_level),
+        };
+      }
+
+      // Fetch AutoTrader Config
+      const { data: atData, error: atErr } = await supabase
+        .from('candlex_autotrader')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      let autotrader: AutoTraderConfig | null = null;
+      if (!atErr && atData) {
+        autotrader = {
+          enabled: atData.enabled,
+          dailyStopWin: Number(atData.daily_stop_win),
+          dailyStopLoss: Number(atData.daily_stop_loss),
+          stakeAmount: Number(atData.stake_amount),
+          minPayout: Number(atData.min_payout),
+          timeframe: atData.timeframe as '1m' | '5m',
+          managementMode: atData.management_mode as '2x1' | '5x2',
+          minAiConfidence: Number(atData.min_ai_confidence),
+          soundAlerts: atData.sound_alerts,
+        };
+      }
+
+      // Fetch Trades
+      const { data: trData, error: trErr } = await supabase
+        .from('candlex_trades')
+        .select('*')
+        .eq('user_id', userId)
+        .order('timestamp', { ascending: false });
+
+      let trades: TradeRecord[] = [];
+      if (!trErr && trData) {
+        trades = trData.map((t: any) => ({
+          id: t.id,
+          timestamp: Number(t.timestamp),
+          ticker: t.ticker,
+          direction: t.type as 'CALL' | 'PUT',
+          entryPrice: Number(t.entry_price || 0),
+          stake: Number(t.stake),
+          payoutPercent: Number(t.payout_percent),
+          expiryMinutes: Number(t.expiry_minutes || 1),
+          result: t.result as 'WIN' | 'LOSS' | 'PENDING' | 'DRAW',
+          pnl: Number(t.pnl),
+          strategyUsed: t.strategy_used || '',
+          confidenceAtEntry: Number(t.confidence_at_entry || 0),
+          notes: t.notes || '',
+        }));
+      }
+
+      return { bankroll, autotrader, trades };
+    } catch (e) {
+      console.error('Error syncing CandleX data from Supabase:', e);
+      return { bankroll: null, autotrader: null, trades: [] };
+    }
+  },
+
+  async saveCandleXBankroll(userId: string, bankroll: BankrollConfig): Promise<boolean> {
+    if (!supabase) return false;
+    try {
+      const { error } = await supabase.from('candlex_bankroll').upsert({
+        user_id: userId,
+        initial_balance: bankroll.initialBalance,
+        current_balance: bankroll.currentBalance,
+        currency: bankroll.currency,
+        daily_stop_win: bankroll.dailyStopWin,
+        daily_stop_loss: bankroll.dailyStopLoss,
+        base_stake_percent: bankroll.baseStakePercent,
+        strategy_mode: bankroll.strategyMode,
+        soros_level: bankroll.sorosLevel,
+        updated_at: new Date().toISOString(),
+      });
+      return !error;
+    } catch (e) {
+      console.error('Error saving CandleX bankroll to Supabase:', e);
+      return false;
+    }
+  },
+
+  async saveCandleXAutoTrader(userId: string, config: AutoTraderConfig): Promise<boolean> {
+    if (!supabase) return false;
+    try {
+      const { error } = await supabase.from('candlex_autotrader').upsert({
+        user_id: userId,
+        enabled: config.enabled,
+        daily_stop_win: config.dailyStopWin,
+        daily_stop_loss: config.dailyStopLoss,
+        stake_amount: config.stakeAmount,
+        min_payout: config.minPayout,
+        timeframe: config.timeframe,
+        management_mode: config.managementMode,
+        min_ai_confidence: config.minAiConfidence,
+        sound_alerts: config.soundAlerts,
+        updated_at: new Date().toISOString(),
+      });
+      return !error;
+    } catch (e) {
+      console.error('Error saving CandleX autotrader config to Supabase:', e);
+      return false;
+    }
+  },
+
+  async saveCandleXTrade(userId: string, trade: TradeRecord): Promise<boolean> {
+    if (!supabase) return false;
+    try {
+      const { error } = await supabase.from('candlex_trades').upsert({
+        id: trade.id,
+        user_id: userId,
+        ticker: trade.ticker,
+        type: trade.direction,
+        stake: trade.stake,
+        payout_percent: trade.payoutPercent,
+        result: trade.result,
+        pnl: trade.pnl,
+        timestamp: trade.timestamp,
+        timeframe: trade.expiryMinutes + 'm',
+        strategy_used: trade.strategyUsed,
+        confidence_at_entry: trade.confidenceAtEntry,
+        notes: trade.notes || '',
+        entry_price: trade.entryPrice,
+        expiry_minutes: trade.expiryMinutes,
+      });
+      return !error;
+    } catch (e) {
+      console.error('Error saving CandleX trade to Supabase:', e);
+      return false;
+    }
+  },
+
+  async clearCandleXTrades(userId: string): Promise<boolean> {
+    if (!supabase) return false;
+    try {
+      const { error } = await supabase
+        .from('candlex_trades')
+        .delete()
+        .eq('user_id', userId);
+      return !error;
+    } catch (e) {
+      console.error('Error clearing CandleX trades from Supabase:', e);
+      return false;
+    }
   }
 };

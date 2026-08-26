@@ -12,6 +12,7 @@ import { UpgradeModal } from './components/Tools/UpgradeModal';
 import { AuthScreen } from './components/Auth/AuthScreen';
 import { EditProfileModal } from './components/Profile/EditProfileModal';
 import { ReferralModal } from './components/Tools/ReferralModal';
+import CandleXWorkstation from './components/CandleX/CandleXWorkstation';
 
 import { Module, User, Lesson, Announcement, LiveSession, PlatformSettings, Role, Tier, StudentStatus, WithdrawalRequest } from './types';
 import { storageService } from './services/storage';
@@ -62,7 +63,7 @@ export default function App() {
   const [settings, setSettings] = useState<PlatformSettings>(() => storageService.getSettings());
 
   // View States
-  const [activeView, setActiveView] = useState<'home' | 'player' | 'admin'>('home');
+  const [activeView, setActiveView] = useState<'home' | 'player' | 'admin' | 'candlex'>('home');
   const [selectedModuleForModal, setSelectedModuleForModal] = useState<Module | null>(null);
   
   // Video Player States
@@ -267,6 +268,20 @@ export default function App() {
           alert('Sua conta foi bloqueada pelo administrador. Entre em contato com o suporte.');
           return;
         }
+
+        // Sync fetched profile into users state and local storage
+        setUsers((prevUsers) => {
+          const index = prevUsers.findIndex(u => u.id === profile.id);
+          let updated = [...prevUsers];
+          if (index >= 0) {
+            updated[index] = { ...updated[index], ...profile };
+          } else {
+            updated = [profile, ...updated];
+          }
+          storageService.saveStudents(updated, true); // skipRemote = true because it just came from remote
+          return updated;
+        });
+
         setCurrentUserId(profile.id);
         setIsAuthenticated(true);
         localStorage.removeItem('trader_academic_referred_by');
@@ -302,10 +317,16 @@ export default function App() {
     storageService.setCurrentUserId(authUser.id);
     storageService.setAuthenticated(true);
     let currentStudents = storageService.getStudents();
-    if (!currentStudents.some(u => u.id === authUser.id || u.email.toLowerCase() === authUser.email.toLowerCase())) {
+    
+    // Always upsert user in local students list to ensure fresh data
+    const idx = currentStudents.findIndex(u => u.id === authUser.id || u.email.toLowerCase() === authUser.email.toLowerCase());
+    if (idx >= 0) {
+      currentStudents[idx] = { ...currentStudents[idx], ...authUser };
+    } else {
       currentStudents = [authUser, ...currentStudents];
-      storageService.saveStudents(currentStudents);
     }
+    
+    storageService.saveStudents(currentStudents, true); // skipRemote = true because authUser is already fresh
     setUsers(currentStudents);
     setCurrentUserId(authUser.id);
     setIsAuthenticated(true);
@@ -558,7 +579,7 @@ export default function App() {
       )}
 
       {/* View 3: Student Member Area (Kiwify Dashboard) */}
-      {(activeView === 'home' || (activeView === 'admin' && !isAdmin)) && (
+      {(activeView === 'home' || activeView === 'candlex' || (activeView === 'admin' && !isAdmin)) && (
         <>
           <Navbar
             currentUser={currentUser}
@@ -581,8 +602,15 @@ export default function App() {
             onLogout={handleLogout}
           />
 
-          {/* Main Dashboard */}
-          <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
+          {activeView === 'candlex' ? (
+            <CandleXWorkstation
+              currentUser={currentUser}
+              onBackToHome={() => setActiveView('home')}
+            />
+          ) : (
+            <>
+              {/* Main Dashboard */}
+              <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
             
             {/* Top Announcement Banner */}
             <AnnouncementBanner announcements={announcements} />
@@ -688,6 +716,8 @@ export default function App() {
               </div>
             </div>
           </footer>
+            </>
+          )}
 
           {/* Mobile Floating Bottom Bar for Quick Navigation */}
           <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-black/95 backdrop-blur-lg border-t border-orange-900/30 px-4 py-2 flex items-center justify-around">
@@ -699,6 +729,16 @@ export default function App() {
             >
               <Compass className="w-5 h-5" />
               <span>Aulas</span>
+            </button>
+
+            <button
+              onClick={() => setActiveView('candlex')}
+              className={`flex flex-col items-center gap-1 text-[10px] font-bold ${
+                activeView === 'candlex' ? 'text-orange-500' : 'text-zinc-400'
+              }`}
+            >
+              <Sparkles className="w-5 h-5 text-orange-400" />
+              <span>CandleX</span>
             </button>
 
             <button

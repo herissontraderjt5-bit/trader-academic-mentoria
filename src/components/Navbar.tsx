@@ -27,8 +27,8 @@ interface NavbarProps {
   onSwitchUser: (userId: string) => void;
   allUsers: User[];
   onToggleRole: () => void;
-  activeView: 'home' | 'player' | 'admin';
-  setActiveView: (view: 'home' | 'player' | 'admin') => void;
+  activeView: 'home' | 'player' | 'admin' | 'candlex';
+  setActiveView: (view: 'home' | 'player' | 'admin' | 'candlex') => void;
   modules: Module[];
   onSelectLesson: (moduleId: string, lessonId: string) => void;
   announcements: Announcement[];
@@ -99,6 +99,18 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* Desktop Navigation Badges */}
             <div className="hidden lg:flex items-center gap-2 ml-6">
+              <button
+                onClick={() => setActiveView('candlex')}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer shadow-md ${
+                  activeView === 'candlex'
+                    ? 'bg-gradient-to-r from-orange-600 to-amber-500 text-black border border-orange-400 shadow-orange-600/30'
+                    : 'bg-orange-950/20 border border-orange-500/30 text-orange-400 hover:text-white hover:bg-orange-500/30'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5 fill-current text-orange-500 animate-pulse" />
+                <span>CandleX AI</span>
+              </button>
+
               <button
                 onClick={onOpenCalendar}
                 className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#1b1b2a] border border-[#2d2d44] text-orange-400 text-xs font-semibold hover:text-white hover:bg-zinc-800 transition-all cursor-pointer animate-pulse"
@@ -461,6 +473,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span>Calc. Lote</span>
               </button>
             </div>
+
+            <button
+              onClick={() => {
+                setActiveView('candlex');
+                setIsMobileMenuOpen(false);
+              }}
+              className="w-full flex items-center justify-center gap-1.5 p-2.5 mt-2 rounded-xl bg-gradient-to-r from-orange-600 to-amber-500 text-black text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-md"
+            >
+              <Sparkles className="w-4 h-4 text-black fill-current animate-pulse" />
+              <span>Entrar no CandleX AI</span>
+            </button>
 
             <button
               onClick={() => {

@@ -63,7 +63,7 @@ export const storageService = {
         }
       }
       if (remoteProfiles && remoteProfiles.length > 0) {
-        this.saveStudents(remoteProfiles);
+        this.saveStudents(remoteProfiles, true);
         result.users = remoteProfiles;
       }
       if (remoteAnnouncements !== null) {
@@ -319,13 +319,13 @@ export const storageService = {
     return INITIAL_STUDENTS;
   },
 
-  saveStudents(students: User[]): void {
+  saveStudents(students: User[], skipRemote = false): void {
     try {
       localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(students));
     } catch (e) {
       console.warn('LocalStorage error for students:', e);
     }
-    if (supabaseService.isConfigured()) {
+    if (supabaseService.isConfigured() && !skipRemote) {
       students.forEach((s) => supabaseService.upsertProfile(s));
     }
   },

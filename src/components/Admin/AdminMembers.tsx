@@ -74,7 +74,7 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
 
   // Certificate Release Modal State
   const [certReleaseUser, setCertReleaseUser] = useState<User | null>(null);
-  const [selectedCerts, setSelectedCerts] = useState<('b3' | 'binarias' | 'forex')[]>([]);
+  const [selectedCerts, setSelectedCerts] = useState<('b3' | 'binarias' | 'forex' | 'cripto')[]>([]);
 
   const handleOpenCertRelease = (user: User) => {
     setCertReleaseUser(user);
@@ -101,7 +101,7 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
     setCertReleaseUser(null);
   };
 
-  const toggleCertSelection = (cert: 'b3' | 'binarias' | 'forex') => {
+  const toggleCertSelection = (cert: 'b3' | 'binarias' | 'forex' | 'cripto') => {
     setSelectedCerts((prev) =>
       prev.includes(cert) ? prev.filter((c) => c !== cert) : [...prev, cert]
     );
@@ -824,13 +824,33 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
                     {selectedCerts.includes('forex') && <Check className="w-3.5 h-3.5" />}
                   </div>
                 </div>
+
+                <div
+                  onClick={() => toggleCertSelection('cripto')}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+                    selectedCerts.includes('cripto')
+                      ? 'bg-purple-600/10 border-purple-500/50 text-white'
+                      : 'bg-zinc-900/50 border-white/5 text-zinc-400 hover:border-white/20'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Sparkles className="w-5 h-5 text-purple-400" />
+                    <div>
+                      <h4 className="text-xs font-black">Certificado Cripto Moedas</h4>
+                      <p className="text-[10px] text-zinc-400">Tecnologia Blockchain & Criptoativos</p>
+                    </div>
+                  </div>
+                  <div className={`w-5 h-5 rounded-lg border flex items-center justify-center ${selectedCerts.includes('cripto') ? 'bg-purple-500 border-purple-500 text-white' : 'border-zinc-700'}`}>
+                    {selectedCerts.includes('cripto') && <Check className="w-3.5 h-3.5" />}
+                  </div>
+                </div>
               </div>
             </div>
 
             <div className="p-6 border-t border-white/5 flex items-center justify-between gap-3 bg-zinc-900/40">
               <button
                 type="button"
-                onClick={() => setSelectedCerts(['b3', 'binarias', 'forex'])}
+                onClick={() => setSelectedCerts(['b3', 'binarias', 'forex', 'cripto'])}
                 className="text-xs font-bold text-orange-400 hover:underline cursor-pointer"
               >
                 Liberar Todos
