@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { X } from "lucide-react";
 import { NeuralAnalyzerSidebar } from "./components/NeuralAnalyzerSidebar";
 import { TradingViewRealChart } from "./components/TradingViewRealChart";
 import { HioveBrokerFrame } from "./components/HioveBrokerFrame";
@@ -118,6 +119,18 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
   const [autoTraderSession, setAutoTraderSession] = useState<AutoTraderSession>(INITIAL_AUTOTRADER_SESSION);
   const [trades, setTrades] = useState<TradeRecord[]>([]);
   const [bankrollConfig, setBankrollConfig] = useState<BankrollConfig>(INITIAL_BANKROLL_CONFIG);
+  const [recentResultNotification, setRecentResultNotification] = useState<TradeRecord | null>(null);
+
+  // Auto-hide the trade outcome notification after 6 seconds
+  useEffect(() => {
+    if (recentResultNotification) {
+      const timer = setTimeout(() => {
+        setRecentResultNotification(null);
+      }, 6000);
+      return () => clearTimeout(timer);
+    }
+  }, [recentResultNotification]);
+
 
   const [syncStatus, setSyncStatus] = useState<'syncing' | 'synced' | 'local'>('syncing');
 
@@ -582,7 +595,8 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
           };
         });
 
-        const resolvedTrade = { ...t, result: outcome, pnl };
+        const resolvedTrade = { ...t, result: outcome, pnl, expiryPrice };
+        setRecentResultNotification(resolvedTrade);
         if (currentUser && currentUser.id !== 'usr-guest') {
           supabaseService.saveCandleXTrade(currentUser.id, resolvedTrade);
         }
@@ -846,6 +860,62 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
                 indicators={indicators}
               />
             </div>
+          </div>
+        </div>
+      )}
+      {/* Floating Trade Result Notification toast */}
+      {recentResultNotification && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm w-full bg-[#0D121D]/95 border-2 border-slate-700/50 rounded-2xl p-4 shadow-[0_0_30px_rgba(0,0,0,0.6)] animate-in slide-in-from-bottom-5 fade-in duration-300 pointer-events-auto">
+          {/* Header */}
+          <div className="flex items-center justify-between pb-2 border-b border-[#1E293B] mb-2.5">
+            <span className="text-[10px] font-mono font-black text-slate-400 tracking-wider uppercase">
+              RESULTADO DA OPERAÇÃO
+            </span>
+            <button
+              onClick={() => setRecentResultNotification(null)}
+              className="text-slate-400 hover:text-white p-1 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          
+          {/* Content */}
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-sm font-black text-white font-mono block">
+                {recentResultNotification.ticker}
+              </span>
+              <span className={`text-xs font-mono font-bold ${recentResultNotification.direction === "CALL" ? "text-emerald-400" : "text-rose-400"}`}>
+                {recentResultNotification.direction === "CALL" ? "COMPRA (CALL) ↗" : "VENDA (PUT) ↘"}
+              </span>
+            </div>
+            
+            <div className="text-right">
+              {recentResultNotification.result === "WIN" && (
+                <span className="text-lg font-black text-emerald-400 tracking-wider font-mono block">
+                  VITÓRIA (WIN)
+                </span>
+              )}
+              {recentResultNotification.result === "LOSS" && (
+                <span className="text-lg font-black text-rose-400 tracking-wider font-mono block">
+                  DERROTA (LOSS)
+                </span>
+              )}
+              {recentResultNotification.result === "DRAW" && (
+                <span className="text-lg font-black text-slate-300 tracking-wider font-mono block">
+                  EMPATE (DRAW)
+                </span>
+              )}
+              <span className={`text-sm font-bold font-mono ${recentResultNotification.pnl >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                {recentResultNotification.pnl >= 0 ? "+" : ""}R$ {recentResultNotification.pnl.toFixed(2)}
+              </span>
+            </div>
+          </div>
+          
+          {/* Prices Detail */}
+          <div className="mt-2 bg-[#090D15] p-2 rounded-lg border border-[#182030] flex items-center justify-between text-[11px] font-mono text-slate-400">
+            <span>Entrada: <strong className="text-white">{recentResultNotification.entryPrice}</strong></span>
+            <span>Fechamento: <strong className="text-white">{recentResultNotification.expiryPrice || recentResultNotification.entryPrice}</strong></span>
           </div>
         </div>
       )}

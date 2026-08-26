@@ -60,6 +60,38 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
   const [rejectionReason, setRejectionReason] = useState<string>("");
   const lastDecisionCandleStartRef = useRef<number | null>(null);
 
+  // Thresholds for confirmation and decision
+  const { confirmationThreshold, decisionThreshold, candleLengthMs } = useMemo(() => {
+    const tf = timeframe.toLowerCase();
+    if (tf.includes("5m") || tf === "5" || tf === "m5") {
+      return { confirmationThreshold: 150, decisionThreshold: 60, candleLengthMs: 300 * 1000 };
+    }
+    return { confirmationThreshold: 30, decisionThreshold: 10, candleLengthMs: 60 * 1000 };
+  }, [timeframe]);
+
+  // Calculate real remaining seconds on the current candle
+  const secondsRemaining = useMemo(() => {
+    const tf = timeframe.toLowerCase();
+    const seconds = currentTime.getSeconds();
+    const milliseconds = currentTime.getMilliseconds();
+    const totalSecondsOfCurrentMinute = seconds + milliseconds / 1000;
+    
+    if (tf.includes("5m") || tf === "5" || tf === "m5") {
+      const minutes = currentTime.getMinutes();
+      const elapsedSeconds = (minutes % 5) * 60 + totalSecondsOfCurrentMinute;
+      return 300 - elapsedSeconds;
+    } else {
+      // Default to M1
+      return 60 - totalSecondsOfCurrentMinute;
+    }
+  }, [currentTime, timeframe]);
+
+  // Start of current candle
+  const currentCandleStart = useMemo(() => {
+    const ms = currentTime.getTime();
+    return Math.floor(ms / candleLengthMs) * candleLengthMs;
+  }, [currentTime, candleLengthMs]);
+
   // Live clock updating every 250ms for maximum real-time accuracy
   useEffect(() => {
     const timer = setInterval(() => {
@@ -81,37 +113,12 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
     }
   }, [analysis, lastSignalTimestamp]);
 
-  // Calculate real remaining seconds on the current candle
-  const secondsRemaining = useMemo(() => {
-    const tf = timeframe.toLowerCase();
-    const seconds = currentTime.getSeconds();
-    const milliseconds = currentTime.getMilliseconds();
-    const totalSecondsOfCurrentMinute = seconds + milliseconds / 1000;
-    
-    if (tf.includes("5m") || tf === "5" || tf === "m5") {
-      const minutes = currentTime.getMinutes();
-      const elapsedSeconds = (minutes % 5) * 60 + totalSecondsOfCurrentMinute;
-      return 300 - elapsedSeconds;
-    } else {
-      // Default to M1
-      return 60 - totalSecondsOfCurrentMinute;
-    }
-  }, [currentTime, timeframe]);
-
-  // Thresholds for confirmation and decision
-  const { confirmationThreshold, decisionThreshold, candleLengthMs } = useMemo(() => {
-    const tf = timeframe.toLowerCase();
-    if (tf.includes("5m") || tf === "5" || tf === "m5") {
-      return { confirmationThreshold: 150, decisionThreshold: 60, candleLengthMs: 300 * 1000 };
-    }
-    return { confirmationThreshold: 30, decisionThreshold: 10, candleLengthMs: 60 * 1000 };
-  }, [timeframe]);
-
-  // Start of current candle
-  const currentCandleStart = useMemo(() => {
-    const ms = currentTime.getTime();
-    return Math.floor(ms / candleLengthMs) * candleLengthMs;
-  }, [currentTime, candleLengthMs]);
+  // Reset decision states when a new candle starts (clock boundary crossed)
+  useEffect(() => {
+    setDecision("PENDING");
+    setResolvedDir("NEUTRAL");
+    setRejectionReason("");
+  }, [currentCandleStart]);
 
   // Active Decision Engine when entering the decision window (no simulation!)
   useEffect(() => {

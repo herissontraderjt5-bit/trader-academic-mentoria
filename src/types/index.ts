@@ -232,6 +232,7 @@ export interface TradeRecord {
   ticker: string;
   direction: "CALL" | "PUT";
   entryPrice: number;
+  expiryPrice?: number;
   stake: number;
   payoutPercent: number;
   expiryMinutes: number;
