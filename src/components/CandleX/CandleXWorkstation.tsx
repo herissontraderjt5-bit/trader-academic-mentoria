@@ -253,19 +253,46 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
 
   useEffect(() => {
     setAiAnalysis(null);
-    const delay = setTimeout(() => {
-      runAiAnalysis(true);
-    }, 800);
-    return () => clearTimeout(delay);
   }, [activeTicker, timeframe]);
 
-  // Recurrent analysis trigger
+  const lastTriggeredCandleStartRef = useRef<number | null>(null);
+
+  // Active clock synchronization for Auto Trader automatic scanning at the exact boundary
   useEffect(() => {
-    const timer = setInterval(() => {
-      runAiAnalysis(false);
-    }, 45000);
-    return () => clearInterval(timer);
-  }, [runAiAnalysis]);
+    if (!autoTraderConfig.enabled) return;
+
+    const checkInterval = setInterval(() => {
+      const now = new Date();
+      const tf = timeframe.toLowerCase();
+      const isM5 = tf.includes("5m") || tf === "5" || tf === "m5";
+      const candleLengthMs = isM5 ? 300000 : 60000;
+      const currentCandleStart = Math.floor(now.getTime() / candleLengthMs) * candleLengthMs;
+
+      // Calculate remaining seconds
+      const seconds = now.getSeconds();
+      const milliseconds = now.getMilliseconds();
+      const totalSecondsOfCurrentMinute = seconds + milliseconds / 1000;
+      let secondsRemaining = 60 - totalSecondsOfCurrentMinute;
+      if (isM5) {
+        const minutes = now.getMinutes();
+        const elapsedSeconds = (minutes % 5) * 60 + totalSecondsOfCurrentMinute;
+        secondsRemaining = 300 - elapsedSeconds;
+      }
+
+      const targetRemaining = isM5 ? 150 : 30; // 2m30s for M5, 30s for M1
+
+      // Trigger analysis when the candle hits the target window and it hasn't triggered for this candle yet
+      if (secondsRemaining <= targetRemaining && secondsRemaining > targetRemaining - 3) {
+        if (lastTriggeredCandleStartRef.current !== currentCandleStart) {
+          lastTriggeredCandleStartRef.current = currentCandleStart;
+          runAiAnalysis(true);
+        }
+      }
+    }, 500);
+
+    return () => clearInterval(checkInterval);
+  }, [autoTraderConfig.enabled, timeframe, runAiAnalysis]);
+
 
   // Save trade log to diário
   const handleRecordTrade = async (
@@ -385,26 +412,32 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
     });
   };
 
-  // Simulation execution for Auto Trader (simulates trade resolver after M1 timer)
+  const lastAutoTraderCandleStartRef = useRef<number | null>(null);
+
+  // Auto Trader execution engine (enters trades when confirmed signal is present)
   useEffect(() => {
     if (!autoTraderConfig.enabled || !aiAnalysis || aiAnalysis.direction === "NEUTRAL") return;
 
     // Minimum AI confidence check
     if (aiAnalysis.confidenceScore < autoTraderConfig.minAiConfidence) return;
 
-    const payoutPercent = 89; // constant simulated payout
+    const now = new Date();
+    const tf = timeframe.toLowerCase();
+    const isM5 = tf.includes("5m") || tf === "5" || tf === "m5";
+    const candleLengthMs = isM5 ? 300000 : 60000;
+    
+    // Start of the entry candle (the next candle)
+    const entryCandleStartMs = Math.ceil((now.getTime() + 1000) / candleLengthMs) * candleLengthMs;
+
+    // Avoid double entry on the same candle
+    if (lastAutoTraderCandleStartRef.current === entryCandleStartMs) return;
+
+    const payoutPercent = 89; // constant payout
     const stake = autoTraderConfig.stakeAmount;
-
-    // Simulate entry
-    const entryPrice = candles[candles.length - 1]?.close || 0;
     const direction = aiAnalysis.direction as "CALL" | "PUT";
+    const entryPrice = candles[candles.length - 1]?.close || 0;
 
-    // Deduct stake from banca
-    const stakeBankroll = {
-      ...bankrollConfig,
-      currentBalance: Math.max(0, +(bankrollConfig.currentBalance - stake).toFixed(2)),
-    };
-    setBankrollConfig(stakeBankroll);
+    lastAutoTraderCandleStartRef.current = entryCandleStartMs;
 
     const logId = "auto_" + Date.now();
     const pendingItem: AutoTradeLogItem = {
@@ -421,7 +454,7 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
       managementCycle: autoTraderConfig.managementMode,
     };
 
-    // Add to session logs
+    // Add to session history
     setAutoTraderSession((prev) => ({
       ...prev,
       status: "RUNNING",
@@ -429,77 +462,144 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
       history: [pendingItem, ...prev.history],
     }));
 
-    // Record trade on general history too
+    // Record trade on general history (this handles bankroll stake deduction and DB save)
     handleRecordTrade({
       ticker: activeTicker,
       direction,
       entryPrice,
       stake,
       payoutPercent,
-      expiryMinutes: timeframe === "5m" ? 5 : 1,
+      expiryMinutes: isM5 ? 5 : 1,
       strategyUsed: `IA Automática (${aiAnalysis.strategyName})`,
       confidenceAtEntry: aiAnalysis.confidenceScore,
     });
 
-    // Simulate options expiry timer
-    const resolveTimeout = setTimeout(() => {
-      const isWin = Math.random() < (aiAnalysis.confidenceScore / 100);
-      const outcome = isWin ? "WIN" : "LOSS";
-      const profitPnl = isWin ? +((stake * payoutPercent) / 100).toFixed(2) : -stake;
+    soundManager.speakAlert(`Robô executou entrada de ${direction} em ${activeTicker}.`);
+  }, [aiAnalysis, autoTraderConfig.enabled, activeTicker, timeframe, candles]);
 
-      // Update log item
-      setAutoTraderSession((prev) => {
-        const updatedHistory = prev.history.map((h) => {
-          if (h.id !== logId) return h;
-          return { ...h, result: outcome, pnl: profitPnl };
-        });
+  // Automatic real-time trade resolver using closed market candles
+  useEffect(() => {
+    if (candles.length === 0 || trades.length === 0) return;
 
-        const nextWins = prev.wins + (isWin ? 1 : 0);
-        const nextLosses = prev.losses + (isWin ? 0 : 1);
-        const nextTotalPnl = +(prev.totalPnl + profitPnl).toFixed(2);
+    const pendingTrades = trades.filter((t) => t.result === "PENDING");
+    if (pendingTrades.length === 0) return;
 
-        // Check stops limits
-        let nextStatus = prev.status;
-        if (nextTotalPnl >= autoTraderConfig.dailyStopWin) {
-          nextStatus = "STOP_WIN";
-          confetti();
-          soundManager.speakAlert("Meta diária atingida! Robô finalizado com sucesso.");
-          setAutoTraderConfig((c) => ({ ...c, enabled: false }));
-        } else if (nextTotalPnl <= -autoTraderConfig.dailyStopLoss) {
-          nextStatus = "STOP_LOSS";
-          soundManager.speakAlert("Limite de Stop Loss diário atingido. Robô desligado por segurança.");
-          setAutoTraderConfig((c) => ({ ...c, enabled: false }));
-        } else {
-          if (isWin) soundManager.playWin();
+    let updated = false;
+    const nextTrades = trades.map((t) => {
+      if (t.result !== "PENDING") return t;
+
+      const isM5 = t.expiryMinutes === 5;
+      const stepMs = isM5 ? 300000 : 60000;
+      // Calculate start time of entry candle
+      const entryCandleStartMs = Math.round(t.timestamp / stepMs) * stepMs;
+      const entryCandleTimeSecs = entryCandleStartMs / 1000;
+
+      // Find if this candle exists in our loaded candles and is closed (meaning there is a newer candle in the array)
+      const candleIndex = candles.findIndex((c) => c.time === entryCandleTimeSecs);
+      if (candleIndex !== -1 && candleIndex < candles.length - 1) {
+        const candle = candles[candleIndex];
+        const entryPrice = t.entryPrice || candle.open;
+        const expiryPrice = candle.close;
+
+        let outcome: "WIN" | "LOSS" | "DRAW" = "DRAW";
+        if (t.direction === "CALL") {
+          if (expiryPrice > entryPrice) outcome = "WIN";
+          else if (expiryPrice < entryPrice) outcome = "LOSS";
+        } else { // PUT
+          if (expiryPrice < entryPrice) outcome = "WIN";
+          else if (expiryPrice > entryPrice) outcome = "LOSS";
         }
 
-        return {
-          ...prev,
-          wins: nextWins,
-          losses: nextLosses,
-          totalPnl: nextTotalPnl,
-          status: nextStatus,
-          history: updatedHistory,
-        };
-      });
+        let pnl = 0;
+        if (outcome === "WIN") {
+          pnl = +((t.stake * t.payoutPercent) / 100).toFixed(2);
+        } else if (outcome === "LOSS") {
+          pnl = -t.stake;
+        }
 
-      if (isWin) {
-        setBankrollConfig((b) => {
-          const nextB = {
-            ...b,
-            currentBalance: +(b.currentBalance + stake + profitPnl).toFixed(2),
-          };
-          // Save back to DB
-          if (currentUser && currentUser.id !== 'usr-guest') {
-            supabaseService.saveCandleXBankroll(currentUser.id, nextB);
+        updated = true;
+
+        // Speak outcome and play audio
+        if (outcome === "WIN") {
+          soundManager.playWin();
+          soundManager.speakAlert(`Vitória! Operação finalizada em ${t.ticker} com lucro de R$ ${pnl}.`);
+        } else if (outcome === "LOSS") {
+          soundManager.speakAlert(`Derrota! Operação finalizada em ${t.ticker} com perda de R$ ${t.stake}.`);
+        } else {
+          soundManager.speakAlert(`Empate! Operação finalizada em ${t.ticker}.`);
+        }
+
+        // Update bankroll balance (add stake + pnl back if win, add stake back if draw)
+        setBankrollConfig((prevBr) => {
+          let nextBalance = prevBr.currentBalance;
+          if (outcome === "WIN") {
+            nextBalance = +(prevBr.currentBalance + t.stake + pnl).toFixed(2);
+          } else if (outcome === "DRAW") {
+            nextBalance = +(prevBr.currentBalance + t.stake).toFixed(2);
           }
-          return nextB;
+          const nextBr = { ...prevBr, currentBalance: nextBalance };
+          if (currentUser && currentUser.id !== 'usr-guest') {
+            supabaseService.saveCandleXBankroll(currentUser.id, nextBr);
+          }
+          return nextBr;
         });
-      }
-    }, 12000); // 12 seconds simulated round expiry for fast testing
 
-    return () => clearTimeout(resolveTimeout);
-  }, [aiAnalysis, autoTraderConfig.enabled]);
+        // Update AutoTrader session stats
+        setAutoTraderSession((prevSession) => {
+          const nextWins = prevSession.wins + (outcome === "WIN" ? 1 : 0);
+          const nextLosses = prevSession.losses + (outcome === "LOSS" ? 1 : 0);
+          const nextDraws = prevSession.draws + (outcome === "DRAW" ? 1 : 0);
+          const nextTotalPnl = +(prevSession.totalPnl + pnl).toFixed(2);
+
+          let nextStatus = prevSession.status;
+          if (nextTotalPnl >= autoTraderConfig.dailyStopWin) {
+            nextStatus = "STOP_WIN";
+            confetti();
+            soundManager.speakAlert("Meta diária atingida! Robô finalizado com sucesso.");
+            setAutoTraderConfig((c) => ({ ...c, enabled: false }));
+          } else if (nextTotalPnl <= -autoTraderConfig.dailyStopLoss) {
+            nextStatus = "STOP_LOSS";
+            soundManager.speakAlert("Limite de Stop Loss diário atingido. Robô desligado por segurança.");
+            setAutoTraderConfig((c) => ({ ...c, enabled: false }));
+          }
+
+          // Update matching entry in Auto Trader history
+          const updatedHistory = prevSession.history.map((h) => {
+            if (h.ticker === t.ticker && h.direction === t.direction && Math.abs(h.timestamp - t.timestamp) < 5000) {
+              return { ...h, result: outcome, pnl };
+            }
+            return h;
+          });
+
+          return {
+            ...prevSession,
+            wins: nextWins,
+            losses: nextLosses,
+            draws: nextDraws,
+            totalPnl: nextTotalPnl,
+            status: nextStatus,
+            history: updatedHistory,
+          };
+        });
+
+        const resolvedTrade = { ...t, result: outcome, pnl };
+        if (currentUser && currentUser.id !== 'usr-guest') {
+          supabaseService.saveCandleXTrade(currentUser.id, resolvedTrade);
+        }
+
+        return resolvedTrade;
+      }
+
+      return t;
+    });
+
+    if (updated) {
+      setTrades(nextTrades);
+      if (currentUser && currentUser.id !== 'usr-guest') {
+        localStorage.setItem(`candlex_trades_${currentUser.id}`, JSON.stringify(nextTrades));
+      }
+    }
+  }, [candles, trades, autoTraderConfig.enabled, currentUser]);
 
   const currentPrice = candles[candles.length - 1]?.close || 0;
 

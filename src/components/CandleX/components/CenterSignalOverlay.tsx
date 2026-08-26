@@ -54,126 +54,147 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
   const [lastSignalTimestamp, setLastSignalTimestamp] = useState<number | null>(null);
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
   
-  // Lifecycle Status:
-  // "PRE_WAITING": Aguardando contagem até chegar nos 10s antes da entrada
-  // "AUDITING_10S": Executando auditoria rápida nos 10 segundos finais
-  // "CONFIRMED": Gatilho aprovado e confirmado (CALL ou PUT)
-  // "REJECTED": Gatilho reprovado pelo filtro Anti-Loss da IA
-  const [signalStatus, setSignalStatus] = useState<SignalStatus>("PRE_WAITING");
-  const [secondsUntilEntry, setSecondsUntilEntry] = useState<number>(20);
+  // Real technical decision states
+  const [decision, setDecision] = useState<"PENDING" | "CONFIRMED" | "REJECTED">("PENDING");
+  const [resolvedDir, setResolvedDir] = useState<"CALL" | "PUT" | "NEUTRAL">("NEUTRAL");
   const [rejectionReason, setRejectionReason] = useState<string>("");
-  const decisionMadeRef = useRef<boolean>(false);
+  const lastDecisionCandleStartRef = useRef<number | null>(null);
 
-  // Live second-by-second clock
+  // Live clock updating every 250ms for maximum real-time accuracy
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
-    }, 1000);
+    }, 250);
     return () => clearInterval(timer);
   }, []);
 
-  // Initialize or reset signal when analysis updates
+  // Reset overlay when a new analysis is generated
   useEffect(() => {
     if (analysis && analysis.timestamp && analysis.timestamp !== lastSignalTimestamp) {
       setLastSignalTimestamp(analysis.timestamp);
       setIsVisible(true);
       setIsMinimized(false);
-      decisionMadeRef.current = false;
-
-      // Calculate initial countdown until the entry candle (e.g. synchronize with M1 :00 boundary or a 20s preparation window)
-      const now = new Date();
-      const currentSeconds = now.getSeconds();
-      
-      // Calculate seconds to next full minute (:00) for M1, or default to 18-25 seconds window
-      let initialRemaining = 60 - currentSeconds;
-      if (initialRemaining < 12) {
-        // If too close to current minute, target the next minute so user gets a full 10s audit experience
-        initialRemaining += 60;
-      }
-      // Cap between 15 and 30 seconds for immediate responsive feel
-      initialRemaining = Math.min(25, Math.max(14, initialRemaining));
-      
-      setSecondsUntilEntry(initialRemaining);
-      setSignalStatus(initialRemaining > 10 ? "PRE_WAITING" : "AUDITING_10S");
+      setDecision("PENDING");
+      setResolvedDir("NEUTRAL");
+      setRejectionReason("");
+      lastDecisionCandleStartRef.current = null;
     }
   }, [analysis, lastSignalTimestamp]);
 
-  // Main countdown & 10-Second Audit Trigger
+  // Calculate real remaining seconds on the current candle
+  const secondsRemaining = useMemo(() => {
+    const tf = timeframe.toLowerCase();
+    const seconds = currentTime.getSeconds();
+    const milliseconds = currentTime.getMilliseconds();
+    const totalSecondsOfCurrentMinute = seconds + milliseconds / 1000;
+    
+    if (tf.includes("5m") || tf === "5" || tf === "m5") {
+      const minutes = currentTime.getMinutes();
+      const elapsedSeconds = (minutes % 5) * 60 + totalSecondsOfCurrentMinute;
+      return 300 - elapsedSeconds;
+    } else {
+      // Default to M1
+      return 60 - totalSecondsOfCurrentMinute;
+    }
+  }, [currentTime, timeframe]);
+
+  // Thresholds for confirmation and decision
+  const { confirmationThreshold, decisionThreshold, candleLengthMs } = useMemo(() => {
+    const tf = timeframe.toLowerCase();
+    if (tf.includes("5m") || tf === "5" || tf === "m5") {
+      return { confirmationThreshold: 150, decisionThreshold: 60, candleLengthMs: 300 * 1000 };
+    }
+    return { confirmationThreshold: 30, decisionThreshold: 10, candleLengthMs: 60 * 1000 };
+  }, [timeframe]);
+
+  // Start of current candle
+  const currentCandleStart = useMemo(() => {
+    const ms = currentTime.getTime();
+    return Math.floor(ms / candleLengthMs) * candleLengthMs;
+  }, [currentTime, candleLengthMs]);
+
+  // Active Decision Engine when entering the decision window (no simulation!)
   useEffect(() => {
-    if (!analysis || !isVisible || isAnalyzing) return;
+    if (isAnalyzing || !analysis || !isVisible) return;
 
-    const interval = setInterval(() => {
-      setSecondsUntilEntry((prev) => {
-        const next = prev - 1;
+    if (secondsRemaining <= decisionThreshold && secondsRemaining > 0) {
+      if (lastDecisionCandleStartRef.current !== currentCandleStart) {
+        lastDecisionCandleStartRef.current = currentCandleStart;
 
-        // Exactly at 10 seconds before entry (or when crossing 10s):
-        if (next <= 10 && next > 0 && !decisionMadeRef.current) {
-          decisionMadeRef.current = true;
-          
-          // Automatic 10s Decision Engine:
-          // Checks momentum, rejection, and indicator harmony
-          const rsi = indicators?.rsi || 50;
-          const hasDirectionalStrength = (analysis.confidenceScore || 90) >= 80;
-          const isExtremeOverbought = rsi > 82 && analysis.direction === "CALL";
-          const isExtremeOversold = rsi < 18 && analysis.direction === "PUT";
+        // Perform actual Technical Indicator check (RSI, Trend confluences)
+        const rsi = indicators?.rsi || 50;
+        const trend = indicators?.trend || "ALTA";
 
-          // Evaluate whether to CONFIRM or REJECT
-          if (isExtremeOverbought) {
-            setSignalStatus("REJECTED");
-            setRejectionReason("RSI extremo em sobrecompra (>82). Risco iminente de correção contra a Compra nos 10s finais.");
-            soundManager.playRejectAlert();
-            soundManager.speakAlert("Atenção! Entrada rejeitada aos 10 segundos. Risco de correção detectado.");
-          } else if (isExtremeOversold) {
-            setSignalStatus("REJECTED");
-            setRejectionReason("RSI extremo em sobrevenda (<18). Risco iminente de repique contra a Venda nos 10s finais.");
-            soundManager.playRejectAlert();
-            soundManager.speakAlert("Atenção! Entrada rejeitada aos 10 segundos. Risco de reversão detectado.");
-          } else if (hasDirectionalStrength) {
-            setSignalStatus("CONFIRMED");
-            const dir = analysis.direction === "PUT" ? "PUT" : "CALL";
-            const currentConfidence = analysis.confidenceScore || 90;
-            if (dir === "CALL") {
-              soundManager.playCallAlert();
-              soundManager.speakAlert(`Gatilho confirmado aos 10 segundos! Entrada de Compra em ${activeTicker}. Assertividade ${currentConfidence}%.`);
-            } else {
-              soundManager.playPutAlert();
-              soundManager.speakAlert(`Gatilho confirmado aos 10 segundos! Entrada de Venda em ${activeTicker}. Assertividade ${currentConfidence}%.`);
-            }
+        const dir = analysis.direction === "NEUTRAL"
+          ? (rsi >= 50 ? "CALL" : "PUT")
+          : analysis.direction;
+
+        // Real anti-loss checks
+        const isExtremeOverbought = rsi > 80 && dir === "CALL";
+        const isExtremeOversold = rsi < 20 && dir === "PUT";
+        const isAgainstTrend = (trend === "ALTA" && dir === "PUT") || (trend === "BAIXA" && dir === "CALL");
+
+        if (isExtremeOverbought) {
+          setDecision("REJECTED");
+          setResolvedDir(dir);
+          setRejectionReason("RSI extremo em sobrecompra (>80). Filtro Anti-Loss ativado para evitar reversão contra a compra.");
+          soundManager.playRejectAlert();
+          soundManager.speakAlert("Entrada rejeitada! RSI em sobrecompra extrema.");
+        } else if (isExtremeOversold) {
+          setDecision("REJECTED");
+          setResolvedDir(dir);
+          setRejectionReason("RSI extremo em sobrevenda (<20). Filtro Anti-Loss ativado para evitar reversão contra a venda.");
+          soundManager.playRejectAlert();
+          soundManager.speakAlert("Entrada rejeitada! RSI em sobrevenda extrema.");
+        } else if (isAgainstTrend && (analysis.confidenceScore || 90) < 85) {
+          setDecision("REJECTED");
+          setResolvedDir(dir);
+          setRejectionReason(`Operação contra a tendência principal de ${trend} com confiança moderada (${analysis.confidenceScore}%).`);
+          soundManager.playRejectAlert();
+          soundManager.speakAlert("Entrada rejeitada por baixa confluência contra a tendência.");
+        } else {
+          setDecision("CONFIRMED");
+          setResolvedDir(dir);
+          if (dir === "CALL") {
+            soundManager.playCallAlert();
+            soundManager.speakAlert(`Sinal confirmado aos 10 segundos! COMPRA (CALL) em ${activeTicker}.`);
           } else {
-            setSignalStatus("REJECTED");
-            setRejectionReason("Confluência institucional insuficiente nos 10s finais. Filtro Anti-Loss acionado.");
-            soundManager.playRejectAlert();
-            soundManager.speakAlert("Atenção! Entrada rejeitada aos 10 segundos finais.");
+            soundManager.playPutAlert();
+            soundManager.speakAlert(`Sinal confirmado aos 10 segundos! VENDA (PUT) em ${activeTicker}.`);
           }
         }
+      }
+    }
+  }, [secondsRemaining, decisionThreshold, currentCandleStart, isAnalyzing, analysis, indicators, activeTicker, isVisible]);
 
-        return next <= 0 ? 0 : next;
-      });
-    }, 1000);
+  // Auto-hide overlay 5 seconds after entry candle starts (secondsRemaining hits 0)
+  useEffect(() => {
+    if (secondsRemaining <= 0.5 && decision !== "PENDING" && isVisible) {
+      const hideTimer = setTimeout(() => {
+        setIsVisible(false);
+      }, 5000);
+      return () => clearTimeout(hideTimer);
+    }
+  }, [secondsRemaining, decision, isVisible]);
 
-    return () => clearInterval(interval);
-  }, [analysis, isVisible, isAnalyzing, indicators, activeTicker]);
+  // Map countdown and statuses to match render expectations
+  const secondsUntilEntry = Math.max(0, Math.ceil(secondsRemaining));
 
-  // Timestamps
-  const signalDate = useMemo(() => {
-    return new Date(analysis?.timestamp || Date.now());
-  }, [analysis?.timestamp]);
+  const signalStatus: SignalStatus = useMemo(() => {
+    if (decision === "CONFIRMED") return "CONFIRMED";
+    if (decision === "REJECTED") return "REJECTED";
+    if (secondsRemaining <= decisionThreshold) return "AUDITING_10S";
+    return "PRE_WAITING";
+  }, [decision, secondsRemaining, decisionThreshold]);
 
+  // Dates for start of next candle (entry) and end (expiry)
   const entryDate = useMemo(() => {
-    const ts = analysis?.timestamp || Date.now();
-    return new Date(ts + (secondsUntilEntry > 0 ? secondsUntilEntry * 1000 : 0));
-  }, [analysis?.timestamp, secondsUntilEntry]);
+    return new Date(currentCandleStart + candleLengthMs);
+  }, [currentCandleStart, candleLengthMs]);
 
   const expiryDate = useMemo(() => {
-    const ts = entryDate.getTime();
-    const tf = timeframe.toLowerCase();
-    let durationMs = 60 * 1000; // 1 min
-    if (tf.includes("5m") || tf === "5" || tf === "m5") durationMs = 5 * 60 * 1000;
-    else if (tf.includes("15m") || tf === "15" || tf === "m15") durationMs = 15 * 60 * 1000;
-    else if (tf.includes("30m") || tf === "30" || tf === "m30") durationMs = 30 * 60 * 1000;
-    else if (tf.includes("1h") || tf === "60" || tf === "1h") durationMs = 60 * 60 * 1000;
-    return new Date(ts + durationMs);
-  }, [entryDate, timeframe]);
+    return new Date(currentCandleStart + 2 * candleLengthMs);
+  }, [currentCandleStart, candleLengthMs]);
 
   const entryTimeStr = entryDate.toLocaleTimeString("pt-BR", {
     hour: "2-digit",
@@ -196,9 +217,12 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
   if (!analysis || !isVisible || isAnalyzing) return null;
 
   // Resolve direction
-  const resolvedDirection = analysis.direction === "NEUTRAL"
-    ? ((indicators?.rsi || 50) >= 50 ? "CALL" : "PUT")
-    : analysis.direction;
+  const resolvedDirection = useMemo(() => {
+    if (resolvedDir !== "NEUTRAL") return resolvedDir;
+    return analysis.direction === "NEUTRAL"
+      ? ((indicators?.rsi || 50) >= 50 ? "CALL" : "PUT")
+      : analysis.direction;
+  }, [resolvedDir, analysis.direction, indicators]);
 
   const isCall = resolvedDirection === "CALL";
   const isPut = resolvedDirection === "PUT";
@@ -458,35 +482,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
                     </div>
                   </div>
 
-                  {/* Manual Override Buttons (For testing / fast confirmation) */}
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSecondsUntilEntry(10);
-                        setSignalStatus("CONFIRMED");
-                        if (isCall) soundManager.playCallAlert();
-                        else soundManager.playPutAlert();
-                      }}
-                      className="px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-mono font-bold cursor-pointer transition-transform hover:scale-105"
-                      title="Forçar Confirmação Imediata"
-                    >
-                      Confirmar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSecondsUntilEntry(10);
-                        setSignalStatus("REJECTED");
-                        setRejectionReason("Rejeição forçada para teste do filtro Anti-Loss.");
-                        soundManager.playRejectAlert();
-                      }}
-                      className="px-2 py-1 rounded bg-rose-900 hover:bg-rose-800 text-rose-200 text-[10px] font-mono font-bold cursor-pointer"
-                      title="Forçar Rejeição Imediata"
-                    >
-                      Rejeitar
-                    </button>
-                  </div>
+
                 </div>
 
                 <p className="text-[11px] font-mono text-amber-200/90 leading-relaxed bg-[#0C101A]/60 p-2 rounded border border-amber-500/20">
