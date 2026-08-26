@@ -203,13 +203,20 @@ export const AiNeuralScannerOverlay: React.FC<AiNeuralScannerOverlayProps> = ({
     });
   }, [indicators, candles]);
 
+  const [showOverlay, setShowOverlay] = useState<boolean>(false);
+
+  // Sync isScanning prop to internal showOverlay state
+  useEffect(() => {
+    if (isScanning) {
+      setShowOverlay(true);
+      setProgressPercent(0);
+      setActiveStep(0);
+    }
+  }, [isScanning]);
+
   // Stepped progression timer when scanning is triggered
   useEffect(() => {
-    if (!isScanning) {
-      setActiveStep(0);
-      setProgressPercent(0);
-      return;
-    }
+    if (!showOverlay) return;
 
     // Play initial telemetry scan sound
     soundManager.playTelemetryScan();
@@ -220,28 +227,39 @@ export const AiNeuralScannerOverlay: React.FC<AiNeuralScannerOverlayProps> = ({
           clearInterval(interval);
           return 100;
         }
-        const next = prev + 1;
+        // Increment by 2 every 50ms (takes 2.5 seconds to reach 100%)
+        const next = prev + 2;
         return next > 100 ? 100 : next;
       });
-    }, 98);
+    }, 50);
 
     return () => clearInterval(interval);
-  }, [isScanning]);
+  }, [showOverlay]);
 
-  // Sync active step with progress
+  // Sync active step with progress and trigger close when done
   useEffect(() => {
-    if (!isScanning) return;
+    if (!showOverlay) return;
+
     const step = Math.min(5, Math.floor((progressPercent / 100) * 6));
     if (step !== activeStep) {
       setActiveStep(step);
       soundManager.playPillarChecked();
     }
+
     if (progressPercent >= 100) {
       soundManager.playConfluenceLocked();
-    }
-  }, [progressPercent, isScanning, activeStep]);
 
-  if (!isScanning) return null;
+      // Remain open for 1.5 seconds so user can see "VALIDADO" on all indicators
+      const closeTimer = setTimeout(() => {
+        setShowOverlay(false);
+        if (onClose) onClose();
+      }, 1500);
+
+      return () => clearTimeout(closeTimer);
+    }
+  }, [progressPercent, showOverlay, activeStep, onClose]);
+
+  if (!showOverlay) return null;
 
   return (
     <div
