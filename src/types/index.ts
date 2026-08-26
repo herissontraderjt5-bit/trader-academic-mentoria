@@ -273,6 +273,9 @@ export interface AutoTraderConfig {
   managementMode: "2x1" | "5x2";
   minAiConfidence: number;
   soundAlerts: boolean;
+  accountType?: "DEMO" | "REAL";
+  hioveEmail?: string;
+  hiovePassword?: string;
 }
 
 export interface AutoTradeLogItem {

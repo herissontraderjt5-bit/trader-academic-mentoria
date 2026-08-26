@@ -404,6 +404,49 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
               </div>
             </div>
 
+            {/* ROW 1.5: CONTA DA CORRETORA & CREDENCIAIS HIOVE */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-300">
+                  CONTA DA CORRETORA:
+                </label>
+                <select
+                  value={config.accountType || "DEMO"}
+                  onChange={(e) => onChangeConfig({ ...config, accountType: e.target.value as "DEMO" | "REAL" })}
+                  className="w-full bg-[#0B0E14] border border-[#1E2638] focus:border-[#FF7A00] rounded-lg px-3 py-2 text-white font-mono font-bold text-sm outline-none cursor-pointer"
+                >
+                  <option value="DEMO">CONTA TREINAMENTO (DEMO)</option>
+                  <option value="REAL">CONTA REAL (REAL)</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-300">
+                  E-MAIL HIOVE:
+                </label>
+                <input
+                  type="email"
+                  value={config.hioveEmail || ""}
+                  onChange={(e) => onChangeConfig({ ...config, hioveEmail: e.target.value })}
+                  placeholder="herissonvinicius52@gmail.com"
+                  className="w-full bg-[#0B0E14] border border-[#1E2638] focus:border-[#FF7A00] rounded-lg px-3 py-2 text-white font-mono text-sm outline-none"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-300">
+                  SENHA HIOVE:
+                </label>
+                <input
+                  type="password"
+                  value={config.hiovePassword || ""}
+                  onChange={(e) => onChangeConfig({ ...config, hiovePassword: e.target.value })}
+                  placeholder="********"
+                  className="w-full bg-[#0B0E14] border border-[#1E2638] focus:border-[#FF7A00] rounded-lg px-3 py-2 text-white font-mono text-sm outline-none"
+                />
+              </div>
+            </div>
+
             {/* ROW 2: VALOR DE ENTRADA & PAYOUT MÍNIMO */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
               {/* VALOR DE ENTRADA */}

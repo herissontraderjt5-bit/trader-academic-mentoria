@@ -61,6 +61,9 @@ const INITIAL_AUTOTRADER_CONFIG: AutoTraderConfig = {
   managementMode: "2x1",
   minAiConfidence: 78,
   soundAlerts: true,
+  accountType: "DEMO",
+  hioveEmail: "herissonvinicius52@gmail.com",
+  hiovePassword: "@Ventilad0",
 };
 
 const INITIAL_AUTOTRADER_SESSION: AutoTraderSession = {
@@ -120,6 +123,14 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
   const [trades, setTrades] = useState<TradeRecord[]>([]);
   const [bankrollConfig, setBankrollConfig] = useState<BankrollConfig>(INITIAL_BANKROLL_CONFIG);
   const [recentResultNotification, setRecentResultNotification] = useState<TradeRecord | null>(null);
+
+  // Hiove integration states
+  const [hioveAccountInfo, setHioveAccountInfo] = useState<{ balance: number; demoBalance: number; token: string | null }>({
+    balance: 0,
+    demoBalance: 10000,
+    token: null,
+  });
+  const hioveWsRef = useRef<WebSocket | null>(null);
 
   // Auto-hide the trade outcome notification after 6 seconds
   useEffect(() => {
@@ -194,6 +205,111 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
       await supabaseService.saveCandleXAutoTrader(currentUser.id, newConfig);
     }
   };
+
+  // Connect to Hiove WebSocket
+  const connectToHiove = useCallback(() => {
+    if (hioveWsRef.current && hioveWsRef.current.readyState === WebSocket.OPEN) return;
+
+    try {
+      const ws = new WebSocket("wss://api.hiove.com/ws");
+      hioveWsRef.current = ws;
+
+      ws.onopen = () => {
+        console.log("Connected to Hiove WebSocket");
+        // Authenticate immediately with the user's credentials!
+        ws.send(JSON.stringify({
+          event: "auth",
+          data: {
+            email: autoTraderConfig.hioveEmail || "herissonvinicius52@gmail.com",
+            password: autoTraderConfig.hiovePassword || "@Ventilad0"
+          }
+        }));
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          console.log("Hiove WS Message:", message);
+
+          if (message.event === "auth_success") {
+            const { token, balance, demo_balance } = message.data;
+            setHioveAccountInfo((prev) => ({
+              ...prev,
+              token,
+              balance: balance || prev.balance,
+              demoBalance: demo_balance || prev.demoBalance
+            }));
+            // Update bankroll balance in platform if using real/demo
+            const selectedBalance = autoTraderConfig.accountType === "REAL" ? (balance || 0) : (demo_balance || 10000);
+            setBankrollConfig((prevBr) => {
+              const nextBr = { ...prevBr, currentBalance: selectedBalance };
+              if (currentUser && currentUser.id !== 'usr-guest') {
+                supabaseService.saveCandleXBankroll(currentUser.id, nextBr);
+              }
+              return nextBr;
+            });
+          } else if (message.event === "balance_update") {
+            const { balance, demo_balance } = message.data;
+            setHioveAccountInfo((prev) => ({
+              ...prev,
+              balance: balance || prev.balance,
+              demoBalance: demo_balance || prev.demoBalance
+            }));
+            const selectedBalance = autoTraderConfig.accountType === "REAL" ? (balance || 0) : (demo_balance || 10000);
+            setBankrollConfig((prevBr) => {
+              const nextBr = { ...prevBr, currentBalance: selectedBalance };
+              if (currentUser && currentUser.id !== 'usr-guest') {
+                supabaseService.saveCandleXBankroll(currentUser.id, nextBr);
+              }
+              return nextBr;
+            });
+          }
+        } catch (err) {
+          console.warn("Error parsing Hiove WS message:", err);
+        }
+      };
+
+      ws.onclose = () => {
+        console.log("Hiove WebSocket disconnected, reconnecting in 5s...");
+        setTimeout(connectToHiove, 5000);
+      };
+    } catch (e) {
+      console.warn("Failed to connect to Hiove WebSocket:", e);
+    }
+  }, [autoTraderConfig.hioveEmail, autoTraderConfig.hiovePassword, autoTraderConfig.accountType, currentUser]);
+
+  // Connect to Hiove on mount
+  useEffect(() => {
+    connectToHiove();
+    return () => {
+      if (hioveWsRef.current) {
+        hioveWsRef.current.close();
+      }
+    };
+  }, [connectToHiove]);
+
+  // Place order via Hiove WebSocket
+  const placeRealHioveTrade = useCallback((direction: "CALL" | "PUT", amount: number) => {
+    if (!hioveWsRef.current || hioveWsRef.current.readyState !== WebSocket.OPEN) {
+      console.warn("Cannot place trade: Hiove WebSocket is not connected");
+      return false;
+    }
+
+    const orderMsg = {
+      event: "create_order",
+      data: {
+        symbol: activeTicker.replace("_OTC", ""), // standard symbol like ETHUSDT or EURUSD
+        direction: direction,
+        amount: amount,
+        timeframe: timeframe,
+        demo: autoTraderConfig.accountType !== "REAL" // true if demo account, false if real account
+      }
+    };
+
+    hioveWsRef.current.send(JSON.stringify(orderMsg));
+    console.log("Sent real order to Hiove:", orderMsg);
+    return true;
+  }, [activeTicker, timeframe, autoTraderConfig.accountType]);
 
   // Fetch Market Candles Polling
   const fetchMarketData = useCallback(async () => {
@@ -318,6 +434,9 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
       result: "PENDING",
       pnl: 0,
     };
+
+    // Forward the order to the real Hiove broker via WebSocket
+    placeRealHioveTrade(tradeData.direction, tradeData.stake);
     
     const updatedTrades = [newTrade, ...trades];
     setTrades(updatedTrades);
