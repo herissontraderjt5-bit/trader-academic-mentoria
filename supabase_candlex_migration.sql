@@ -60,7 +60,9 @@ CREATE TABLE IF NOT EXISTS public.candlex_trades (
   timeframe TEXT NOT NULL,
   strategy_used TEXT DEFAULT '',
   confidence_at_entry NUMERIC DEFAULT 0,
-  notes TEXT DEFAULT ''
+  notes TEXT DEFAULT '',
+  entry_price NUMERIC DEFAULT 0,
+  expiry_minutes INT DEFAULT 1
 );
 
 -- Habilitar RLS e criar política de acesso

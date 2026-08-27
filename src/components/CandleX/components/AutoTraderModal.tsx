@@ -32,6 +32,7 @@ interface AutoTraderModalProps {
   onToggleEnabled: () => void;
   onResetSession: () => void;
   currencySymbol?: string;
+  hioveToken?: string | null;
 }
 
 export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
@@ -43,6 +44,7 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
   onToggleEnabled,
   onResetSession,
   currencySymbol = "R$",
+  hioveToken,
 }) => {
   if (!isOpen) return null;
 
@@ -407,8 +409,21 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
             {/* ROW 1.5: CONTA DA CORRETORA & CREDENCIAIS HIOVE */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-300">
-                  CONTA DA CORRETORA:
+                <label className="text-[11px] font-bold text-slate-300 flex items-center justify-between">
+                  <span>CONTA DA CORRETORA:</span>
+                  {config.accountType === "REAL" && (
+                    hioveToken ? (
+                      <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/30 flex items-center gap-1">
+                        <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
+                        CONECTADO
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-bold text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30 flex items-center gap-1">
+                        <span className="w-1 h-1 rounded-full bg-amber-500" />
+                        DESCONECTADO
+                      </span>
+                    )
+                  )}
                 </label>
                 <select
                   value={config.accountType || "DEMO"}
@@ -428,7 +443,7 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
                   type="email"
                   value={config.hioveEmail || ""}
                   onChange={(e) => onChangeConfig({ ...config, hioveEmail: e.target.value })}
-                  placeholder="herissonvinicius52@gmail.com"
+                  placeholder="seu-email@exemplo.com"
                   className="w-full bg-[#0B0E14] border border-[#1E2638] focus:border-[#FF7A00] rounded-lg px-3 py-2 text-white font-mono text-sm outline-none"
                 />
               </div>

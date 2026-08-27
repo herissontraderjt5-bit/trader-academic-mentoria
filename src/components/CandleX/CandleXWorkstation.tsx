@@ -62,8 +62,8 @@ const INITIAL_AUTOTRADER_CONFIG: AutoTraderConfig = {
   minAiConfidence: 78,
   soundAlerts: true,
   accountType: "DEMO",
-  hioveEmail: "herissonvinicius52@gmail.com",
-  hiovePassword: "@Ventilad0",
+  hioveEmail: "",
+  hiovePassword: "",
 };
 
 const INITIAL_AUTOTRADER_SESSION: AutoTraderSession = {
@@ -207,8 +207,13 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
   };
 
   // Connect to Hiove WebSocket
-  const connectToHiove = useCallback(() => {
-    if (hioveWsRef.current && hioveWsRef.current.readyState === WebSocket.OPEN) return;
+  const connectToHiove = useCallback((forceReconnect = false) => {
+    if (hioveWsRef.current) {
+      if (hioveWsRef.current.readyState === WebSocket.OPEN || hioveWsRef.current.readyState === WebSocket.CONNECTING) {
+        if (!forceReconnect) return;
+        hioveWsRef.current.close();
+      }
+    }
 
     try {
       const ws = new WebSocket("wss://api.hiove.com/ws");
@@ -220,8 +225,8 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
         ws.send(JSON.stringify({
           event: "auth",
           data: {
-            email: autoTraderConfig.hioveEmail || "herissonvinicius52@gmail.com",
-            password: autoTraderConfig.hiovePassword || "@Ventilad0"
+            email: autoTraderConfig.hioveEmail || "",
+            password: autoTraderConfig.hiovePassword || ""
           }
         }));
       };
@@ -271,22 +276,32 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
 
       ws.onclose = () => {
         console.log("Hiove WebSocket disconnected, reconnecting in 5s...");
-        setTimeout(connectToHiove, 5000);
+        setTimeout(() => connectToHiove(false), 5000);
       };
     } catch (e) {
       console.warn("Failed to connect to Hiove WebSocket:", e);
     }
   }, [autoTraderConfig.hioveEmail, autoTraderConfig.hiovePassword, autoTraderConfig.accountType, currentUser]);
 
-  // Connect to Hiove on mount
+  // Connect to Hiove on mount or when credentials change (debounced)
   useEffect(() => {
-    connectToHiove();
+    const delayDebounce = setTimeout(() => {
+      connectToHiove(true);
+    }, 1500); // 1.5s debounce to avoid spamming connection while typing
+
+    return () => {
+      clearTimeout(delayDebounce);
+    };
+  }, [connectToHiove]);
+
+  // Cleanup WebSocket on unmount
+  useEffect(() => {
     return () => {
       if (hioveWsRef.current) {
         hioveWsRef.current.close();
       }
     };
-  }, [connectToHiove]);
+  }, []);
 
   // Place order via Hiove WebSocket
   const placeRealHioveTrade = useCallback((direction: "CALL" | "PUT", amount: number) => {
@@ -515,6 +530,14 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
 
   // Auto Trader session simulation engine
   const handleToggleAutoTrader = () => {
+    if (!autoTraderConfig.enabled) {
+      // Validate credentials if attempting to turn ON in REAL mode
+      if (autoTraderConfig.accountType === "REAL" && (!autoTraderConfig.hioveEmail || !autoTraderConfig.hiovePassword)) {
+        alert("Por favor, preencha o E-mail e Senha da Hiove nas configurações do Robô para operar na conta REAL.");
+        return;
+      }
+    }
+
     const nextConfig = {
       ...autoTraderConfig,
       enabled: !autoTraderConfig.enabled,
@@ -764,6 +787,7 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
         soundEnabled={soundEnabled}
         onToggleSound={handleToggleSound}
         syncStatus={syncStatus}
+        hioveToken={hioveAccountInfo.token}
       />
 
       {/* Main Trading Area */}
@@ -894,6 +918,7 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
         session={autoTraderSession}
         onResetSession={handleResetAutoTraderSession}
         onToggleEnabled={handleToggleAutoTrader}
+        hioveToken={hioveAccountInfo.token}
       />
 
       <FinancialModal
