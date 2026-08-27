@@ -539,39 +539,7 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
 
   const lastTriggeredCandleStartRef = useRef<number | null>(null);
 
-  // Active clock synchronization for automatic scanning at the exact boundary (runs always for live alerts)
-  useEffect(() => {
-    const checkInterval = setInterval(() => {
-      const now = new Date();
-      const tf = timeframe.toLowerCase();
-      const isM5 = tf.includes("5m") || tf === "5" || tf === "m5";
-      const candleLengthMs = isM5 ? 300000 : 60000;
-      const currentCandleStart = Math.floor(now.getTime() / candleLengthMs) * candleLengthMs;
 
-      // Calculate remaining seconds
-      const seconds = now.getSeconds();
-      const milliseconds = now.getMilliseconds();
-      const totalSecondsOfCurrentMinute = seconds + milliseconds / 1000;
-      let secondsRemaining = 60 - totalSecondsOfCurrentMinute;
-      if (isM5) {
-        const minutes = now.getMinutes();
-        const elapsedSeconds = (minutes % 5) * 60 + totalSecondsOfCurrentMinute;
-        secondsRemaining = 300 - elapsedSeconds;
-      }
-
-      const targetRemaining = isM5 ? 150 : 30; // 2m30s for M5, 30s for M1
-
-      // Trigger analysis when the candle hits the target window and it hasn't triggered for this candle yet
-      if (secondsRemaining <= targetRemaining && secondsRemaining > targetRemaining - 3) {
-        if (lastTriggeredCandleStartRef.current !== currentCandleStart) {
-          lastTriggeredCandleStartRef.current = currentCandleStart;
-          runAiAnalysis(true);
-        }
-      }
-    }, 500);
-
-    return () => clearInterval(checkInterval);
-  }, [timeframe, runAiAnalysis]);
 
 
   // Save trade log to diário
@@ -605,6 +573,133 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
       await supabaseService.saveCandleXBankroll(currentUser.id, nextBankroll);
     }
   };
+
+  const lastAutoTraderCandleStartRef = useRef<number | null>(null);
+
+  // Background Auto Trader execution callback (evaluates signals and executes silently)
+  const runAutoTraderAnalysis = useCallback(async () => {
+    if (candles.length === 0) return;
+
+    try {
+      const latestIndicators = indicators || calculateAllIndicators(candles);
+      
+      const result = await candlexApiService.analyze(
+        activeTicker,
+        timeframe.toUpperCase(),
+        candles.slice(-20),
+        latestIndicators
+      );
+
+      if (result && result.direction !== "NEUTRAL" && result.confidenceScore >= autoTraderConfig.minAiConfidence) {
+        // Perform anti-loss check logic directly
+        const rsi = latestIndicators?.rsi || 50;
+        const trend = latestIndicators?.trend || "ALTA";
+        const dir = result.direction;
+
+        const isExtremeOverbought = rsi > 80 && dir === "CALL";
+        const isExtremeOversold = rsi < 20 && dir === "PUT";
+        const isAgainstTrend = (trend === "ALTA" && dir === "PUT") || (trend === "BAIXA" && dir === "CALL");
+
+        if (isExtremeOverbought || isExtremeOversold || (isAgainstTrend && result.confidenceScore < 85)) {
+          console.log("Auto Trader: Trade rejected by anti-loss filters", { rsi, trend, dir });
+          return;
+        }
+
+        const now = new Date();
+        const tf = timeframe.toLowerCase();
+        const isM5 = tf.includes("5m") || tf === "5" || tf === "m5";
+        const candleLengthMs = isM5 ? 300000 : 60000;
+        
+        // Start of the entry candle (the next candle)
+        const entryCandleStartMs = Math.ceil((now.getTime() + 1000) / candleLengthMs) * candleLengthMs;
+
+        // Avoid double entry on the same candle
+        if (lastAutoTraderCandleStartRef.current === entryCandleStartMs) return;
+        lastAutoTraderCandleStartRef.current = entryCandleStartMs;
+
+        const payoutPercent = 89;
+        const stake = autoTraderConfig.stakeAmount || autoTraderConfig.fixedStake || 10;
+        const direction = dir as "CALL" | "PUT";
+        const entryPrice = candles[candles.length - 1]?.close || 0;
+
+        const logId = "auto_" + Date.now();
+        const pendingItem: AutoTradeLogItem = {
+          id: logId,
+          timestamp: Date.now(),
+          ticker: activeTicker,
+          direction,
+          stake,
+          payoutPercent,
+          confidenceScore: result.confidenceScore,
+          result: "PENDING",
+          pnl: 0,
+          timeframe: timeframe,
+          managementCycle: autoTraderConfig.managementMode || "FIXED",
+        };
+
+        // Add to session history
+        setAutoTraderSession((prev) => ({
+          ...prev,
+          status: "RUNNING",
+          tradesExecuted: prev.tradesExecuted + 1,
+          history: [pendingItem, ...prev.history],
+        }));
+
+        // Record trade on general history (this handles bankroll stake deduction and DB save)
+        handleRecordTrade({
+          ticker: activeTicker,
+          direction,
+          entryPrice,
+          stake,
+          payoutPercent,
+          expiryMinutes: isM5 ? 5 : 1,
+          strategyUsed: `IA Automática (${result.strategyName})`,
+          confidenceAtEntry: result.confidenceScore,
+        });
+
+        soundManager.speakAlert(`Robô executou entrada de ${direction} em ${activeTicker}.`);
+      }
+    } catch (e) {
+      console.error("Auto Trader analysis error:", e);
+    }
+  }, [candles, indicators, activeTicker, timeframe, autoTraderConfig, handleRecordTrade]);
+
+  // Active clock synchronization for Auto Trader automatic scanning at the exact boundary
+  useEffect(() => {
+    if (!autoTraderConfig.enabled) return;
+
+    const checkInterval = setInterval(() => {
+      const now = new Date();
+      const tf = timeframe.toLowerCase();
+      const isM5 = tf.includes("5m") || tf === "5" || tf === "m5";
+      const candleLengthMs = isM5 ? 300000 : 60000;
+      const currentCandleStart = Math.floor(now.getTime() / candleLengthMs) * candleLengthMs;
+
+      // Calculate remaining seconds
+      const seconds = now.getSeconds();
+      const milliseconds = now.getMilliseconds();
+      const totalSecondsOfCurrentMinute = seconds + milliseconds / 1000;
+      let secondsRemaining = 60 - totalSecondsOfCurrentMinute;
+      if (isM5) {
+        const minutes = now.getMinutes();
+        const elapsedSeconds = (minutes % 5) * 60 + totalSecondsOfCurrentMinute;
+        secondsRemaining = 300 - elapsedSeconds;
+      }
+
+      const targetRemaining = isM5 ? 150 : 30; // 2m30s for M5, 30s for M1
+
+      // Trigger analysis when the candle hits the target window and it hasn't triggered for this candle yet
+      if (secondsRemaining <= targetRemaining && secondsRemaining > targetRemaining - 3) {
+        const lastTriggeredCandleStartRefVal = lastTriggeredCandleStartRef.current;
+        if (lastTriggeredCandleStartRefVal !== currentCandleStart) {
+          lastTriggeredCandleStartRef.current = currentCandleStart;
+          runAutoTraderAnalysis();
+        }
+      }
+    }, 500);
+
+    return () => clearInterval(checkInterval);
+  }, [autoTraderConfig.enabled, timeframe, runAutoTraderAnalysis]);
 
   // Update Trade outcome
   const handleUpdateTradeResult = async (
@@ -709,70 +804,7 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
     });
   };
 
-  const lastAutoTraderCandleStartRef = useRef<number | null>(null);
 
-  // Auto Trader execution engine (enters trades when confirmed signal is present)
-  useEffect(() => {
-    if (!autoTraderConfig.enabled || !aiAnalysis || aiAnalysis.direction === "NEUTRAL") return;
-
-    // Minimum AI confidence check
-    if (aiAnalysis.confidenceScore < autoTraderConfig.minAiConfidence) return;
-
-    const now = new Date();
-    const tf = timeframe.toLowerCase();
-    const isM5 = tf.includes("5m") || tf === "5" || tf === "m5";
-    const candleLengthMs = isM5 ? 300000 : 60000;
-    
-    // Start of the entry candle (the next candle)
-    const entryCandleStartMs = Math.ceil((now.getTime() + 1000) / candleLengthMs) * candleLengthMs;
-
-    // Avoid double entry on the same candle
-    if (lastAutoTraderCandleStartRef.current === entryCandleStartMs) return;
-
-    const payoutPercent = 89; // constant payout
-    const stake = autoTraderConfig.stakeAmount;
-    const direction = aiAnalysis.direction as "CALL" | "PUT";
-    const entryPrice = candles[candles.length - 1]?.close || 0;
-
-    lastAutoTraderCandleStartRef.current = entryCandleStartMs;
-
-    const logId = "auto_" + Date.now();
-    const pendingItem: AutoTradeLogItem = {
-      id: logId,
-      timestamp: Date.now(),
-      ticker: activeTicker,
-      direction,
-      stake,
-      payoutPercent,
-      confidenceScore: aiAnalysis.confidenceScore,
-      result: "PENDING",
-      pnl: 0,
-      timeframe: timeframe,
-      managementCycle: autoTraderConfig.managementMode,
-    };
-
-    // Add to session history
-    setAutoTraderSession((prev) => ({
-      ...prev,
-      status: "RUNNING",
-      tradesExecuted: prev.tradesExecuted + 1,
-      history: [pendingItem, ...prev.history],
-    }));
-
-    // Record trade on general history (this handles bankroll stake deduction and DB save)
-    handleRecordTrade({
-      ticker: activeTicker,
-      direction,
-      entryPrice,
-      stake,
-      payoutPercent,
-      expiryMinutes: isM5 ? 5 : 1,
-      strategyUsed: `IA Automática (${aiAnalysis.strategyName})`,
-      confidenceAtEntry: aiAnalysis.confidenceScore,
-    });
-
-    soundManager.speakAlert(`Robô executou entrada de ${direction} em ${activeTicker}.`);
-  }, [aiAnalysis, autoTraderConfig.enabled, activeTicker, timeframe, candles]);
 
   // Automatic real-time trade resolver using closed market candles
   useEffect(() => {
