@@ -56,18 +56,19 @@ interface NeuralAnalyzerSidebarProps {
 
 const AVAILABLE_ASSETS = [
   { id: "ETHUSDT", label: "ETH/USDT", type: "CRYPTO", payout: 89 },
+  { id: "BTCUSDT", label: "BTC/USDT", type: "CRYPTO", payout: 90 },
   { id: "XRPUSDT", label: "XRP/USDT", type: "CRYPTO", payout: 89 },
   { id: "SOLUSDT", label: "SOLANA/USDT", type: "CRYPTO", payout: 88 },
-  { id: "EURUSD_OTC", label: "EUR/USD", type: "FOREX", payout: 91 },
-  { id: "AUDUSD_OTC", label: "AUD/USD", type: "FOREX", payout: 90 },
-  { id: "EURGBP_OTC", label: "EUR/GBP", type: "FOREX", payout: 89 },
-  { id: "GBPCHF_OTC", label: "GBP/CHF", type: "FOREX", payout: 88 },
-  { id: "GBPJPY_OTC", label: "GBP/JPY", type: "FOREX", payout: 91 },
-  { id: "GBPUSD_OTC", label: "GBP/USD", type: "FOREX", payout: 92 },
-  { id: "NZDUSD_OTC", label: "NZD/USD", type: "FOREX", payout: 88 },
-  { id: "USDCAD_OTC", label: "USD/CAD", type: "FOREX", payout: 89 },
-  { id: "USDCHF_OTC", label: "USD/CHF", type: "FOREX", payout: 88 },
-  { id: "USDJPY_OTC", label: "USD/JPY", type: "FOREX", payout: 90 },
+  { id: "EURUSD", label: "EUR/USD", type: "FOREX", payout: 91 },
+  { id: "AUDUSD", label: "AUD/USD", type: "FOREX", payout: 90 },
+  { id: "EURGBP", label: "EUR/GBP", type: "FOREX", payout: 89 },
+  { id: "GBPCHF", label: "GBP/CHF", type: "FOREX", payout: 88 },
+  { id: "GBPJPY", label: "GBP/JPY", type: "FOREX", payout: 91 },
+  { id: "GBPUSD", label: "GBP/USD", type: "FOREX", payout: 92 },
+  { id: "NZDUSD", label: "NZD/USD", type: "FOREX", payout: 88 },
+  { id: "USDCAD", label: "USD/CAD", type: "FOREX", payout: 89 },
+  { id: "USDCHF", label: "USD/CHF", type: "FOREX", payout: 88 },
+  { id: "USDJPY", label: "USD/JPY", type: "FOREX", payout: 90 },
 ];
 
 export const NeuralAnalyzerSidebar: React.FC<NeuralAnalyzerSidebarProps> = ({

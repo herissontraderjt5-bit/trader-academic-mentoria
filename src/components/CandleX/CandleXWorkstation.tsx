@@ -80,7 +80,7 @@ const INITIAL_AUTOTRADER_SESSION: AutoTraderSession = {
 const INITIAL_TABS = [
   { id: "ETHUSDT", label: "ETH/USDT", type: "CRYPTO" },
   { id: "BTCUSDT", label: "BTC/USDT", type: "CRYPTO" },
-  { id: "GBPUSD_OTC", label: "GBP/USD (OTC)", type: "FOREX OTC" },
+  { id: "GBPUSD", label: "GBP/USD", type: "FOREX" },
 ];
 
 export default function CandleXWorkstation({ currentUser, onBackToHome }: CandleXWorkstationProps) {
