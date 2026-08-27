@@ -41,6 +41,9 @@ interface HioveUnifiedTopBarProps {
   onToggleSound: () => void;
   syncStatus: 'syncing' | 'synced' | 'local';
   hioveToken?: string | null;
+  chartEngine: "HIOVE_REAL" | "TRADINGVIEW";
+  onSelectChartEngine: (engine: "HIOVE_REAL" | "TRADINGVIEW") => void;
+  timeframe: string;
 }
 
 export const HioveUnifiedTopBar: React.FC<HioveUnifiedTopBarProps> = ({
@@ -62,16 +65,19 @@ export const HioveUnifiedTopBar: React.FC<HioveUnifiedTopBarProps> = ({
   onToggleSound,
   syncStatus,
   hioveToken,
+  chartEngine,
+  onSelectChartEngine,
+  timeframe,
 }) => {
   const [hideBalance, setHideBalance] = useState(true);
   const balance = bankroll.currentBalance;
 
   return (
     <header className="h-[52px] bg-[#0E121B] border-b border-[#1B2230] flex items-center justify-between px-3 select-none z-30 flex-shrink-0 text-slate-200">
-      {/* Left: Logo & Asset Tabs */}
-      <div className="flex items-center gap-2 h-full overflow-x-auto no-scrollbar">
+      {/* Left: Logo & Chart Engine Selector */}
+      <div className="flex items-center gap-4 h-full">
         {/* Hiove Logo */}
-        <div className="flex items-center gap-1.5 pr-3 border-r border-[#1B2230] flex-shrink-0">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-[#FF7A00] to-amber-500 flex items-center justify-center font-black text-slate-950 text-xs shadow-[0_0_10px_rgba(255,122,0,0.4)]">
             H
           </div>
@@ -80,14 +86,58 @@ export const HioveUnifiedTopBar: React.FC<HioveUnifiedTopBarProps> = ({
           </span>
         </div>
 
+        <div className="w-[1px] h-5 bg-[#1B2230]" />
 
+        {/* Chart Engine Selector */}
+        <div className="flex items-center gap-1 bg-[#121622] p-0.5 rounded-lg border border-[#1E2638] flex-shrink-0">
+          <button
+            type="button"
+            onClick={() => onSelectChartEngine("HIOVE_REAL")}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[11px] font-black transition-all cursor-pointer ${
+              chartEngine === "HIOVE_REAL"
+                ? "bg-gradient-to-r from-[#FF7A00] to-amber-500 text-slate-950 shadow-[0_0_10px_rgba(255,122,0,0.35)]"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Hiove Oficial (Real)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onSelectChartEngine("TRADINGVIEW")}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+              chartEngine === "TRADINGVIEW"
+                ? "bg-[#1C2538] text-white border border-[#2D3B59]"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            <span>TradingView Pro</span>
+          </button>
+        </div>
       </div>
 
-      {/* Right Tools, Balance, Deposit Button, User Avatar */}
-      <div className="flex items-center gap-2 flex-shrink-0">
-        
+      {/* Right: Ticker, Trade button & Tool Actions */}
+      <div className="flex items-center gap-3.5 flex-shrink-0">
+        {/* Ativo details */}
+        <div className="flex items-center gap-2 text-xs font-mono">
+          <span className="text-[11px] text-slate-400 hidden sm:inline">
+            Ativo: <strong className="text-white">{activeTicker}</strong> &bull; {timeframe}
+          </span>
+          <button
+            type="button"
+            onClick={() => window.open(`https://app.hiove.com/traderoom?ticker=${activeTicker}`, "_blank")}
+            className="flex items-center gap-1 px-2 py-1 rounded bg-[#141A26] hover:bg-[#1E2638] text-[10px] text-amber-400 border border-[#1E2638] cursor-pointer font-bold transition-all"
+          >
+            <span>Negociar no site da Hiove</span>
+            <span className="text-[9px]">↗</span>
+          </button>
+        </div>
+
+        <div className="w-[1px] h-5 bg-[#1B2230]" />
+
         {/* Sleek Tool Actions Bar */}
-        <div className="flex items-center gap-1 bg-[#121622]/60 border border-[#1E2638] rounded-lg p-0.5 mr-1.5">
+        <div className="flex items-center gap-1 bg-[#121622]/60 border border-[#1E2638] rounded-lg p-0.5">
           {/* Auto Trader Button */}
           <button
             type="button"
@@ -168,8 +218,6 @@ export const HioveUnifiedTopBar: React.FC<HioveUnifiedTopBarProps> = ({
             )}
           </button>
         </div>
-
-
       </div>
     </header>
   );

@@ -969,6 +969,9 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
         onToggleSound={handleToggleSound}
         syncStatus={syncStatus}
         hioveToken={hioveAccountInfo.token}
+        chartEngine={chartEngine}
+        onSelectChartEngine={setChartEngine}
+        timeframe={timeframe}
       />
 
       {/* Main Trading Area */}
@@ -996,50 +999,7 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
         {/* Central Workstation */}
         <main className="flex-1 h-full min-h-0 bg-[#0B0E14] relative flex flex-col overflow-hidden">
           
-          <div className="bg-[#0D111A] border-b border-[#1A2233] px-3 py-1.5 flex items-center justify-between gap-2 flex-shrink-0 z-20">
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 bg-[#121622] p-0.5 rounded-lg border border-[#1E2638]">
-                <button
-                  type="button"
-                  onClick={() => setChartEngine("HIOVE_REAL")}
-                  className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-black transition-all cursor-pointer ${
-                    chartEngine === "HIOVE_REAL"
-                      ? "bg-gradient-to-r from-[#FF7A00] to-amber-500 text-slate-950 shadow-[0_0_10px_rgba(255,122,0,0.35)]"
-                      : "text-slate-400 hover:text-slate-200"
-                  }`}
-                >
-                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Hiove Oficial (Real)</span>
-                </button>
 
-                <button
-                  type="button"
-                  onClick={() => setChartEngine("TRADINGVIEW")}
-                  className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                    chartEngine === "TRADINGVIEW"
-                      ? "bg-[#1C2538] text-white border border-[#2D3B59]"
-                      : "text-slate-400 hover:text-slate-200"
-                  }`}
-                >
-                  <span>TradingView Pro</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-[11px] font-mono text-slate-400 hidden md:inline">
-                Ativo: <strong className="text-white">{activeTicker}</strong> &bull; {timeframe}
-              </span>
-              <button
-                type="button"
-                onClick={() => window.open(`https://app.hiove.com/traderoom?ticker=${activeTicker}`, "_blank")}
-                className="flex items-center gap-1 px-2.5 py-1 rounded bg-[#141A26] hover:bg-[#1E2638] text-[11px] text-amber-400 border border-[#1E2638] cursor-pointer font-bold transition-all"
-              >
-                <span>Negociar no site da Hiove</span>
-                <span className="text-[10px]">↗</span>
-              </button>
-            </div>
-          </div>
 
           <div className="flex-1 w-full h-full min-h-0 relative">
             {chartEngine === "HIOVE_REAL" && (
