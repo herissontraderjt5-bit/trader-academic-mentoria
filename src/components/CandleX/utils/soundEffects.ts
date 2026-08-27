@@ -283,7 +283,32 @@ class SoundEngine {
     if (!this.voiceEnabled || typeof window === "undefined" || !("speechSynthesis" in window)) return;
     try {
       window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
+      
+      // Process text to speak ticker symbols clearly in Portuguese
+      let spokenText = text;
+      const tickersToReplace = [
+        { key: "ETHUSDT", val: "Ethereum" },
+        { key: "BTCUSDT", val: "Bitcoin" },
+        { key: "XRPUSDT", val: "X-R-P" },
+        { key: "SOLUSDT", val: "Solana" },
+        { key: "EURUSD", val: "Euro Dólar" },
+        { key: "GBPUSD", val: "Libra Dólar" },
+        { key: "AUDUSD", val: "Dólar Australiano" },
+        { key: "EURGBP", val: "Euro Libra" },
+        { key: "GBPCHF", val: "Libra Franco" },
+        { key: "GBPJPY", val: "Libra Iene" },
+        { key: "NZDUSD", val: "Dólar Neozelandês" },
+        { key: "USDCAD", val: "Dólar com Dólar Canadense" },
+        { key: "USDCHF", val: "Dólar Franco" },
+        { key: "USDJPY", val: "Dólar Iene" },
+      ];
+      
+      for (const item of tickersToReplace) {
+        const regex = new RegExp(item.key, "gi");
+        spokenText = spokenText.replace(regex, item.val);
+      }
+
+      const utterance = new SpeechSynthesisUtterance(spokenText);
       utterance.lang = "pt-BR";
       utterance.rate = 1.05;
       utterance.pitch = 1.0;

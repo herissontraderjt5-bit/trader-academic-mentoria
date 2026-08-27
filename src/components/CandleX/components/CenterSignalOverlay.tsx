@@ -229,10 +229,10 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
           setResolvedDir(dir);
           if (dir === "CALL") {
             soundManager.playCallAlert();
-            soundManager.speakAlert(`Sinal confirmado aos 10 segundos! COMPRA (CALL) em ${activeTicker}.`);
+            soundManager.speakAlert(`Sinal confirmado aos ${decisionThreshold} segundos! COMPRA (CALL) em ${activeTicker}.`);
           } else {
             soundManager.playPutAlert();
-            soundManager.speakAlert(`Sinal confirmado aos 10 segundos! VENDA (PUT) em ${activeTicker}.`);
+            soundManager.speakAlert(`Sinal confirmado aos ${decisionThreshold} segundos! VENDA (PUT) em ${activeTicker}.`);
           }
         }
       }
