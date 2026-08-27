@@ -169,67 +169,7 @@ export const HioveUnifiedTopBar: React.FC<HioveUnifiedTopBarProps> = ({
           </button>
         </div>
 
-        {/* Account Balance Selector & Connection Status */}
-        <div className="flex items-center gap-2 bg-[#121622] border border-[#1E2638] rounded-lg px-2.5 py-1.5">
-          <div className="flex items-center gap-1.5 text-xs font-bold">
-            {hioveToken ? (
-              <span className="flex items-center gap-1 text-emerald-400" title="Corretora Hiove Conectada">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                REAL
-              </span>
-            ) : (
-              <span className="flex items-center gap-1 text-amber-500" title="Modo Simulação / Sem Conexão Hiove">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                SIMULAR
-              </span>
-            )}
-            <ChevronDown className="w-3 h-3 text-slate-400" />
-          </div>
 
-          <div className="w-[1px] h-4 bg-[#1E2638]" />
-
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-mono font-black text-white">
-              {hideBalance ? "$ ••••••" : `$ ${balance.toFixed(2)}`}
-            </span>
-            <button
-              type="button"
-              onClick={() => setHideBalance(!hideBalance)}
-              className="text-slate-400 hover:text-white transition-colors cursor-pointer"
-              title={hideBalance ? "Mostrar Saldo" : "Ocultar Saldo"}
-            >
-              {hideBalance ? (
-                <EyeOff className="w-3.5 h-3.5" />
-              ) : (
-                <Eye className="w-3.5 h-3.5" />
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* Big Orange Depositar Button */}
-        <button
-          type="button"
-          onClick={onOpenDeposit}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-r from-[#FF8C00] via-[#FF7A00] to-[#E65100] hover:from-[#FFA022] hover:to-[#FF6D00] text-slate-950 font-black text-xs uppercase tracking-wider shadow-[0_0_15px_rgba(255,122,0,0.35)] transition-all active:scale-[0.98] cursor-pointer"
-        >
-          <Wallet className="w-3.5 h-3.5 text-slate-950" />
-          <span>Depositar</span>
-        </button>
-
-        {/* User Profile Avatar with SMC TRADER badge */}
-        <div className="flex items-center gap-1.5 cursor-pointer pl-1">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#1E293B] to-[#0F172A] border border-[#334155] flex items-center justify-center relative shadow-sm">
-            <User className="w-4 h-4 text-slate-300" />
-            <div className={`absolute -bottom-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-[#0E121B] ${hioveToken ? "bg-emerald-500" : "bg-amber-500"}`} />
-          </div>
-          <div className="hidden sm:block">
-            <div className="text-[10px] font-black text-emerald-400 leading-none">
-              SMC TRADER
-            </div>
-            <div className="text-[8.5px] text-slate-400 font-mono">VIP PRO</div>
-          </div>
-        </div>
       </div>
     </header>
   );
