@@ -360,15 +360,15 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
                 </div>
               </div>
 
-              {/* TIMEFRAME: M1 ou M5 */}
+              {/* TIMEFRAME: M1, M2 ou M5 */}
               <div className="space-y-2">
                 <label className="text-[11px] font-bold text-slate-300 flex items-center justify-between">
                   <span>2. TIME DAS OPERAÇÕES (EXPIRAÇÃO):</span>
                   <span className="text-cyan-400 font-mono text-[10px]">
-                    {config.timeframe === "1m" ? "1 Minuto (M1)" : "5 Minutos (M5)"}
+                    {config.timeframe === "1m" ? "1 Minuto (M1)" : config.timeframe === "2m" ? "2 Minutos (M2)" : "5 Minutos (M5)"}
                   </span>
                 </label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
                     onClick={() => onChangeConfig({ ...config, timeframe: "1m" })}
@@ -378,11 +378,28 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
                         : "bg-[#0B0E14] border-[#1E2638] text-slate-400 hover:border-slate-600 hover:text-slate-200"
                     }`}
                   >
-                    <div className="text-base font-black font-mono text-cyan-400">
+                    <div className="text-sm font-black font-mono text-cyan-400">
                       M1 (1 MIN)
                     </div>
-                    <p className="text-[10px] text-slate-400 mt-0.5">
-                      Entrada rápida de fluxo & Price Action
+                    <p className="text-[9px] text-slate-400 mt-0.5">
+                      Fluxo rápido
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onChangeConfig({ ...config, timeframe: "2m" })}
+                    className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                      config.timeframe === "2m"
+                        ? "bg-[#1C2436] border-cyan-400 text-white shadow-[0_0_15px_rgba(34,211,238,0.25)]"
+                        : "bg-[#0B0E14] border-[#1E2638] text-slate-400 hover:border-slate-600 hover:text-slate-200"
+                    }`}
+                  >
+                    <div className="text-sm font-black font-mono text-cyan-400">
+                      M2 (2 MIN)
+                    </div>
+                    <p className="text-[9px] text-slate-400 mt-0.5">
+                      Filtro ideal
                     </p>
                   </button>
 
@@ -395,11 +412,11 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
                         : "bg-[#0B0E14] border-[#1E2638] text-slate-400 hover:border-slate-600 hover:text-slate-200"
                     }`}
                   >
-                    <div className="text-base font-black font-mono text-cyan-400">
+                    <div className="text-sm font-black font-mono text-cyan-400">
                       M5 (5 MIN)
                     </div>
-                    <p className="text-[10px] text-slate-400 mt-0.5">
-                      Tendência consolidada & SMC
+                    <p className="text-[9px] text-slate-400 mt-0.5">
+                      Consistência
                     </p>
                   </button>
                 </div>

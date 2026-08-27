@@ -113,7 +113,11 @@ export const NeuralAnalyzerSidebar: React.FC<NeuralAnalyzerSidebarProps> = ({
       minute: "2-digit",
       second: "2-digit",
     });
-    const expText = timeframe === "5m" ? "M5 (5 Minutos)" : "M1 (1 Minuto)";
+    const expText = timeframe === "5m" || timeframe === "5MIN"
+      ? "M5 (5 Minutos)"
+      : timeframe === "2m" || timeframe === "2MIN"
+      ? "M2 (2 Minutos)"
+      : "M1 (1 Minuto)";
     const confluencesList = (analysis.detectedPatterns && analysis.detectedPatterns.length > 0
       ? analysis.detectedPatterns
       : ["Cruzamento de Médias Móveis EMA", "RSI em Zona Estratégica", "Rejeição em Zona Institucional"]
@@ -166,11 +170,11 @@ ${confluencesList}
           <label className="text-xs uppercase font-extrabold tracking-wider text-slate-300">
             TIMEFRAME
           </label>
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-3 gap-1.5">
             <button
               type="button"
               onClick={() => onChangeTimeframe("1m")}
-              className={`py-2.5 px-3 rounded-xl text-sm font-bold font-mono transition-all duration-200 cursor-pointer ${
+              className={`py-2 px-1 rounded-xl text-xs font-bold font-mono transition-all duration-200 cursor-pointer ${
                 timeframe === "1m" || timeframe === "1MIN"
                   ? "bg-[#181D26] text-[#FF7A00] border-2 border-[#FF7A00] shadow-[0_0_15px_rgba(255,122,0,0.3)] font-black"
                   : "bg-[#12161F] text-slate-300 border border-[#1E2638] hover:border-slate-500 hover:text-white"
@@ -180,8 +184,19 @@ ${confluencesList}
             </button>
             <button
               type="button"
+              onClick={() => onChangeTimeframe("2m")}
+              className={`py-2 px-1 rounded-xl text-xs font-bold font-mono transition-all duration-200 cursor-pointer ${
+                timeframe === "2m" || timeframe === "2MIN"
+                  ? "bg-[#181D26] text-[#FF7A00] border-2 border-[#FF7A00] shadow-[0_0_15px_rgba(255,122,0,0.3)] font-black"
+                  : "bg-[#12161F] text-slate-300 border border-[#1E2638] hover:border-slate-500 hover:text-white"
+              }`}
+            >
+              2 MIN
+            </button>
+            <button
+              type="button"
               onClick={() => onChangeTimeframe("5m")}
-              className={`py-2.5 px-3 rounded-xl text-sm font-bold font-mono transition-all duration-200 cursor-pointer ${
+              className={`py-2 px-1 rounded-xl text-xs font-bold font-mono transition-all duration-200 cursor-pointer ${
                 timeframe === "5m" || timeframe === "5MIN"
                   ? "bg-[#181D26] text-[#FF7A00] border-2 border-[#FF7A00] shadow-[0_0_15px_rgba(255,122,0,0.3)] font-black"
                   : "bg-[#12161F] text-slate-300 border border-[#1E2638] hover:border-slate-500 hover:text-white"
@@ -681,7 +696,7 @@ ${confluencesList}
               <div className="bg-[#0B0E14] p-3 rounded-xl border border-[#182032] flex items-center justify-between">
                 <span className="text-slate-300 font-bold text-xs">Expiração:</span>
                 <span className="text-cyan-400 font-mono font-black text-xs px-2.5 py-1 rounded-lg bg-cyan-950/40 border border-cyan-500/40">
-                  {timeframe === "5m" ? "M5 (5 Minutos)" : "M1 (1 Minuto)"}
+                  {timeframe === "5m" ? "M5 (5 Minutos)" : timeframe === "2m" ? "M2 (2 Minutos)" : "M1 (1 Minuto)"}
                 </span>
               </div>
 

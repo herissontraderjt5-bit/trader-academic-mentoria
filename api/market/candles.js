@@ -1,14 +1,52 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+function aggregateCandles(candles, multiplier) {
+  const aggregated = [];
+  const groups = {};
+  for (const c of candles) {
+    const key = Math.floor(c.time / (60 * multiplier)) * (60 * multiplier);
+    if (!groups[key]) {
+      groups[key] = [];
+    }
+    groups[key].push(c);
+  }
+  
+  const sortedKeys = Object.keys(groups).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+  for (const keyStr of sortedKeys) {
+    const key = parseInt(keyStr, 10);
+    const group = groups[key];
+    group.sort((a, b) => a.time - b.time);
+    const open = group[0].open;
+    const close = group[group.length - 1].close;
+    const high = Math.max(...group.map(c => c.high));
+    const low = Math.min(...group.map(c => c.low));
+    const volume = group.reduce((sum, c) => sum + (c.volume || 0), 0);
+    aggregated.push({
+      time: key,
+      open,
+      high,
+      low,
+      close,
+      volume
+    });
+  }
+  return aggregated;
+}
+
 // Helper to fetch real-time crypto candles with multi-source resilient endpoints
 async function fetchCandlesFromSources(ticker, interval, limit) {
+  const isCustomTimeframe = interval === "2m";
+  const fetchInterval = isCustomTimeframe ? "1m" : interval;
+  const fetchLimit = isCustomTimeframe ? limit * 2 + 10 : limit;
+
   const sources = [
-    `https://data-api.binance.vision/api/v3/klines?symbol=${ticker}&interval=${interval}&limit=${limit}`,
-    `https://api.binance.us/api/v3/klines?symbol=${ticker}&interval=${interval}&limit=${limit}`,
-    `https://api.binance.com/api/v3/klines?symbol=${ticker}&interval=${interval}&limit=${limit}`,
+    `https://data-api.binance.vision/api/v3/klines?symbol=${ticker}&interval=${fetchInterval}&limit=${fetchLimit}`,
+    `https://api.binance.us/api/v3/klines?symbol=${ticker}&interval=${fetchInterval}&limit=${fetchLimit}`,
+    `https://api.binance.com/api/v3/klines?symbol=${ticker}&interval=${fetchInterval}&limit=${fetchLimit}`,
   ];
 
+  let fetchedCandles = null;
   for (const url of sources) {
     try {
       const response = await fetch(url, {
@@ -19,7 +57,7 @@ async function fetchCandlesFromSources(ticker, interval, limit) {
       if (response.ok) {
         const rawData = await response.json();
         if (Array.isArray(rawData) && rawData.length > 0) {
-          return rawData.map((item) => ({
+          fetchedCandles = rawData.map((item) => ({
             time: Math.floor(item[0] / 1000),
             open: parseFloat(item[1]),
             high: parseFloat(item[2]),
@@ -27,6 +65,7 @@ async function fetchCandlesFromSources(ticker, interval, limit) {
             close: parseFloat(item[4]),
             volume: parseFloat(item[5]),
           }));
+          break;
         }
       }
     } catch {
@@ -35,31 +74,38 @@ async function fetchCandlesFromSources(ticker, interval, limit) {
   }
 
   // Try Bybit as secondary global provider
-  try {
-    const bybitInterval = interval === "5m" ? "5" : interval === "15m" ? "15" : "1";
-    const bybitUrl = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${ticker}&interval=${bybitInterval}&limit=${limit}`;
-    const bybitRes = await fetch(bybitUrl, { signal: AbortSignal.timeout(3500) });
-    if (bybitRes.ok) {
-      const data = await bybitRes.json();
-      if (data.result?.list && Array.isArray(data.result.list) && data.result.list.length > 0) {
-        return data.result.list
-          .slice()
-          .reverse()
-          .map((item) => ({
-            time: Math.floor(parseInt(item[0], 10) / 1000),
-            open: parseFloat(item[1]),
-            high: parseFloat(item[2]),
-            low: parseFloat(item[3]),
-            close: parseFloat(item[4]),
-            volume: parseFloat(item[5]),
-          }));
+  if (!fetchedCandles) {
+    try {
+      const bybitInterval = fetchInterval === "5m" ? "5" : fetchInterval === "15m" ? "15" : "1";
+      const bybitUrl = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${ticker}&interval=${bybitInterval}&limit=${fetchLimit}`;
+      const bybitRes = await fetch(bybitUrl, { signal: AbortSignal.timeout(3500) });
+      if (bybitRes.ok) {
+        const data = await bybitRes.json();
+        if (data.result?.list && Array.isArray(data.result.list) && data.result.list.length > 0) {
+          fetchedCandles = data.result.list
+            .slice()
+            .reverse()
+            .map((item) => ({
+              time: Math.floor(parseInt(item[0], 10) / 1000),
+              open: parseFloat(item[1]),
+              high: parseFloat(item[2]),
+              low: parseFloat(item[3]),
+              close: parseFloat(item[4]),
+              volume: parseFloat(item[5]),
+            }));
+        }
       }
+    } catch {
+      // Continue
     }
-  } catch {
-    // Continue
   }
 
-  return null;
+  if (fetchedCandles && isCustomTimeframe) {
+    const aggregated = aggregateCandles(fetchedCandles, 2);
+    return aggregated.slice(-limit);
+  }
+
+  return fetchedCandles;
 }
 
 // In-memory price state for fallback (in serverless, this is instance-level, but acts as a decent buffer)

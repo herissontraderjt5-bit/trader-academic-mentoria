@@ -608,7 +608,8 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
         const now = new Date();
         const tf = timeframe.toLowerCase();
         const isM5 = tf.includes("5m") || tf === "5" || tf === "m5";
-        const candleLengthMs = isM5 ? 300000 : 60000;
+        const isM2 = tf.includes("2m") || tf === "2" || tf === "m2";
+        const candleLengthMs = isM5 ? 300000 : (isM2 ? 120000 : 60000);
         
         // Start of the entry candle (the next candle)
         const entryCandleStartMs = Math.ceil((now.getTime() + 1000) / candleLengthMs) * candleLengthMs;
@@ -652,7 +653,7 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
           entryPrice,
           stake,
           payoutPercent,
-          expiryMinutes: isM5 ? 5 : 1,
+          expiryMinutes: isM5 ? 5 : (isM2 ? 2 : 1),
           strategyUsed: `IA Automática (${result.strategyName})`,
           confidenceAtEntry: result.confidenceScore,
         });
@@ -672,7 +673,8 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
       const now = new Date();
       const tf = timeframe.toLowerCase();
       const isM5 = tf.includes("5m") || tf === "5" || tf === "m5";
-      const candleLengthMs = isM5 ? 300000 : 60000;
+      const isM2 = tf.includes("2m") || tf === "2" || tf === "m2";
+      const candleLengthMs = isM5 ? 300000 : (isM2 ? 120000 : 60000);
       const currentCandleStart = Math.floor(now.getTime() / candleLengthMs) * candleLengthMs;
 
       // Calculate remaining seconds
@@ -684,9 +686,13 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
         const minutes = now.getMinutes();
         const elapsedSeconds = (minutes % 5) * 60 + totalSecondsOfCurrentMinute;
         secondsRemaining = 300 - elapsedSeconds;
+      } else if (isM2) {
+        const minutes = now.getMinutes();
+        const elapsedSeconds = (minutes % 2) * 60 + totalSecondsOfCurrentMinute;
+        secondsRemaining = 120 - elapsedSeconds;
       }
 
-      const targetRemaining = isM5 ? 150 : 30; // 2m30s for M5, 30s for M1
+      const targetRemaining = isM5 ? 150 : (isM2 ? 60 : 30); // 2m30s for M5, 60s for M2, 30s for M1
 
       // Trigger analysis when the candle hits the target window and it hasn't triggered for this candle yet
       if (secondsRemaining <= targetRemaining && secondsRemaining > targetRemaining - 3) {
@@ -818,7 +824,8 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
       if (t.result !== "PENDING") return t;
 
       const isM5 = t.expiryMinutes === 5;
-      const stepMs = isM5 ? 300000 : 60000;
+      const isM2 = t.expiryMinutes === 2;
+      const stepMs = isM5 ? 300000 : (isM2 ? 120000 : 60000);
       // Calculate start time of entry candle
       const entryCandleStartMs = Math.round(t.timestamp / stepMs) * stepMs;
       const entryCandleTimeSecs = entryCandleStartMs / 1000;

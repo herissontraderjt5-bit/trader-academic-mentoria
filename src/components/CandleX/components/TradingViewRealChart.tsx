@@ -34,6 +34,7 @@ export const TradingViewRealChart: React.FC<TradingViewRealChartProps> = ({
   const getTvInterval = (rawInterval: string) => {
     const lower = rawInterval.toLowerCase();
     if (lower === "1m" || lower === "m1") return "1";
+    if (lower === "2m" || lower === "m2") return "2";
     if (lower === "5m" || lower === "m5") return "5";
     if (lower === "15m" || lower === "m15") return "15";
     if (lower === "30m" || lower === "m30") return "30";

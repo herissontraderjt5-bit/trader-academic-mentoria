@@ -74,6 +74,9 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
     if (tf.includes("5m") || tf === "5" || tf === "m5") {
       return { confirmationThreshold: 150, decisionThreshold: 60, candleLengthMs: 300 * 1000 };
     }
+    if (tf.includes("2m") || tf === "2" || tf === "m2") {
+      return { confirmationThreshold: 60, decisionThreshold: 20, candleLengthMs: 120 * 1000 };
+    }
     return { confirmationThreshold: 30, decisionThreshold: 10, candleLengthMs: 60 * 1000 };
   }, [timeframe]);
 
@@ -88,6 +91,10 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
       const minutes = currentTime.getMinutes();
       const elapsedSeconds = (minutes % 5) * 60 + totalSecondsOfCurrentMinute;
       return 300 - elapsedSeconds;
+    } else if (tf.includes("2m") || tf === "2" || tf === "m2") {
+      const minutes = currentTime.getMinutes();
+      const elapsedSeconds = (minutes % 2) * 60 + totalSecondsOfCurrentMinute;
+      return 120 - elapsedSeconds;
     } else {
       // Default to M1
       return 60 - totalSecondsOfCurrentMinute;
