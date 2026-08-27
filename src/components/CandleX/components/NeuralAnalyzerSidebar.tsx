@@ -319,7 +319,7 @@ ${confluencesList}
                   }`}
                 >
                   {(autoTraderSession?.totalPnl || 0) >= 0 ? "+" : ""}
-                  R$ {(autoTraderSession?.totalPnl || 0).toFixed(2)}
+                  $ {(autoTraderSession?.totalPnl || 0).toFixed(2)}
                 </span>
               </div>
             </div>
@@ -328,13 +328,13 @@ ${confluencesList}
             <div className="flex items-center justify-between gap-1.5 pt-0.5">
               <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-300 overflow-x-auto no-scrollbar">
                 <span className="px-2 py-0.5 rounded bg-[#182030] text-emerald-400 border border-emerald-500/20 font-bold">
-                  Meta: R${autoTraderConfig.dailyStopWin}
+                  Meta: ${autoTraderConfig.dailyStopWin}
                 </span>
                 <span className="px-2 py-0.5 rounded bg-[#182030] text-rose-400 border border-rose-500/20 font-bold">
-                  Stop: R${autoTraderConfig.dailyStopLoss}
+                  Stop: ${autoTraderConfig.dailyStopLoss}
                 </span>
                 <span className="px-2 py-0.5 rounded bg-[#182030] text-amber-400 border border-amber-500/20 font-bold">
-                  Entrada: R${autoTraderConfig.stakeAmount}
+                  Entrada: ${autoTraderConfig.stakeAmount}
                 </span>
               </div>
 

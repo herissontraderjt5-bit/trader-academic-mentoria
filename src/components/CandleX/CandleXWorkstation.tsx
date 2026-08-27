@@ -851,9 +851,9 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
         // Speak outcome and play audio
         if (outcome === "WIN") {
           soundManager.playWin();
-          soundManager.speakAlert(`Vitória! Operação finalizada em ${t.ticker} com lucro de R$ ${pnl}.`);
+          soundManager.speakAlert(`Vitória! Operação finalizada em ${t.ticker} com lucro de $ ${pnl}.`);
         } else if (outcome === "LOSS") {
-          soundManager.speakAlert(`Derrota! Operação finalizada em ${t.ticker} com perda de R$ ${t.stake}.`);
+          soundManager.speakAlert(`Derrota! Operação finalizada em ${t.ticker} com perda de $ ${t.stake}.`);
         } else {
           soundManager.speakAlert(`Empate! Operação finalizada em ${t.ticker}.`);
         }
@@ -1228,7 +1228,7 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
                 </span>
               )}
               <span className={`text-sm font-bold font-mono ${recentResultNotification.pnl >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
-                {recentResultNotification.pnl >= 0 ? "+" : ""}R$ {recentResultNotification.pnl.toFixed(2)}
+                {recentResultNotification.pnl >= 0 ? "+" : ""}$ {recentResultNotification.pnl.toFixed(2)}
               </span>
             </div>
           </div>

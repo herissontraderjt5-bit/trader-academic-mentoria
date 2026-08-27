@@ -43,7 +43,7 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
   session,
   onToggleEnabled,
   onResetSession,
-  currencySymbol = "R$",
+  currencySymbol = "$",
   hioveToken,
 }) => {
   if (!isOpen) return null;
