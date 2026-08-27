@@ -80,73 +80,7 @@ export const HioveUnifiedTopBar: React.FC<HioveUnifiedTopBarProps> = ({
           </span>
         </div>
 
-        {/* Add Tab (+) button */}
-        <button
-          type="button"
-          onClick={onAddTab}
-          className="w-7 h-7 rounded-lg bg-[#141A26] hover:bg-[#1E2638] border border-[#1E2638] flex items-center justify-center text-slate-400 hover:text-white transition-colors cursor-pointer flex-shrink-0"
-          title="Abrir Novo Ativo"
-        >
-          <Plus className="w-4 h-4" />
-        </button>
 
-        {/* Active Asset Tabs */}
-        <div className="flex items-center gap-1.5 h-full py-1.5">
-          {openTabs.map((tab) => {
-            const isActive = tab.id === activeTicker;
-            return (
-              <div
-                key={tab.id}
-                onClick={() => onSelectTicker(tab.id)}
-                className={`flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
-                  isActive
-                    ? "bg-[#141A26] text-white border-[#2A364F] shadow-sm"
-                    : "bg-transparent text-slate-400 border-transparent hover:bg-[#141A26]/50 hover:text-slate-200"
-                }`}
-              >
-                {/* Crypto/Asset Icon */}
-                <div className="w-5 h-5 rounded-full bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-[10px] text-indigo-300 font-bold">
-                  {tab.label.charAt(0)}
-                </div>
-
-                <div>
-                  <div className="text-xs font-black leading-tight text-white">
-                    {tab.label}
-                  </div>
-                  <div className="text-[8.5px] font-mono text-slate-400 leading-tight">
-                    {tab.type}
-                  </div>
-                </div>
-
-                {/* Mini Sparkline Line */}
-                <div className="w-8 h-3 flex items-center opacity-60">
-                  <svg className="w-full h-full" viewBox="0 0 32 12">
-                    <path
-                      d="M0,8 L6,4 L12,9 L18,3 L24,6 L32,2"
-                      fill="none"
-                      stroke={isActive ? "#00E676" : "#64748B"}
-                      strokeWidth="1.5"
-                    />
-                  </svg>
-                </div>
-
-                {/* Close tab */}
-                {openTabs.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onCloseTab(tab.id);
-                    }}
-                    className="p-0.5 rounded hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
       </div>
 
       {/* Right Tools, Balance, Deposit Button, User Avatar */}
