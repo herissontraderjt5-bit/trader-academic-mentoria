@@ -238,15 +238,48 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
 
       if (!authRes.ok) {
         console.error("Hiove authentication failed, status:", authRes.status);
+        // Clear token
+        setHioveAccountInfo((prev) => ({ ...prev, token: null, userId: null }));
+        // Turn off robot if it was enabled on REAL account
+        if (autoTraderConfig.enabled && autoTraderConfig.accountType === "REAL") {
+          const nextConfig = { ...autoTraderConfig, enabled: false };
+          setAutoTraderConfig(nextConfig);
+          if (currentUser && currentUser.id !== 'usr-guest') {
+            localStorage.setItem(`candlex_autotrader_${currentUser.id}`, JSON.stringify(nextConfig));
+            supabaseService.saveCandleXAutoTrader(currentUser.id, nextConfig);
+          }
+          soundManager.speakAlert("Falha na autenticação da Hiove. Robô desativado.");
+        }
         return;
       }
 
       const authData = await authRes.json();
       const token = authData.token || (authData.data && authData.data.token);
-      const userId = authData.user?.id || (authData.data && authData.data.user?.id);
 
-      if (!token || !userId) {
-        console.error("Failed to parse token/userId from Hiove response:", authData);
+      if (!token) {
+        console.error("Failed to parse token from Hiove response:", authData);
+        setHioveAccountInfo((prev) => ({ ...prev, token: null, userId: null }));
+        return;
+      }
+
+      // Fetch /auth/me with token to get userId (room)
+      const meRes = await fetch("https://broker-api.mybrokerdev.com/auth/me", {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "x-tenant-id": tenantId,
+          "x-timestamp": String(Date.now())
+        }
+      });
+
+      let userId = null;
+      if (meRes.ok) {
+        const meData = await meRes.json();
+        userId = meData.id || (meData.data && meData.data.id) || (meData.user && meData.user.id) || (meData.data && meData.data.user?.id);
+      }
+
+      if (!userId) {
+        console.error("Failed to fetch user ID from auth/me profile request");
+        setHioveAccountInfo((prev) => ({ ...prev, token: null, userId: null }));
         return;
       }
 
@@ -343,8 +376,9 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
       };
     } catch (e) {
       console.error("Failed to connect to Hiove:", e);
+      setHioveAccountInfo((prev) => ({ ...prev, token: null, userId: null }));
     }
-  }, [autoTraderConfig.hioveEmail, autoTraderConfig.hiovePassword, autoTraderConfig.accountType, currentUser]);
+  }, [autoTraderConfig.hioveEmail, autoTraderConfig.hiovePassword, autoTraderConfig.accountType, autoTraderConfig.enabled, currentUser]);
 
   // Connect to Hiove on mount or when credentials change (debounced)
   useEffect(() => {
@@ -408,6 +442,20 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
       } else {
         const errText = await res.text();
         console.error("Failed to execute trade on Hiove, status:", res.status, errText);
+        
+        // If unauthorized/expired, clear credentials and deactivate
+        if (res.status === 401) {
+          setHioveAccountInfo((prev) => ({ ...prev, token: null, userId: null }));
+          if (autoTraderConfig.enabled && autoTraderConfig.accountType === "REAL") {
+            const nextConfig = { ...autoTraderConfig, enabled: false };
+            setAutoTraderConfig(nextConfig);
+            if (currentUser && currentUser.id !== 'usr-guest') {
+              localStorage.setItem(`candlex_autotrader_${currentUser.id}`, JSON.stringify(nextConfig));
+              supabaseService.saveCandleXAutoTrader(currentUser.id, nextConfig);
+            }
+            soundManager.speakAlert("Sessão da Hiove expirada. Robô desativado.");
+          }
+        }
         return false;
       }
     } catch (e) {
@@ -622,9 +670,15 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
   const handleToggleAutoTrader = () => {
     if (!autoTraderConfig.enabled) {
       // Validate credentials if attempting to turn ON in REAL mode
-      if (autoTraderConfig.accountType === "REAL" && (!autoTraderConfig.hioveEmail || !autoTraderConfig.hiovePassword)) {
-        alert("Por favor, preencha o E-mail e Senha da Hiove nas configurações do Robô para operar na conta REAL.");
-        return;
+      if (autoTraderConfig.accountType === "REAL") {
+        if (!autoTraderConfig.hioveEmail || !autoTraderConfig.hiovePassword) {
+          alert("Por favor, preencha o E-mail e Senha da Hiove nas configurações do Robô para operar na conta REAL.");
+          return;
+        }
+        if (!hioveAccountInfo.token) {
+          alert("Erro: O robô ainda não está conectado à Hiove. Verifique se o e-mail e senha estão corretos nas configurações do Robô e aguarde o status 'CONECTADO'.");
+          return;
+        }
       }
     }
 
