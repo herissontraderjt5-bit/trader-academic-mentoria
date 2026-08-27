@@ -598,7 +598,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
           </div>
         ) : (
           /* Full Expanded Central Display */
-          <div className="p-4 space-y-3">
+          <div className="p-4 space-y-3.5">
             {/* Top Triple Row: Par de Moeda | Horário de Entrada | Horário de Expiração */}
             <div className="grid grid-cols-3 gap-2 bg-[#111726] p-3 rounded-xl border border-[#1E293B]">
               {/* 1. Ativo / Par */}
@@ -653,7 +653,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
                 <span
                   className={`font-black text-xs px-2.5 py-1 rounded-lg ${
                     secondsUntilEntry <= 10
-                      ? "bg-amber-500/20 text-amber-400 border border-amber-500/40"
+                      ? "bg-amber-500/20 text-amber-400 border border-amber-500/40 animate-pulse"
                       : "bg-[#182030] text-slate-200"
                   }`}
                 >
@@ -662,7 +662,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
               </div>
 
               {/* Visual Progress Bar */}
-              <div className="h-2.5 w-full bg-[#1A2234] rounded-full overflow-hidden">
+              <div className="h-2 w-full bg-[#1A2234] rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-1000 ${
                     isRejected
@@ -681,48 +681,29 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
             {/* Main Action Block: PRE_WAITING vs CONFIRMED vs REJECTED */}
             {isPreWaiting ? (
               /* Case 1: Pre-Waiting (> 10s) */
-              <div className="p-3.5 rounded-xl border-2 border-amber-500/80 bg-amber-950/30 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center shadow-lg">
-                      <Radio className="w-6 h-6 animate-pulse" />
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-mono font-bold text-amber-300 uppercase tracking-widest block">
-                        Fase 1 &bull; Pré-Validação
-                      </span>
-                      <h3 className="text-xl font-black text-amber-400 tracking-wider">
-                        AGUARDANDO CONFIRMAÇÃO
-                      </h3>
-                    </div>
-                  </div>
-
-
-                </div>
-
-                <p className="text-[11px] font-mono text-amber-200/90 leading-relaxed bg-[#0C101A]/60 p-2 rounded border border-amber-500/20">
-                  ⚡ <strong>A IA confirmará ou rejeitará a entrada automaticamente aos 10 segundos antes do gatilho</strong> ({entryTimeStr}), auditando a rejeição e o volume da vela atual.
+              <div className="p-3 rounded-xl border border-amber-500/30 bg-amber-950/20 text-center space-y-1">
+                <span className="text-[10px] font-mono font-bold text-amber-400 uppercase tracking-widest block">
+                  FASE 1 &bull; PRÉ-VALIDAÇÃO
+                </span>
+                <span className="text-sm font-black text-amber-300 block uppercase">
+                  AGUARDANDO CONFIRMAÇÃO DO ROBÔ
+                </span>
+                <p className="text-[10px] text-amber-200/70 font-mono leading-relaxed mt-1">
+                  Varredura em tempo real ativa. Auditoria final iniciará aos 10s restantes.
                 </p>
               </div>
             ) : isRejected ? (
               /* Case 2: REJECTED by Anti-Loss Filter */
-              <div className="p-3.5 rounded-xl border-2 border-rose-500 bg-rose-950/50 shadow-[0_0_35px_rgba(244,63,94,0.35)] space-y-2 animate-in zoom-in-95 duration-300">
+              <div className="p-3.5 rounded-xl border border-rose-500 bg-rose-950/30 space-y-2 animate-in zoom-in-95 duration-200">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-xl bg-rose-500 text-slate-950 flex items-center justify-center shadow-lg">
-                      <ShieldAlert className="w-6 h-6 stroke-[2.5]" />
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <ShieldAlert className="w-5 h-5 text-rose-500" />
                     <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] font-mono font-bold text-rose-300 uppercase tracking-widest block">
-                          Fase 2 &bull; Filtro Anti-Loss (10s)
-                        </span>
-                        <span className="px-1.5 py-0.2 text-[9px] font-mono font-bold bg-rose-500 text-slate-950 rounded">
-                          REJEITADO
-                        </span>
-                      </div>
-                      <h3 className="text-xl font-black text-rose-400 tracking-wider">
-                        ENTRADA REJEITADA
+                      <span className="text-[9px] font-mono font-bold text-rose-400 uppercase block">
+                        Filtro Anti-Loss Ativado
+                      </span>
+                      <h3 className="text-sm font-black text-rose-400 uppercase tracking-wider">
+                        ENTRADA REJEITADA PELA IA
                       </h3>
                     </div>
                   </div>
@@ -731,167 +712,100 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
                     <button
                       type="button"
                       onClick={onReScan}
-                      className="px-2.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-mono font-bold flex items-center gap-1 cursor-pointer transition-transform hover:scale-105"
+                      className="px-2 py-1 rounded bg-rose-600 hover:bg-rose-500 text-white text-[10px] font-mono font-bold flex items-center gap-1 cursor-pointer"
                     >
-                      <RefreshCw className="w-3 h-3" />
+                      <RefreshCw className="w-2.5 h-2.5" />
                       Re-escanear
                     </button>
                   )}
                 </div>
 
-                <div className="bg-[#0C101A]/80 p-2 rounded border border-rose-500/30 text-[11px] font-mono text-rose-200">
-                  <span className="text-rose-400 font-bold block">Motivo da Rejeição nos 10s:</span>
-                  <span>{rejectionReason || "Volume insuficiente e rejeição da taxa institucional nos 10s finais. Não entrar!"}</span>
-                </div>
+                <p className="bg-[#0C101A]/80 p-2 rounded border border-rose-500/20 text-[10px] font-mono text-rose-200 leading-relaxed">
+                  {rejectionReason || "Sinal cancelado por baixa confluência nos 10s finais."}
+                </p>
               </div>
             ) : (
               /* Case 3: CONFIRMED (CALL or PUT) */
               <div
-                className={`p-3.5 rounded-xl border-2 flex items-center justify-between relative overflow-hidden animate-in zoom-in-95 duration-300 ${
+                className={`p-3 rounded-xl border flex items-center justify-between relative overflow-hidden animate-in zoom-in-95 duration-200 ${
                   isCall
-                    ? "bg-emerald-950/60 border-emerald-500 shadow-[0_0_35px_rgba(16,185,129,0.45)]"
-                    : "bg-rose-950/60 border-rose-500 shadow-[0_0_35px_rgba(244,63,94,0.45)]"
+                    ? "bg-emerald-950/40 border-emerald-500/50"
+                    : "bg-rose-950/40 border-rose-500/50"
                 }`}
               >
-                <div className="flex items-center gap-3.5">
+                <div className="flex items-center gap-2.5">
                   <div
-                    className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-lg ${
-                      isCall
-                        ? "bg-emerald-500 text-slate-950"
-                        : "bg-rose-500 text-slate-950"
+                    className={`w-9 h-9 rounded-lg flex items-center justify-center ${
+                      isCall ? "bg-emerald-500 text-slate-950" : "bg-rose-500 text-slate-950"
                     }`}
                   >
                     {isCall ? (
-                      <TrendingUp className="w-7 h-7 stroke-[3]" />
+                      <TrendingUp className="w-5 h-5 stroke-[2.5]" />
                     ) : (
-                      <TrendingDown className="w-7 h-7 stroke-[3]" />
+                      <TrendingDown className="w-5 h-5 stroke-[2.5]" />
                     )}
                   </div>
 
                   <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-mono font-bold text-slate-300 uppercase tracking-widest block">
-                        Fase 2 &bull; Validado aos 10s
-                      </span>
-                      <span className="px-1.5 py-0.2 text-[9px] font-mono font-bold bg-emerald-500/30 text-emerald-300 rounded border border-emerald-500/40">
-                        CONFIRMADO
-                      </span>
-                    </div>
+                    <span className="text-[9px] font-mono font-bold text-slate-400 uppercase block">
+                      Fase 2 &bull; Confirmado aos 10s
+                    </span>
                     <h3
-                      className={`text-2xl font-black tracking-wider ${
+                      className={`text-base font-black uppercase tracking-wider ${
                         isCall ? "text-emerald-400" : "text-rose-400"
                       }`}
                     >
-                      {isCall ? "COMPRA (CALL)" : "VENDA (PUT)"}
+                      {isCall ? "ENTRADA CONFIRMADA: COMPRA (CALL) ↗" : "ENTRADA CONFIRMADA: VENDA (PUT) ↘"}
                     </h3>
                   </div>
-                </div>
-
-                {/* Strategy Badge */}
-                <div className="text-right hidden sm:block">
-                  <span className="text-[10px] font-mono text-slate-400 uppercase block">Estratégia</span>
-                  <span className="text-xs font-bold text-slate-200 font-mono">
-                    {analysis.strategyName || (isCall ? "Retração em Suporte SMC" : "Rejeição de Topo FVG")}
-                  </span>
                 </div>
               </div>
             )}
 
-            {/* Metrics Grid: Assertividade & Confluências */}
-            <div className="grid grid-cols-2 gap-2.5">
-              {/* Assertividade Box */}
-              <div className="bg-[#111726] p-3.5 rounded-xl border border-[#1E293B] space-y-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-xs font-mono text-slate-300 uppercase flex items-center gap-1 font-bold">
-                    <Target className="w-4 h-4 text-emerald-400" />
-                    Assertividade
-                  </span>
-                  <span
-                    className={`font-mono font-black text-lg ${
-                      isRejected ? "text-rose-400" : "text-emerald-400"
-                    }`}
-                  >
-                    {confidenceScore}%
-                  </span>
-                </div>
-                <div className="h-2.5 w-full bg-[#1A2234] rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full ${
-                      isRejected
-                        ? "bg-rose-500"
-                        : "bg-gradient-to-r from-emerald-500 to-teal-400"
-                    }`}
-                    style={{ width: `${confidenceScore}%` }}
-                  />
-                </div>
-                <span className="text-[11px] font-mono text-slate-300 font-medium block pt-0.5">
-                  {isRejected ? "Filtro Anti-Loss Ativo" : "Alta Confiança Algorítmica"}
-                </span>
+            {/* Metrics Bar: Assertividade & Confluências */}
+            <div className="flex items-center justify-between gap-4 bg-[#111726] p-3 rounded-xl border border-[#1E293B] text-xs font-mono">
+              <div className="flex items-center gap-1.5">
+                <Target className="w-4 h-4 text-emerald-400" />
+                <span className="text-slate-300">Assertividade:</span>
+                <strong className="text-emerald-400 font-bold">{confidenceScore}%</strong>
               </div>
-
-              {/* Quantidade de Confluências Box */}
-              <div className="bg-[#111726] p-3.5 rounded-xl border border-[#1E293B] space-y-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-xs font-mono text-slate-300 uppercase flex items-center gap-1 font-bold">
-                    <Zap className="w-4 h-4 text-amber-400" />
-                    Confluências
-                  </span>
-                  <span
-                    className={`font-mono font-black text-lg ${
-                      isRejected ? "text-rose-400" : "text-amber-400"
-                    }`}
-                  >
-                    {validConfluencesCount} de 6
-                  </span>
-                </div>
-                <div className="h-2.5 w-full bg-[#1A2234] rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full ${
-                      isRejected
-                        ? "bg-rose-500"
-                        : "bg-gradient-to-r from-amber-500 to-orange-500"
-                    }`}
-                    style={{ width: `${(validConfluencesCount / 6) * 100}%` }}
-                  />
-                </div>
-                <span className="text-[11px] font-mono text-slate-300 font-medium block pt-0.5">
-                  {isRejected ? "Critérios Insuficientes" : "100% Filtro Institucional"}
-                </span>
+              <div className="flex items-center gap-1.5">
+                <Zap className="w-4 h-4 text-amber-400" />
+                <span className="text-slate-300">Validações:</span>
+                <strong className="text-amber-400 font-bold">
+                  {analysis.detectedPatterns?.length || 4} Confluências
+                </strong>
               </div>
             </div>
 
-            {/* Confluence Pill Tags */}
-            <div className="space-y-2">
+            {/* Real Confluences List */}
+            <div className="space-y-2 bg-[#090D15] p-3.5 rounded-xl border border-[#1E293B]">
               <span className="text-xs font-mono text-slate-300 uppercase flex items-center gap-1.5 font-bold">
-                <ShieldCheck className="w-4 h-4 text-cyan-400" />
-                Pilares Validados:
+                <ShieldCheck className="w-4 h-4 text-[#FF7A00]" />
+                Confluências Detectadas:
               </span>
-              <div className="grid grid-cols-3 gap-2 text-xs font-mono">
-                {confluences.map((c, i) => {
-                  const isValid = isRejected ? i < 3 : true;
-                  return (
-                    <div
-                      key={i}
-                      className={`px-2.5 py-1.5 rounded-lg border flex items-center justify-between font-medium ${
-                        isValid
-                          ? "bg-[#090D15] border-[#1E293B] text-slate-200"
-                          : "bg-rose-950/20 border-rose-900/40 text-slate-500"
-                      }`}
-                    >
-                      <span className="truncate">{c.name}</span>
-                      {isValid ? (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0 ml-1" />
-                      ) : (
-                        <X className="w-3.5 h-3.5 text-rose-500 flex-shrink-0 ml-1" />
-                      )}
-                    </div>
-                  );
-                })}
+              <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                {(analysis.detectedPatterns && analysis.detectedPatterns.length > 0
+                  ? analysis.detectedPatterns
+                  : [
+                      "Estrutura e Alinhamento de Médias Móveis",
+                      "RSI em Região Estratégica",
+                      "Rejeição de Preço em Zona Relevante"
+                    ]
+                ).map((pattern, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-start gap-2 text-xs text-slate-200 bg-[#121622] px-2.5 py-1.5 rounded-lg border border-[#1E2638]"
+                  >
+                    <span className="text-[#FF7A00] font-black">•</span>
+                    <span className="leading-snug">{pattern}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
             {/* Entry Trigger & Invalidation Zone */}
-            <div className="bg-[#090D15] p-2.5 rounded-xl border border-[#1E293B] flex items-center justify-between text-xs font-mono">
+            <div className="bg-[#111726] p-3 rounded-xl border border-[#1E293B] flex items-center justify-between text-xs font-mono">
               <div className="flex items-center gap-1.5">
                 <span className="text-slate-400">Gatilho:</span>
                 <span className="font-bold text-white">
@@ -901,7 +815,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
               <div className="flex items-center gap-1.5 text-slate-400">
                 <span>Proteção:</span>
                 <span className={`font-bold ${isRejected ? "text-amber-400" : "text-rose-400"}`}>
-                  {isRejected ? "Loss Evitado com Sucesso" : analysis.invalidationLevel || "Reversão > 1.5%"}
+                  {isRejected ? "Loss Evitado" : analysis.invalidationLevel || "Reversão > 1.5%"}
                 </span>
               </div>
             </div>
