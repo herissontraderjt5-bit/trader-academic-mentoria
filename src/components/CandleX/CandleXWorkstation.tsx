@@ -539,10 +539,8 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
 
   const lastTriggeredCandleStartRef = useRef<number | null>(null);
 
-  // Active clock synchronization for Auto Trader automatic scanning at the exact boundary
+  // Active clock synchronization for automatic scanning at the exact boundary (runs always for live alerts)
   useEffect(() => {
-    if (!autoTraderConfig.enabled) return;
-
     const checkInterval = setInterval(() => {
       const now = new Date();
       const tf = timeframe.toLowerCase();
@@ -563,8 +561,8 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
 
       const targetRemaining = isM5 ? 150 : 30; // 2m30s for M5, 30s for M1
 
-      // Trigger analysis when the candle hits the target window, there is no active analysis in progress, and it hasn't triggered for this candle yet
-      if (!aiAnalysis && secondsRemaining <= targetRemaining && secondsRemaining > targetRemaining - 3) {
+      // Trigger analysis when the candle hits the target window and it hasn't triggered for this candle yet
+      if (secondsRemaining <= targetRemaining && secondsRemaining > targetRemaining - 3) {
         if (lastTriggeredCandleStartRef.current !== currentCandleStart) {
           lastTriggeredCandleStartRef.current = currentCandleStart;
           runAiAnalysis(true);
@@ -573,7 +571,7 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
     }, 500);
 
     return () => clearInterval(checkInterval);
-  }, [autoTraderConfig.enabled, timeframe, runAiAnalysis]);
+  }, [timeframe, runAiAnalysis]);
 
 
   // Save trade log to diário
@@ -1038,6 +1036,7 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
               candles={candles}
               isAnalyzing={isAnalyzing}
               onReScan={() => runAiAnalysis(true)}
+              onClose={() => setAiAnalysis(null)}
               onClearAnalysis={() => setAiAnalysis(null)}
               trades={trades}
             />
