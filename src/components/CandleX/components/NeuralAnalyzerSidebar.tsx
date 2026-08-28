@@ -143,7 +143,7 @@ ${confluencesList}
   };
 
   return (
-    <aside className="w-[340px] xl:w-[360px] h-full flex flex-col bg-[#0B0E14] border-r border-[#1B2230] text-slate-200 select-none z-20 flex-shrink-0">
+    <aside className="w-full md:w-[340px] xl:w-[360px] h-full flex flex-col bg-[#0B0E14] border-r border-[#1B2230] text-slate-200 select-none z-20 flex-shrink-0">
       {/* Main Controls Scroll Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Title: ◆ CandleX */}

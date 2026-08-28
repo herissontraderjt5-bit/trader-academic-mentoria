@@ -84,6 +84,7 @@ const INITIAL_TABS = [
 ];
 
 export default function CandleXWorkstation({ currentUser, onBackToHome }: CandleXWorkstationProps) {
+  const [mobileTab, setMobileTab] = useState<"chart" | "ai">("chart");
   const [activeTicker, setActiveTicker] = useState<string>("ETHUSDT");
   const [timeframe, setTimeframe] = useState<string>("1m");
   const [protectionEnabled, setProtectionEnabled] = useState<boolean>(true);
@@ -974,30 +975,60 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
         timeframe={timeframe}
       />
 
+      {/* Mobile Tab Selector */}
+      <div className="md:hidden flex bg-[#0E121B] border-b border-[#1B2230] p-1 flex-shrink-0">
+        <button
+          type="button"
+          onClick={() => setMobileTab("chart")}
+          className={`flex-1 py-2 text-center text-xs font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
+            mobileTab === "chart"
+              ? "bg-[#181D26] text-[#FF7A00] border border-[#FF7A00]/50 shadow-[0_0_10px_rgba(255,122,0,0.2)]"
+              : "text-slate-400 hover:text-slate-200"
+          }`}
+        >
+          Gráfico & Corretora
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab("ai")}
+          className={`flex-1 py-2 text-center text-xs font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
+            mobileTab === "ai"
+              ? "bg-[#181D26] text-[#FF7A00] border border-[#FF7A00]/50 shadow-[0_0_10px_rgba(255,122,0,0.2)]"
+              : "text-slate-400 hover:text-slate-200"
+          }`}
+        >
+          Análise IA & Sinais
+        </button>
+      </div>
+
       {/* Main Trading Area */}
-      <div className="flex-1 flex w-full overflow-hidden min-h-0">
+      <div className="flex-1 flex w-full overflow-hidden min-h-0 relative">
         
         {/* Left Side: Neural AI panel */}
-        <NeuralAnalyzerSidebar
-          activeTicker={activeTicker}
-          onSelectTicker={setActiveTicker}
-          timeframe={timeframe}
-          onChangeTimeframe={setTimeframe}
-          protectionEnabled={protectionEnabled}
-          onToggleProtection={() => setProtectionEnabled(!protectionEnabled)}
-          onGenerateAnalysis={() => runAiAnalysis(true)}
-          isAnalyzing={isAnalyzing}
-          analysis={aiAnalysis}
-          indicators={indicators}
-          currentPrice={currentPrice}
-          autoTraderConfig={autoTraderConfig}
-          autoTraderSession={autoTraderSession}
-          onToggleAutoTrader={handleToggleAutoTrader}
-          onOpenAutoTraderModal={() => setIsAutoTraderOpen(true)}
-        />
+        <div className={`${mobileTab === "ai" ? "flex w-full" : "hidden md:flex flex-shrink-0"}`}>
+          <NeuralAnalyzerSidebar
+            activeTicker={activeTicker}
+            onSelectTicker={setActiveTicker}
+            timeframe={timeframe}
+            onChangeTimeframe={setTimeframe}
+            protectionEnabled={protectionEnabled}
+            onToggleProtection={() => setProtectionEnabled(!protectionEnabled)}
+            onGenerateAnalysis={() => runAiAnalysis(true)}
+            isAnalyzing={isAnalyzing}
+            analysis={aiAnalysis}
+            indicators={indicators}
+            currentPrice={currentPrice}
+            autoTraderConfig={autoTraderConfig}
+            autoTraderSession={autoTraderSession}
+            onToggleAutoTrader={handleToggleAutoTrader}
+            onOpenAutoTraderModal={() => setIsAutoTraderOpen(true)}
+          />
+        </div>
 
         {/* Central Workstation */}
-        <main className="flex-1 h-full min-h-0 bg-[#0B0E14] relative flex flex-col overflow-hidden">
+        <main className={`flex-1 h-full min-h-0 bg-[#0B0E14] relative flex flex-col overflow-hidden ${
+          mobileTab === "chart" ? "flex" : "hidden md:flex"
+        }`}>
           
 
 
@@ -1107,8 +1138,8 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
 
       {/* Paste Vision screenshot modal */}
       {isVisionOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-          <div className="bg-[#0E121B] border border-[#1E2638] rounded-2xl w-full max-w-2xl p-4 overflow-hidden shadow-2xl animate-in zoom-in-95">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-0 md:p-4 animate-in fade-in duration-200">
+          <div className="bg-[#0E121B] border border-slate-800 md:border-[#1E2638] rounded-none md:rounded-2xl w-full max-w-2xl p-4 h-full md:h-auto md:max-h-[85vh] overflow-hidden shadow-2xl flex flex-col animate-in zoom-in-95">
             <div className="flex justify-between items-center mb-3">
               <h3 className="font-bold text-white text-sm">CandleX AI Print Vision Scanner</h3>
               <button
@@ -1129,8 +1160,8 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
 
       {/* AI Assistant Chat Drawer */}
       {isChatOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-          <div className="bg-[#0E121B] border border-[#1E2638] rounded-2xl w-full max-w-2xl p-4 max-h-[85vh] overflow-hidden shadow-2xl flex flex-col animate-in zoom-in-95">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-0 md:p-4 animate-in fade-in duration-200">
+          <div className="bg-[#0E121B] border border-slate-800 md:border-[#1E2638] rounded-none md:rounded-2xl w-full max-w-2xl p-4 h-full md:h-auto md:max-h-[85vh] overflow-hidden shadow-2xl flex flex-col animate-in zoom-in-95">
             <div className="flex justify-between items-center mb-3 flex-shrink-0">
               <h3 className="font-bold text-white text-sm">Assistente de Trading & Gestão CandleX AI</h3>
               <button

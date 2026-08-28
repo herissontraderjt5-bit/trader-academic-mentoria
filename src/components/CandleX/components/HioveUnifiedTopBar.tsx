@@ -81,12 +81,12 @@ export const HioveUnifiedTopBar: React.FC<HioveUnifiedTopBarProps> = ({
           <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-[#FF7A00] to-amber-500 flex items-center justify-center font-black text-slate-950 text-xs shadow-[0_0_10px_rgba(255,122,0,0.4)]">
             H
           </div>
-          <span className="font-black text-base text-white tracking-wider">
+          <span className="font-black text-base text-white tracking-wider hidden sm:inline">
             hiove
           </span>
         </div>
 
-        <div className="w-[1px] h-5 bg-[#1B2230]" />
+        <div className="w-[1px] h-5 bg-[#1B2230] hidden sm:block" />
 
         {/* Chart Engine Selector */}
         <div className="flex items-center gap-1 bg-[#121622] p-0.5 rounded-lg border border-[#1E2638] flex-shrink-0">
@@ -100,7 +100,8 @@ export const HioveUnifiedTopBar: React.FC<HioveUnifiedTopBarProps> = ({
             }`}
           >
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span>Hiove Oficial (Real)</span>
+            <span className="hidden md:inline">Hiove Oficial (Real)</span>
+            <span className="md:hidden">Hiove Real</span>
           </button>
 
           <button
@@ -112,7 +113,8 @@ export const HioveUnifiedTopBar: React.FC<HioveUnifiedTopBarProps> = ({
                 : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            <span>TradingView Pro</span>
+            <span className="hidden md:inline">TradingView Pro</span>
+            <span className="md:hidden">TradingView</span>
           </button>
         </div>
       </div>
@@ -127,17 +129,17 @@ export const HioveUnifiedTopBar: React.FC<HioveUnifiedTopBarProps> = ({
           <button
             type="button"
             onClick={() => window.open(`https://app.hiove.com/traderoom?ticker=${activeTicker}`, "_blank")}
-            className="flex items-center gap-1 px-2 py-1 rounded bg-[#141A26] hover:bg-[#1E2638] text-[10px] text-amber-400 border border-[#1E2638] cursor-pointer font-bold transition-all"
+            className="hidden md:flex items-center gap-1 px-2 py-1 rounded bg-[#141A26] hover:bg-[#1E2638] text-[10px] text-amber-400 border border-[#1E2638] cursor-pointer font-bold transition-all"
           >
             <span>Negociar no site da Hiove</span>
             <span className="text-[9px]">↗</span>
           </button>
         </div>
 
-        <div className="w-[1px] h-5 bg-[#1B2230]" />
+        <div className="w-[1px] h-5 bg-[#1B2230] hidden md:block" />
 
         {/* Sleek Tool Actions Bar */}
-        <div className="flex items-center gap-1 bg-[#121622]/60 border border-[#1E2638] rounded-lg p-0.5">
+        <div className="flex items-center gap-1 bg-[#121622]/60 border border-[#1E2638] rounded-lg p-0.5 max-w-[190px] sm:max-w-none overflow-x-auto no-scrollbar">
           {/* Auto Trader Button */}
           <button
             type="button"
