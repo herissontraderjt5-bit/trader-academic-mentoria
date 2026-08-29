@@ -120,43 +120,6 @@ async function fetchPublicCandles(ticker: string, interval: string, limit: numbe
   return fetchedCandles;
 }
 
-// High-precision institutional/SMC/Order Flow confluences pools
-const callConfluencesPool = [
-  "Order Block Institucional de Demanda identificado no Timeframe",
-  "Fair Value Gap (FVG) preenchido em 50% na zona de desconto",
-  "Liquidez capturada abaixo do suporte (Sell-side Liquidity hunt)",
-  "Mitigação de Zona de Demanda (Demand Zone) com forte rejeição",
-  "Desvio de preço (Deviation) com retorno para a Value Area",
-  "Exaustão de fluxo vendedor (exhaustion) no footprint do Order Flow",
-  "Absorção passiva compradora nas ordens limit do book (Depth of Market)",
-  "Desequilíbrio de compra (Buying Imbalance) superior a 350%",
-  "Pivot de Alta confirmado com volume financeiro crescente",
-  "Projeção de Fibonacci (Nível de Ouro 61.8%) respeitada com precisão",
-  "Alinhamento de estrutura de mercado (Market Structure Shift - MSS)",
-  "Contagem de Ondas de Elliott concluída no ciclo corretivo ABC",
-  "Fluxo institucional de ordens Hiove direcionado ao ponto de interesse (POI)",
-  "Força de agressão no Tape Reading superior a 75% na compra",
-  "Divergência oculta altista no oscilador e preço na zona de gatilho"
-];
-
-const putConfluencesPool = [
-  "Order Block Institucional de Oferta identificado no Timeframe",
-  "Fair Value Gap (FVG) preenchido em 50% na zona de premium",
-  "Liquidez capturada acima da resistência (Buy-side Liquidity hunt)",
-  "Mitigação de Zona de Oferta (Supply Zone) com forte rejeição",
-  "Desvio de preço (Deviation) com retorno para a Value Area",
-  "Exaustão de fluxo comprador (exhaustion) no footprint do Order Flow",
-  "Absorção passiva vendedora nas ordens limit do book (Depth of Market)",
-  "Desequilíbrio de venda (Selling Imbalance) superior a 350%",
-  "Pivot de Baixa confirmado com volume financeiro crescente",
-  "Projeção de Fibonacci (Nível de Ouro 61.8%) respeitada na retração",
-  "Alinhamento de estrutura de mercado (Market Structure Shift - MSS)",
-  "Contagem de Ondas de Elliott concluída no ciclo impulsivo/corretivo",
-  "Fluxo institucional de ordens Hiove direcionado ao ponto de interesse (POI)",
-  "Força de agressão no Tape Reading superior a 75% na venda",
-  "Divergência oculta baixista no oscilador e preço na zona de gatilho"
-];
-
 // Client-side Algorithmic Scoring fallback
 export function generateAlgorithmicAnalysis(
   ticker: string,
@@ -294,22 +257,27 @@ export function generateAlgorithmicAnalysis(
     }
   }
 
-  // Ensure at least 8 to 13 confluences are shown
-  const targetCount = 8 + Math.floor(Math.random() * 6);
-  const pool = isCall ? callConfluencesPool : putConfluencesPool;
-  const shuffledPool = [...pool].sort(() => 0.5 - Math.random());
-  for (let i = 0; i < shuffledPool.length && detectedPatterns.length < targetCount; i++) {
-    const item = shuffledPool[i];
-    if (!detectedPatterns.includes(item)) {
-      detectedPatterns.push(item);
-    }
+  // Scale confidenceScore to range (50% - 98%) based strictly on the number of real confluences (N)
+  const N = detectedPatterns.length;
+  let rawConfidence = 50;
+  if (N <= 1) {
+    rawConfidence = 50 + N * 10;
+  } else if (N === 2) {
+    rawConfidence = 68.5;
+  } else if (N === 3) {
+    rawConfidence = 76.2;
+  } else if (N === 4) {
+    rawConfidence = 84.8;
+  } else if (N === 5) {
+    rawConfidence = 89.5;
+  } else if (N === 6) {
+    rawConfidence = 93.4;
+  } else if (N === 7) {
+    rawConfidence = 96.1;
+  } else {
+    rawConfidence = Math.min(98.0, 96.0 + (N - 7) * 0.5);
   }
-
-  // Scale confidenceScore to high precision float (98.15% - 99.85%)
-  const baseConfidence = isCall 
-    ? 98.0 + (callScore / 1000.0) + (detectedPatterns.length * 0.1)
-    : 98.0 + (putScore / 1000.0) + (detectedPatterns.length * 0.1);
-  const confidenceScore = parseFloat(Math.min(99.85, Math.max(98.15, baseConfidence)).toFixed(2));
+  const confidenceScore = parseFloat(rawConfidence.toFixed(1));
 
   const marketSentiment = isCall
     ? confidenceScore > 80 ? "FORTE_ALTA" : "ALTA"
@@ -490,15 +458,16 @@ PADRÃO: ${indicators?.candlestickPattern}
 VELAS:
 ${candleContext}
 Gere uma análise técnica rigorosa para opções rápidas.
-IMPORTANTE: Você deve identificar e incluir MÚLTIPLAS confluências reais (mínimo de 8 a 15 confluências distintas e detalhadas de indicadores diferentes e Smart Money Concepts/SMC) nos seus resultados sob a chave "detectedPatterns". Não liste apenas cruzamento de médias. Considere RSI, Estocástico, MACD, Bollinger, volume, suporte/resistência, padrões de vela, zonas de oferta/demanda, blocos de ordens e liquidez.
+IMPORTANTE: Você deve identificar e incluir MÚLTIPLAS confluências reais (apenas confluências técnicas reais presentes nos dados fornecidos: RSI, Estocástico, MACD, Bollinger, volume, suporte/resistência, médias móveis e padrões de vela) nos seus resultados sob a chave "detectedPatterns". Não liste confluências fictícias.
+A taxa de assertividade ("confidenceScore") deve ser calculada de acordo com as confluências reais encontradas, variando estritamente entre 50% e 98% (poucas confluências reais geram assertividade mais próxima de 50%, enquanto forte confluência em vários indicadores gera até 98%).
 Retorne EXCLUSIVAMENTE em formato JSON:
 {
   "direction": "CALL" | "PUT" | "NEUTRAL",
-  "confidenceScore": number,
+  "confidenceScore": number (50 a 98),
   "timeframeExpiry": string,
   "triggerZone": string,
   "invalidationLevel": string,
-  "detectedPatterns": string[], // Mínimo de 8 a 15 confluências reais detalhadas
+  "detectedPatterns": string[], // Lista de confluências técnicas reais encontradas
   "strategyName": string,
   "marketSentiment": "FORTE_ALTA" | "ALTA" | "LATERAL" | "BAIXA" | "FORTE_BAIXA",
   "rationale": string,
@@ -520,23 +489,27 @@ Retorne EXCLUSIVAMENTE em formato JSON:
           const parsed = JSON.parse(response.text.trim());
           if (parsed && parsed.direction) {
             if (parsed.direction !== "NEUTRAL") {
-              const targetCount = 8 + Math.floor(Math.random() * 6);
-              if (!parsed.detectedPatterns) {
-                parsed.detectedPatterns = [];
+              const confluences = parsed.detectedPatterns || [];
+              const N = confluences.length;
+              let rawConfidence = 50;
+              if (N <= 1) {
+                rawConfidence = 50 + N * 10;
+              } else if (N === 2) {
+                rawConfidence = 68.5;
+              } else if (N === 3) {
+                rawConfidence = 76.2;
+              } else if (N === 4) {
+                rawConfidence = 84.8;
+              } else if (N === 5) {
+                rawConfidence = 89.5;
+              } else if (N === 6) {
+                rawConfidence = 93.4;
+              } else if (N === 7) {
+                rawConfidence = 96.1;
+              } else {
+                rawConfidence = Math.min(98.0, 96.0 + (N - 7) * 0.5);
               }
-              if (parsed.detectedPatterns.length < targetCount) {
-                const isCall = parsed.direction === "CALL";
-                const pool = isCall ? callConfluencesPool : putConfluencesPool;
-                const shuffledPool = [...pool].sort(() => 0.5 - Math.random());
-                for (let i = 0; i < shuffledPool.length && parsed.detectedPatterns.length < targetCount; i++) {
-                  const item = shuffledPool[i];
-                  if (!parsed.detectedPatterns.includes(item)) {
-                    parsed.detectedPatterns.push(item);
-                  }
-                }
-              }
-              const baseScore = parseFloat((98.0 + (parsed.detectedPatterns.length * 0.1) + (Math.random() * 0.4)).toFixed(2));
-              parsed.confidenceScore = Math.min(99.85, Math.max(98.15, baseScore));
+              parsed.confidenceScore = parseFloat(rawConfidence.toFixed(1));
             }
             return {
               ...parsed,
