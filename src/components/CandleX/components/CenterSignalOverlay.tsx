@@ -68,6 +68,48 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
   const [predictionResult, setPredictionResult] = useState<"WIN" | "LOSS" | "DRAW" | null>(null);
   const [hasResolvedOutcome, setHasResolvedOutcome] = useState<boolean>(false);
 
+  // Dragging state for overlay
+  const [position, setPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const isDraggingRef = useRef<boolean>(false);
+  const dragStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return; // Only allow left click
+    const target = e.target as HTMLElement;
+    if (target.closest("button") || target.closest("a") || target.closest("input")) return;
+
+    isDraggingRef.current = true;
+    dragStartRef.current = {
+      x: e.clientX - position.x,
+      y: e.clientY - position.y,
+    };
+    e.preventDefault();
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDraggingRef.current) return;
+      setPosition({
+        x: e.clientX - dragStartRef.current.x,
+        y: e.clientY - dragStartRef.current.y
+      });
+    };
+
+    const handleMouseUp = () => {
+      isDraggingRef.current = false;
+    };
+
+    if (isVisible) {
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isVisible]);
+
   // Thresholds for confirmation and decision
   const { confirmationThreshold, decisionThreshold, candleLengthMs } = useMemo(() => {
     const tf = timeframe.toLowerCase();
@@ -182,6 +224,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
       lastDecisionCandleStartRef.current = null;
       setPredictionResult(null);
       setHasResolvedOutcome(false);
+      setPosition({ x: 0, y: 0 }); // Reset drag position to center
     }
   }, [analysis, lastSignalTimestamp]);
 
@@ -337,7 +380,10 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
     >
       <div
         id="center-signal-hud-card"
-        className={`pointer-events-auto transition-all duration-300 w-full max-w-lg bg-[#0C101A]/95 backdrop-blur-xl border-2 rounded-2xl shadow-[0_0_55px_rgba(0,0,0,0.85)] overflow-hidden select-none animate-in zoom-in-95 fade-in duration-300 ${
+        style={{
+          transform: `translate(${position.x}px, ${position.y}px)`,
+        }}
+        className={`pointer-events-auto transition-[border-color,background-color,box-shadow] duration-300 w-full max-w-lg bg-[#0C101A]/95 backdrop-blur-xl border-2 rounded-2xl shadow-[0_0_55px_rgba(0,0,0,0.85)] overflow-hidden select-none animate-in zoom-in-95 fade-in duration-300 ${
           predictionResult !== null
             ? predictionResult === "WIN"
               ? "border-emerald-500 shadow-[0_0_50px_rgba(16,185,129,0.6)]"
@@ -357,7 +403,8 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
       >
         {/* Top Header Bar with Live Clock & Status Badge */}
         <div
-          className={`px-4 py-2.5 flex items-center justify-between border-b ${
+          onMouseDown={handleMouseDown}
+          className={`px-4 py-2.5 flex items-center justify-between border-b cursor-grab active:cursor-grabbing ${
             predictionResult !== null
               ? predictionResult === "WIN"
                 ? "bg-emerald-950/70 border-emerald-500/40"
