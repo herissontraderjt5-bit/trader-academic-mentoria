@@ -28,6 +28,7 @@ import {
   Settings,
   BarChart3,
   Waves,
+  BookOpen,
 } from "lucide-react";
 import {
   AiAnalysisResult,
@@ -52,6 +53,8 @@ interface NeuralAnalyzerSidebarProps {
   autoTraderSession?: AutoTraderSession;
   onToggleAutoTrader?: () => void;
   onOpenAutoTraderModal?: () => void;
+  onOpenOperations?: () => void;
+  tradesCount?: number;
 }
 
 const AVAILABLE_ASSETS = [
@@ -87,6 +90,8 @@ export const NeuralAnalyzerSidebar: React.FC<NeuralAnalyzerSidebarProps> = ({
   autoTraderSession,
   onToggleAutoTrader,
   onOpenAutoTraderModal,
+  onOpenOperations,
+  tradesCount,
 }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [copiedSignal, setCopiedSignal] = useState(false);
@@ -736,6 +741,18 @@ ${confluencesList}
                   ))}
                 </div>
               </div>
+
+              {/* Quick Button to open Diário de Trades */}
+              {onOpenOperations && (
+                <button
+                  type="button"
+                  onClick={onOpenOperations}
+                  className="w-full py-2.5 px-3 rounded-xl bg-[#121624] hover:bg-[#1C2338] text-amber-300 hover:text-white border border-amber-500/30 flex items-center justify-center gap-2 text-xs font-mono font-black transition-all cursor-pointer shadow-md mt-2"
+                >
+                  <BookOpen className="w-4 h-4 text-[#FF7A00]" />
+                  <span>Ver Diário de Trades ({tradesCount || 0})</span>
+                </button>
+              )}
             </div>
           </div>
         )}

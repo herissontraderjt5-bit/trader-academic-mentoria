@@ -575,6 +575,48 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
     }
   };
 
+  // Save AI manual signal trade result to history & Supabase (supports pending -> resolved transitions)
+  const handleSaveSignalTrade = async (
+    tradeData: TradeRecord
+  ) => {
+    const tradeId = tradeData.id;
+    const existingIndex = trades.findIndex((t) => t.id === tradeId);
+    let updatedTrades: TradeRecord[];
+
+    if (existingIndex !== -1) {
+      updatedTrades = trades.map((t) => (t.id === tradeId ? tradeData : t));
+    } else {
+      updatedTrades = [tradeData, ...trades];
+    }
+    setTrades(updatedTrades);
+
+    // Only modify bankroll balance if result is finalized (WIN or LOSS)
+    if (tradeData.result === "WIN" || tradeData.result === "LOSS") {
+      let nextBalance = bankrollConfig.currentBalance;
+      if (tradeData.result === "WIN") {
+        nextBalance = +(nextBalance + tradeData.pnl).toFixed(2);
+      } else if (tradeData.result === "LOSS") {
+        nextBalance = Math.max(0, +(nextBalance - tradeData.stake).toFixed(2));
+      }
+      const nextBankroll = {
+        ...bankrollConfig,
+        currentBalance: nextBalance,
+      };
+      setBankrollConfig(nextBankroll);
+      setRecentResultNotification(tradeData);
+
+      if (currentUser && currentUser.id !== 'usr-guest') {
+        localStorage.setItem(`candlex_bankroll_${currentUser.id}`, JSON.stringify(nextBankroll));
+        await supabaseService.saveCandleXBankroll(currentUser.id, nextBankroll);
+      }
+    }
+
+    if (currentUser && currentUser.id !== 'usr-guest') {
+      localStorage.setItem(`candlex_trades_${currentUser.id}`, JSON.stringify(updatedTrades));
+      await supabaseService.saveCandleXTrade(currentUser.id, tradeData);
+    }
+  };
+
   const lastAutoTraderCandleStartRef = useRef<number | null>(null);
 
   // Background Auto Trader execution callback (evaluates signals and executes silently)
@@ -820,6 +862,7 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
     const pendingTrades = trades.filter((t) => t.result === "PENDING");
     if (pendingTrades.length === 0) return;
 
+    const now = Date.now();
     let updated = false;
     const nextTrades = trades.map((t) => {
       if (t.result !== "PENDING") return t;
@@ -827,14 +870,27 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
       const isM5 = t.expiryMinutes === 5;
       const isM2 = t.expiryMinutes === 2;
       const stepMs = isM5 ? 300000 : (isM2 ? 120000 : 60000);
+
+      // FIX: Only resolve AFTER the trade duration has finished
+      const expiryTimestamp = t.timestamp + (t.expiryMinutes * 60 * 1000);
+      if (now < expiryTimestamp) {
+        return t; // Trade still running
+      }
+
       // Calculate start time of entry candle
-      const entryCandleStartMs = Math.round(t.timestamp / stepMs) * stepMs;
+      const entryCandleStartMs = Math.floor(t.timestamp / stepMs) * stepMs;
       const entryCandleTimeSecs = entryCandleStartMs / 1000;
 
-      // Find if this candle exists in our loaded candles and is closed (meaning there is a newer candle in the array)
-      const candleIndex = candles.findIndex((c) => c.time === entryCandleTimeSecs);
-      if (candleIndex !== -1 && candleIndex < candles.length - 1) {
-        const candle = candles[candleIndex];
+      // Find if this candle exists in loaded candles
+      let candle = candles.find((c) => c.time === entryCandleTimeSecs);
+      if (!candle) {
+        candle = candles.find((c) => Math.abs(c.time - entryCandleTimeSecs) < (stepMs / 1000));
+      }
+      if (!candle && candles.length > 1) {
+        candle = candles[candles.length - 2];
+      }
+
+      if (candle) {
         const entryPrice = t.entryPrice || candle.open;
         const expiryPrice = candle.close;
 
@@ -1022,6 +1078,8 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
             autoTraderSession={autoTraderSession}
             onToggleAutoTrader={handleToggleAutoTrader}
             onOpenAutoTraderModal={() => setIsAutoTraderOpen(true)}
+            onOpenOperations={() => setIsOperationsOpen(true)}
+            tradesCount={trades.length}
           />
         </div>
 
@@ -1069,6 +1127,9 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
               onClose={() => setAiAnalysis(null)}
               onClearAnalysis={() => setAiAnalysis(null)}
               trades={trades}
+              onSaveSignalTrade={handleSaveSignalTrade}
+              onOpenOperations={() => setIsOperationsOpen(true)}
+              bankrollConfig={bankrollConfig}
             />
           </div>
         </main>

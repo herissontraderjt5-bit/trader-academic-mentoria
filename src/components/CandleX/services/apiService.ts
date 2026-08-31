@@ -361,10 +361,11 @@ export const candlexApiService = {
 
     const candles: Candle[] = [];
     const seconds = interval === "5m" ? 300 : interval === "2m" ? 120 : (interval === "15m" ? 900 : 60);
+    const currentCandleTime = Math.floor(now / seconds) * seconds;
     let currentClose = basePrice;
 
     for (let i = limit - 1; i >= 0; i--) {
-      const time = now - i * seconds;
+      const time = currentCandleTime - i * seconds;
       const delta = (Math.random() - 0.495) * (basePrice * 0.002);
       const open = currentClose;
       const close = +(open + delta).toFixed(2);
