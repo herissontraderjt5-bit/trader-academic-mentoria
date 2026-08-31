@@ -5,7 +5,7 @@ import { ModuleGrid } from './components/ModuleGrid';
 import { ModuleDetailModal } from './components/ModuleDetailModal';
 import { VideoPlayerView } from './components/VideoPlayerView';
 import { AdminLayout } from './components/Admin/AdminLayout';
-import { RiskCalculatorModal } from './components/Tools/RiskCalculatorModal';
+import GestaoPlatform from './components/Gestao/GestaoPlatform';
 import { CertificateModal } from './components/Tools/CertificateModal';
 import { EconomicCalendarModal } from './components/Tools/EconomicCalendarModal';
 import { UpgradeModal } from './components/Tools/UpgradeModal';
@@ -30,7 +30,8 @@ import {
   Phone,
   Compass,
   Sparkles,
-  Calendar
+  Calendar,
+  BarChart3
 } from 'lucide-react';
 
 const AnnouncementBanner: React.FC<{ announcements: Announcement[] }> = ({ announcements }) => {
@@ -63,7 +64,7 @@ export default function App() {
   const [settings, setSettings] = useState<PlatformSettings>(() => storageService.getSettings());
 
   // View States
-  const [activeView, setActiveView] = useState<'home' | 'player' | 'admin' | 'candlex'>('home');
+  const [activeView, setActiveView] = useState<'home' | 'player' | 'admin' | 'candlex' | 'gestao'>('home');
   const [selectedModuleForModal, setSelectedModuleForModal] = useState<Module | null>(null);
   
   // Video Player States
@@ -71,7 +72,6 @@ export default function App() {
   const [activePlayingLesson, setActivePlayingLesson] = useState<Lesson | null>(null);
 
   // Tools Modal States
-  const [isRiskCalcOpen, setIsRiskCalcOpen] = useState(false);
   const [isCertificateOpen, setIsCertificateOpen] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
@@ -578,195 +578,210 @@ export default function App() {
         />
       )}
 
-      {/* View 3: Student Member Area (Kiwify Dashboard) */}
-      {(activeView === 'home' || activeView === 'candlex' || (activeView === 'admin' && !isAdmin)) && (
+      {/* View 3: Student Member Area (Kiwify Dashboard, CandleX & Gestão) */}
+      {(activeView === 'home' || activeView === 'candlex' || activeView === 'gestao' || (activeView === 'admin' && !isAdmin)) && (
         <>
-          <Navbar
-            currentUser={currentUser}
-            onSwitchUser={handleSwitchUser}
-            allUsers={users}
-            onToggleRole={handleToggleRole}
-            activeView={activeView}
-            setActiveView={setActiveView}
-            modules={modules}
-            announcements={announcements}
-            onSelectLesson={handleSelectLesson}
-            settings={settings}
-            overallProgress={overallProgress}
-            onOpenRiskCalc={() => setIsRiskCalcOpen(true)}
-            onOpenCertificate={() => setIsCertificateOpen(true)}
-            onOpenCalendar={() => setIsCalendarOpen(true)}
-            onOpenReferral={() => setIsReferralOpen(true)}
-            onOpenEditProfile={() => setIsEditProfileOpen(true)}
-            onOpenUpgrade={() => handleOpenUpgrade()}
-            onLogout={handleLogout}
-          />
-
-          {activeView === 'candlex' ? (
-            <CandleXWorkstation
+          {activeView === 'gestao' ? (
+            <GestaoPlatform
               currentUser={currentUser}
               onBackToHome={() => setActiveView('home')}
+              onOpenCandleX={() => setActiveView('candlex')}
             />
           ) : (
             <>
-              {/* Main Dashboard */}
-              <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
-            
-            {/* Top Announcement Banner */}
-            <AnnouncementBanner announcements={announcements} />
+              <Navbar
+                currentUser={currentUser}
+                onSwitchUser={handleSwitchUser}
+                allUsers={users}
+                onToggleRole={handleToggleRole}
+                activeView={activeView}
+                setActiveView={setActiveView}
+                modules={modules}
+                announcements={announcements}
+                onSelectLesson={handleSelectLesson}
+                settings={settings}
+                overallProgress={overallProgress}
+                onOpenCertificate={() => setIsCertificateOpen(true)}
+                onOpenCalendar={() => setIsCalendarOpen(true)}
+                onOpenReferral={() => setIsReferralOpen(true)}
+                onOpenEditProfile={() => setIsEditProfileOpen(true)}
+                onOpenUpgrade={() => handleOpenUpgrade()}
+                onLogout={handleLogout}
+              />
 
-            {/* Kiwify Hero Banner */}
-            <HeroBanner
-              currentUser={currentUser}
-              modules={modules}
-              settings={settings}
-              overallProgress={overallProgress}
-              onResumeWatching={handleResumeWatching}
-              onOpenUpgrade={() => handleOpenUpgrade()}
-              onOpenCalendar={() => setIsCalendarOpen(true)}
-            />
+              {activeView === 'candlex' ? (
+                <CandleXWorkstation
+                  currentUser={currentUser}
+                  onBackToHome={() => setActiveView('home')}
+                />
+              ) : (
+                <>
+                  {/* Main Dashboard */}
+                  <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
+                
+                {/* Top Announcement Banner */}
+                <AnnouncementBanner announcements={announcements} />
 
-            {/* Course Modules Grid */}
-            <ModuleGrid
-              modules={modules}
-              currentUser={currentUser}
-              onSelectModule={(mod) => setSelectedModuleForModal(mod)}
-              onPlayFirstUncompleted={handlePlayFirstUncompleted}
-            />
+                {/* Kiwify Hero Banner */}
+                <HeroBanner
+                  currentUser={currentUser}
+                  modules={modules}
+                  settings={settings}
+                  overallProgress={overallProgress}
+                  onResumeWatching={handleResumeWatching}
+                  onOpenUpgrade={() => handleOpenUpgrade()}
+                  onOpenCalendar={() => setIsCalendarOpen(true)}
+                />
 
-            {/* Community & Live Sessions Section */}
-            <section className="p-8 rounded-3xl bg-gradient-to-r from-[#120a05] via-[#16121e] to-[#0c0d18] border border-orange-900/30 shadow-2xl relative overflow-hidden">
-              <div className="flex flex-col lg:flex-row items-center justify-between gap-6 relative z-10">
-                <div className="space-y-2 text-center lg:text-left">
-                  <span className="px-3 py-1 rounded-full text-xs font-black bg-orange-500/20 text-orange-400 border border-orange-500/30 uppercase tracking-widest font-mono">
-                    Comunidade VIP
-                  </span>
-                  <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                    Opere Ao Vivo com o Mentor e Alunos VIP
-                  </h2>
-                  <p className="text-sm text-zinc-400 max-w-xl">
-                    Participe das nossas salas de operações diárias, analise o mercado em tempo real e tire dúvidas direto no chat exclusivo.
-                  </p>
-                </div>
+                {/* Course Modules Grid */}
+                <ModuleGrid
+                  modules={modules}
+                  currentUser={currentUser}
+                  onSelectModule={(mod) => setSelectedModuleForModal(mod)}
+                  onPlayFirstUncompleted={handlePlayFirstUncompleted}
+                />
 
-                <div className="flex flex-wrap items-center gap-3">
-                  <a
-                    href={settings.telegramVipUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-5 py-3.5 rounded-xl bg-[#0088cc] hover:bg-[#0077b5] text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-cyan-500/20 cursor-pointer"
-                  >
-                    <Send className="w-4 h-4" />
-                    <span>Telegram VIP</span>
-                  </a>
+                {/* Community & Live Sessions Section */}
+                <section className="p-8 rounded-3xl bg-gradient-to-r from-[#120a05] via-[#16121e] to-[#0c0d18] border border-orange-900/30 shadow-2xl relative overflow-hidden">
+                  <div className="flex flex-col lg:flex-row items-center justify-between gap-6 relative z-10">
+                    <div className="space-y-2 text-center lg:text-left">
+                      <span className="px-3 py-1 rounded-full text-xs font-black bg-orange-500/20 text-orange-400 border border-orange-500/30 uppercase tracking-widest font-mono">
+                        Comunidade VIP
+                      </span>
+                      <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                        Opere Ao Vivo com o Mentor e Alunos VIP
+                      </h2>
+                      <p className="text-sm text-zinc-400 max-w-xl">
+                        Participe das nossas salas de operações diárias, analise o mercado em tempo real e tire dúvidas direto no chat exclusivo.
+                      </p>
+                    </div>
 
-                  <a
-                    href={`https://wa.me/${settings.supportWhatsapp}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-5 py-3.5 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-green-500/20 cursor-pointer"
-                  >
-                    <Phone className="w-4 h-4" />
-                    <span>WhatsApp de Dúvidas</span>
-                  </a>
-                </div>
-              </div>
-            </section>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <a
+                        href={settings.telegramVipUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-5 py-3.5 rounded-xl bg-[#0088cc] hover:bg-[#0077b5] text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-cyan-500/20 cursor-pointer"
+                      >
+                        <Send className="w-4 h-4" />
+                        <span>Telegram VIP</span>
+                      </a>
 
-          </main>
-
-          {/* Footer */}
-          <footer className="border-t border-orange-900/20 bg-[#0a0a0a] py-10 px-4 sm:px-6 lg:px-8 text-xs text-zinc-400">
-            <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-orange-600 flex items-center justify-center text-white font-bold shadow-md shadow-orange-600/30">
-                  <Flame className="w-5 h-5 fill-current" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-1 font-black text-sm tracking-tight text-white uppercase">
-                    <span className="text-orange-500">TRADER</span>
-                    <span>ACADEMIC</span>
+                      <a
+                        href={`https://wa.me/${settings.supportWhatsapp}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-5 py-3.5 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-green-500/20 cursor-pointer"
+                      >
+                        <Phone className="w-4 h-4" />
+                        <span>WhatsApp de Dúvidas</span>
+                      </a>
+                    </div>
                   </div>
-                  <p className="text-[10px] text-zinc-500 font-mono mt-0.5">
-                    © {new Date().getFullYear()} {settings.mentorName}. Todos os direitos reservados.
-                  </p>
-                </div>
-              </div>
+                </section>
 
-              <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-zinc-400">
-                <button onClick={() => setIsRiskCalcOpen(true)} className="hover:text-orange-400 cursor-pointer">
-                  Calculadora de Lote
-                </button>
-                <span>•</span>
-                <button onClick={() => setIsCertificateOpen(true)} className="hover:text-orange-400 cursor-pointer">
-                  Certificado
-                </button>
-                {isAdmin && (
-                  <>
-                    <span>•</span>
-                    <button onClick={() => setActiveView('admin')} className="text-orange-400 hover:text-orange-300 hover:underline cursor-pointer font-bold font-mono">
-                      Acesso Mentor (Painel ADM)
+              </main>
+
+              {/* Footer */}
+              <footer className="border-t border-orange-900/20 bg-[#0a0a0a] py-10 px-4 sm:px-6 lg:px-8 text-xs text-zinc-400">
+                <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-orange-600 flex items-center justify-center text-white font-bold shadow-md shadow-orange-600/30">
+                      <Flame className="w-5 h-5 fill-current" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1 font-black text-sm tracking-tight text-white uppercase">
+                        <span className="text-orange-500">TRADER</span>
+                        <span>ACADEMIC</span>
+                      </div>
+                      <p className="text-[10px] text-zinc-500 font-mono mt-0.5">
+                        © {new Date().getFullYear()} {settings.mentorName}. Todos os direitos reservados.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-zinc-400">
+                    <button onClick={() => setActiveView('gestao')} className="hover:text-orange-400 cursor-pointer font-medium">
+                      Gestão de Banca
                     </button>
-                  </>
-                )}
-                <span>•</span>
-                <button onClick={handleLogout} className="text-zinc-500 hover:text-red-400 cursor-pointer font-mono">
-                  Sair da Conta
+                    <span>•</span>
+                    <button onClick={() => setActiveView('candlex')} className="hover:text-orange-400 cursor-pointer font-medium">
+                      CandleX AI
+                    </button>
+                    <span>•</span>
+                    <button onClick={() => setIsCertificateOpen(true)} className="hover:text-orange-400 cursor-pointer">
+                      Certificado
+                    </button>
+                    {isAdmin && (
+                      <>
+                        <span>•</span>
+                        <button onClick={() => setActiveView('admin')} className="text-orange-400 hover:text-orange-300 hover:underline cursor-pointer font-bold font-mono">
+                          Acesso Mentor (Painel ADM)
+                        </button>
+                      </>
+                    )}
+                    <span>•</span>
+                    <button onClick={handleLogout} className="text-zinc-500 hover:text-red-400 cursor-pointer font-mono">
+                      Sair da Conta
+                    </button>
+                  </div>
+                </div>
+              </footer>
+                </>
+              )}
+
+              {/* Mobile Floating Bottom Bar for Quick Navigation */}
+              <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-black/95 backdrop-blur-lg border-t border-orange-900/30 px-4 py-2 flex items-center justify-around">
+                <button
+                  onClick={() => setActiveView('home')}
+                  className={`flex flex-col items-center gap-1 text-[10px] font-bold ${
+                    activeView === 'home' ? 'text-orange-500' : 'text-zinc-400'
+                  }`}
+                >
+                  <Compass className="w-5 h-5" />
+                  <span>Aulas</span>
                 </button>
+
+                <button
+                  onClick={() => setActiveView('candlex')}
+                  className={`flex flex-col items-center gap-1 text-[10px] font-bold ${
+                    activeView === 'candlex' ? 'text-orange-500' : 'text-zinc-400'
+                  }`}
+                >
+                  <Sparkles className="w-5 h-5 text-orange-400" />
+                  <span>CandleX</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveView('gestao')}
+                  className={`flex flex-col items-center gap-1 text-[10px] font-bold ${
+                    activeView === 'gestao' ? 'text-orange-500' : 'text-zinc-400'
+                  }`}
+                >
+                  <BarChart3 className="w-5 h-5" />
+                  <span>Gestão</span>
+                </button>
+
+                <button
+                  onClick={() => setIsCalendarOpen(true)}
+                  className="flex flex-col items-center gap-1 text-[10px] font-bold text-orange-400"
+                >
+                  <Calendar className="w-5 h-5" />
+                  <span>Notícias</span>
+                </button>
+
+                {isAdmin && (
+                  <button
+                    onClick={() => setActiveView('admin')}
+                    className="flex flex-col items-center gap-1 text-[10px] font-bold text-zinc-400"
+                  >
+                    <ShieldCheck className="w-5 h-5" />
+                    <span>ADM</span>
+                  </button>
+                )}
               </div>
-            </div>
-          </footer>
             </>
           )}
-
-          {/* Mobile Floating Bottom Bar for Quick Navigation */}
-          <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-black/95 backdrop-blur-lg border-t border-orange-900/30 px-4 py-2 flex items-center justify-around">
-            <button
-              onClick={() => setActiveView('home')}
-              className={`flex flex-col items-center gap-1 text-[10px] font-bold ${
-                activeView === 'home' ? 'text-orange-500' : 'text-zinc-400'
-              }`}
-            >
-              <Compass className="w-5 h-5" />
-              <span>Aulas</span>
-            </button>
-
-            <button
-              onClick={() => setActiveView('candlex')}
-              className={`flex flex-col items-center gap-1 text-[10px] font-bold ${
-                activeView === 'candlex' ? 'text-orange-500' : 'text-zinc-400'
-              }`}
-            >
-              <Sparkles className="w-5 h-5 text-orange-400" />
-              <span>CandleX</span>
-            </button>
-
-            <button
-              onClick={() => setIsCalendarOpen(true)}
-              className="flex flex-col items-center gap-1 text-[10px] font-bold text-orange-400"
-            >
-              <Calendar className="w-5 h-5" />
-              <span>Notícias</span>
-            </button>
-
-            <button
-              onClick={() => setIsRiskCalcOpen(true)}
-              className="flex flex-col items-center gap-1 text-[10px] font-bold text-zinc-400"
-            >
-              <Calculator className="w-5 h-5" />
-              <span>Calc Lote</span>
-            </button>
-
-            {isAdmin && (
-              <button
-                onClick={() => setActiveView('admin')}
-                className="flex flex-col items-center gap-1 text-[10px] font-bold text-zinc-400"
-              >
-                <ShieldCheck className="w-5 h-5" />
-                <span>ADM</span>
-              </button>
-            )}
-          </div>
         </>
       )}
 
@@ -793,11 +808,6 @@ export default function App() {
         settings={settings}
         targetModule={upgradeTargetModule}
         currentUser={currentUser}
-      />
-
-      <RiskCalculatorModal
-        isOpen={isRiskCalcOpen}
-        onClose={() => setIsRiskCalcOpen(false)}
       />
 
       <CertificateModal

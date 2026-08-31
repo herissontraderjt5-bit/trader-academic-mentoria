@@ -16,7 +16,8 @@ import {
   Settings,
   Edit3,
   Calendar,
-  Sparkles
+  Sparkles,
+  BarChart3,
 } from 'lucide-react';
 import { User, Module, Announcement, PlatformSettings } from '../types';
 import { BrandLogo } from './BrandLogo';
@@ -27,14 +28,13 @@ interface NavbarProps {
   onSwitchUser: (userId: string) => void;
   allUsers: User[];
   onToggleRole: () => void;
-  activeView: 'home' | 'player' | 'admin' | 'candlex';
-  setActiveView: (view: 'home' | 'player' | 'admin' | 'candlex') => void;
+  activeView: 'home' | 'player' | 'admin' | 'candlex' | 'gestao';
+  setActiveView: (view: 'home' | 'player' | 'admin' | 'candlex' | 'gestao') => void;
   modules: Module[];
   onSelectLesson: (moduleId: string, lessonId: string) => void;
   announcements: Announcement[];
   settings: PlatformSettings;
   overallProgress: { completed: number; total: number; percentage: number };
-  onOpenRiskCalc: () => void;
   onOpenCertificate: () => void;
   onOpenCalendar: () => void;
   onOpenReferral: () => void;
@@ -55,7 +55,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   announcements,
   settings,
   overallProgress,
-  onOpenRiskCalc,
   onOpenCertificate,
   onOpenCalendar,
   onOpenReferral,
@@ -128,11 +127,15 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
 
               <button
-                onClick={onOpenRiskCalc}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-zinc-900/80 border border-white/5 text-zinc-300 text-xs font-medium hover:text-white hover:bg-zinc-800 transition-all cursor-pointer"
+                onClick={() => setActiveView('gestao')}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border transition-all cursor-pointer text-xs font-semibold ${
+                  activeView === 'gestao'
+                    ? 'bg-orange-500 text-white border-orange-400 shadow-md shadow-orange-500/20'
+                    : 'bg-zinc-900/80 border-white/5 text-zinc-300 hover:text-white hover:bg-zinc-800'
+                }`}
               >
-                <Calculator className="w-3.5 h-3.5 text-orange-500" />
-                <span>Calculadora de Lote</span>
+                <BarChart3 className="w-3.5 h-3.5 text-orange-500" />
+                <span>Gestão de Banca</span>
               </button>
             </div>
           </div>
@@ -464,13 +467,17 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               <button
                 onClick={() => {
-                  onOpenRiskCalc();
+                  setActiveView('gestao');
                   setIsMobileMenuOpen(false);
                 }}
-                className="flex items-center justify-center gap-1.5 p-2.5 rounded-xl bg-zinc-900 border border-white/5 text-zinc-300 text-xs font-bold"
+                className={`flex items-center justify-center gap-1.5 p-2.5 rounded-xl border text-xs font-bold transition-all ${
+                  activeView === 'gestao'
+                    ? 'bg-orange-500 text-white border-orange-400'
+                    : 'bg-zinc-900 border-white/5 text-zinc-300'
+                }`}
               >
-                <Calculator className="w-4 h-4 text-orange-500" />
-                <span>Calc. Lote</span>
+                <BarChart3 className="w-4 h-4 text-orange-500" />
+                <span>Gestão</span>
               </button>
             </div>
 
