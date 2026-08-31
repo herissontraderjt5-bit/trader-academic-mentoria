@@ -185,14 +185,47 @@ export interface TechnicalIndicators {
   stochD: number;
   ema9: number;
   ema20: number;
+  ema50?: number;
+  ema200?: number;
   sma50: number;
   bollingerUpper: number;
   bollingerMiddle: number;
   bollingerLower: number;
+  atr?: number;
+  adx?: number;
+  volumeDelta?: number;
   support: number;
   resistance: number;
+  nearSupport?: number;
+  nearResistance?: number;
   candlestickPattern: string;
   trend: "ALTA" | "BAIXA" | "LATERAL";
+  smcOrderBlock?: {
+    type: "BULLISH" | "BEARISH";
+    top: number;
+    bottom: number;
+  } | null;
+  smcFairValueGap?: {
+    type: "BULLISH" | "BEARISH";
+    top: number;
+    bottom: number;
+  } | null;
+  smcStructure?: "BOS_BULL" | "BOS_BEAR" | "CHOCH_BULL" | "CHOCH_BEAR" | "RANGE";
+  ictOptimalTradeEntry?: {
+    isOteZone: boolean;
+    discountPremium: "DISCOUNT" | "PREMIUM" | "EQUILIBRIUM";
+    fibLevel: number;
+  };
+  liquiditySweep?: {
+    detected: boolean;
+    type: "SWEEP_HIGHS" | "SWEEP_LOWS" | "NONE";
+  };
+  defenseZone?: {
+    entryTrigger: number;
+    defensePrice: number;
+    distancePercent: number;
+    label: string;
+  };
 }
 
 export interface AiAnalysisResult {
@@ -202,6 +235,7 @@ export interface AiAnalysisResult {
   triggerZone: string;
   invalidationLevel: string;
   detectedPatterns: string[];
+  confluenceCount?: number;
   strategyName: string;
   marketSentiment: "FORTE_ALTA" | "ALTA" | "LATERAL" | "BAIXA" | "FORTE_BAIXA";
   rationale: string;
@@ -210,6 +244,12 @@ export interface AiAnalysisResult {
     support: number;
     resistance: number;
     pivot: number;
+  };
+  defenseZone?: {
+    entryTrigger: number;
+    defensePrice: number;
+    distancePercent: number;
+    label: string;
   };
   timestamp?: number;
   ticker?: string;

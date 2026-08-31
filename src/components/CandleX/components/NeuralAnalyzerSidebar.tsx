@@ -742,6 +742,14 @@ ${confluencesList}
                 </div>
               </div>
 
+              {/* 6. Defesa Imediata (Microestrutura) */}
+              <div className="bg-[#0B0E14] p-3 rounded-xl border border-[#182032] flex items-center justify-between">
+                <span className="text-slate-300 font-bold text-xs">Defesa Imediata:</span>
+                <span className="text-rose-400 font-mono font-black text-xs">
+                  {analysis.defenseZone?.label || analysis.invalidationLevel || "Microestrutura Próxima"}
+                </span>
+              </div>
+
               {/* Quick Button to open Diário de Trades */}
               {onOpenOperations && (
                 <button

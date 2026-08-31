@@ -261,12 +261,22 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         ? (rsi >= 50 ? "CALL" : "PUT")
         : analysis.direction;
 
+      const patterns = analysis.detectedPatterns || [];
+      const confluenceCount = patterns.length;
+
       // Real anti-loss checks
       const isExtremeOverbought = rsi > 80 && dir === "CALL";
       const isExtremeOversold = rsi < 20 && dir === "PUT";
       const isAgainstTrend = (trend === "ALTA" && dir === "PUT") || (trend === "BAIXA" && dir === "CALL");
 
-      if (isExtremeOverbought) {
+      // STRICT 4-CONFLUENCE MINIMUM RULE
+      if (confluenceCount < 4) {
+        setDecision("REJECTED");
+        setResolvedDir(dir);
+        setRejectionReason(`Filtro Anti-Loss Ativado: Apenas ${confluenceCount} confluência(s) institucional(is) detectada(s). O CandleX exige no mínimo 4 confluências (SMC, ICT, Price Action e Indicadores) para liberar a entrada com segurança.`);
+        soundManager.playRejectAlert();
+        soundManager.speakAlert(`Sinal cancelado pelo Filtro Anti-Loss! Apenas ${confluenceCount} confluências detectadas, mínimo exigido é quatro.`);
+      } else if (isExtremeOverbought) {
         setDecision("REJECTED");
         setResolvedDir(dir);
         setRejectionReason("RSI extremo em sobrecompra (>80). Filtro Anti-Loss ativado para evitar reversão contra a compra.");
@@ -289,10 +299,10 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         setResolvedDir(dir);
         if (dir === "CALL") {
           soundManager.playCallAlert();
-          soundManager.speakAlert(`Sinal confirmado aos ${decisionThreshold} segundos! COMPRA (CALL) em ${activeTicker}.`);
+          soundManager.speakAlert(`Sinal confirmado aos ${decisionThreshold} segundos com ${confluenceCount} confluências! COMPRA (CALL) em ${activeTicker}.`);
         } else {
           soundManager.playPutAlert();
-          soundManager.speakAlert(`Sinal confirmado aos ${decisionThreshold} segundos! VENDA (PUT) em ${activeTicker}.`);
+          soundManager.speakAlert(`Sinal confirmado aos ${decisionThreshold} segundos com ${confluenceCount} confluências! VENDA (PUT) em ${activeTicker}.`);
         }
       }
     }
@@ -1025,9 +1035,9 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
                 </span>
               </div>
               <div className="flex items-center gap-1.5 text-slate-400">
-                <span>Proteção:</span>
+                <span>Defesa Imediata:</span>
                 <span className={`font-bold ${isRejected ? "text-amber-400" : "text-rose-400"}`}>
-                  {isRejected ? "Loss Evitado" : analysis.invalidationLevel || "Reversão > 1.5%"}
+                  {isRejected ? "Loss Evitado" : analysis.defenseZone?.label || analysis.invalidationLevel || "Microestrutura Imediata"}
                 </span>
               </div>
             </div>

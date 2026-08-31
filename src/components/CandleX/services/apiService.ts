@@ -127,186 +127,243 @@ export function generateAlgorithmicAnalysis(
   candles: Candle[],
   indicators: TechnicalIndicators | null
 ): AiAnalysisResult {
+  const fullIndicators = indicators && indicators.atr !== undefined
+    ? indicators
+    : calculateAllIndicators(candles);
+
   const lastCandle = candles[candles.length - 1] || { open: 100, close: 100, high: 100, low: 100, volume: 50 };
   const currentPrice = lastCandle.close || 100;
+  const tf = timeframe.toLowerCase();
   
-  const rsi = typeof indicators?.rsi === "number" ? indicators.rsi : 50;
-  const pattern = indicators?.candlestickPattern || "Fluxo Neutro";
-  const ema9 = indicators?.ema9 || currentPrice;
-  const ema20 = indicators?.ema20 || currentPrice;
-  const sma50 = indicators?.sma50 || currentPrice;
-  const macdHist = typeof indicators?.macdHist === "number" ? indicators.macdHist : 0;
-  const stochK = typeof indicators?.stochK === "number" ? indicators.stochK : 50;
-  const stochD = typeof indicators?.stochD === "number" ? indicators.stochD : 50;
-  const bbUpper = indicators?.bollingerUpper || currentPrice;
-  const bbLower = indicators?.bollingerLower || currentPrice;
-  const support = indicators?.support || +(currentPrice * 0.994).toFixed(2);
-  const resistance = indicators?.resistance || +(currentPrice * 1.006).toFixed(2);
+  const rsi = typeof fullIndicators.rsi === "number" ? fullIndicators.rsi : 50;
+  const ema9 = fullIndicators.ema9 || currentPrice;
+  const ema20 = fullIndicators.ema20 || currentPrice;
+  const ema50 = fullIndicators.ema50 || currentPrice;
+  const ema200 = fullIndicators.ema200 || currentPrice;
+  const sma50 = fullIndicators.sma50 || currentPrice;
+  const macdHist = typeof fullIndicators.macdHist === "number" ? fullIndicators.macdHist : 0;
+  const macdLine = typeof fullIndicators.macdLine === "number" ? fullIndicators.macdLine : 0;
+  const macdSignal = typeof fullIndicators.macdSignal === "number" ? fullIndicators.macdSignal : 0;
+  const stochK = typeof fullIndicators.stochK === "number" ? fullIndicators.stochK : 50;
+  const stochD = typeof fullIndicators.stochD === "number" ? fullIndicators.stochD : 50;
+  const bbUpper = fullIndicators.bollingerUpper || currentPrice;
+  const bbLower = fullIndicators.bollingerLower || currentPrice;
+  const bbMiddle = fullIndicators.bollingerMiddle || currentPrice;
+  const atr = fullIndicators.atr || currentPrice * 0.0015;
+  const adx = fullIndicators.adx || 25;
+  const volumeDelta = fullIndicators.volumeDelta || 0;
+  const pattern = fullIndicators.candlestickPattern || "Fluxo Neutro";
+  const smcOB = fullIndicators.smcOrderBlock;
+  const smcFVG = fullIndicators.smcFairValueGap;
+  const smcStruct = fullIndicators.smcStructure || "RANGE";
+  const sweep = fullIndicators.liquiditySweep;
+  const ote = fullIndicators.ictOptimalTradeEntry;
+
+  const nearSupport = fullIndicators.nearSupport || +(currentPrice - atr * 1.1).toFixed(2);
+  const nearResistance = fullIndicators.nearResistance || +(currentPrice + atr * 1.1).toFixed(2);
+  const support = fullIndicators.support || +(currentPrice * 0.995).toFixed(2);
+  const resistance = fullIndicators.resistance || +(currentPrice * 1.005).toFixed(2);
   const pivot = +( (support + resistance + currentPrice) / 3 ).toFixed(2);
 
-  let callScore = 0;
-  let putScore = 0;
+  // 15-FACTOR INSTITUTIONAL CONFLUENCE ENGINE
+  const callConfluences: string[] = [];
+  const putConfluences: string[] = [];
 
-  if (rsi < 35) {
-    callScore += 35;
-  } else if (rsi > 65) {
-    putScore += 35;
-  } else if (rsi > 50) {
-    callScore += 10;
-  } else {
-    putScore += 10;
+  // 1. RSI (14)
+  if (rsi < 38) {
+    callConfluences.push(`RSI (14) em Sobrevenda Institucional (${rsi.toFixed(1)})`);
+  } else if (rsi >= 38 && rsi <= 48 && fullIndicators.trend === "ALTA") {
+    callConfluences.push(`RSI (14) em Retração Saudável de Alta (${rsi.toFixed(1)})`);
+  }
+  if (rsi > 62) {
+    putConfluences.push(`RSI (14) em Sobrecompra Institucional (${rsi.toFixed(1)})`);
+  } else if (rsi <= 62 && rsi >= 52 && fullIndicators.trend === "BAIXA") {
+    putConfluences.push(`RSI (14) em Exaustão de Compra (${rsi.toFixed(1)})`);
   }
 
-  if (ema9 > ema20) {
-    callScore += 25;
-  } else if (ema9 < ema20) {
-    putScore += 25;
+  // 2. MACD (12, 26, 9)
+  if (macdHist > 0 || macdLine > macdSignal) {
+    callConfluences.push("MACD: Histograma e Linha com Momentum Comprador");
+  }
+  if (macdHist < 0 || macdLine < macdSignal) {
+    putConfluences.push("MACD: Histograma e Linha com Momentum Vendedor");
   }
 
-  if (currentPrice > sma50) {
-    callScore += 15;
-  } else if (currentPrice < sma50) {
-    putScore += 15;
+  // 3. Médias Móveis Institucionais (EMA 9, EMA 20, EMA 50)
+  if (ema9 >= ema20 && currentPrice >= ema9) {
+    callConfluences.push("Médias Móveis: Alinhamento Altista Institucional (EMA 9 > EMA 20)");
+  }
+  if (ema9 <= ema20 && currentPrice <= ema9) {
+    putConfluences.push("Médias Móveis: Alinhamento Baixista Institucional (EMA 9 < EMA 20)");
   }
 
-  if (macdHist > 0) {
-    callScore += 15;
-  } else if (macdHist < 0) {
-    putScore += 15;
+  // 4. Bandas de Bollinger (20, 2)
+  if (currentPrice <= bbLower * 1.002 || (currentPrice >= bbMiddle && currentPrice <= bbMiddle * 1.0015)) {
+    callConfluences.push("Bollinger Bands: Retração na Banda Inferior de Volatilidade");
+  }
+  if (currentPrice >= bbUpper * 0.998 || (currentPrice <= bbMiddle && currentPrice >= bbMiddle * 0.9985)) {
+    putConfluences.push("Bollinger Bands: Retração na Banda Superior de Volatilidade");
   }
 
-  if (stochK < 25) {
-    callScore += 20;
-  } else if (stochK > 75) {
-    putScore += 20;
+  // 5. Estocástico (14, 3, 3)
+  if (stochK < 30 || stochK > stochD) {
+    callConfluences.push(`Estocástico: Zona de Sobrevenda / Cruzamento Altista (%K: ${stochK.toFixed(1)})`);
+  }
+  if (stochK > 70 || stochK < stochD) {
+    putConfluences.push(`Estocástico: Zona de Sobrecompra / Cruzamento Baixista (%K: ${stochK.toFixed(1)})`);
   }
 
-  if (stochK > stochD) {
-    callScore += 10;
-  } else if (stochK < stochD) {
-    putScore += 10;
+  // 6. ATR & Amplitude de Vela
+  if (atr > 0 && Math.abs(lastCandle.close - lastCandle.open) >= atr * 0.35) {
+    callConfluences.push(`ATR (${atr.toFixed(4)}): Volatilidade e Expansão de Vela Confirmadas`);
+    putConfluences.push(`ATR (${atr.toFixed(4)}): Volatilidade e Expansão de Vela Confirmadas`);
   }
 
-  if (currentPrice <= bbLower * 1.002) {
-    callScore += 25;
-  } else if (currentPrice >= bbUpper * 0.998) {
-    putScore += 25;
-  }
-
-  if (currentPrice <= support * 1.002) {
-    callScore += 30;
-  } else if (currentPrice >= resistance * 0.998) {
-    putScore += 30;
-  }
-
-  if (pattern.includes("Martelo") || pattern.includes("Engolfo de Alta") || pattern.includes("Morning Star") || pattern.includes("Estrela da Manhã") || (pattern.includes("Alta") && !pattern.includes("Baixa"))) {
-    callScore += 25;
-  } else if (pattern.includes("Estrela Cadente") || pattern.includes("Engolfo de Baixa") || pattern.includes("Evening Star") || pattern.includes("Estrela da Noite") || pattern.includes("Baixa")) {
-    putScore += 25;
-  }
-
-  let isCall = callScore > putScore;
-  let isPut = putScore > callScore;
-
-  if (!isCall && !isPut) {
-    if (rsi >= 50 || ema9 >= ema20) {
-      isCall = true;
-      callScore += 20;
+  // 7. ADX (14) - Força da Tendência
+  if (adx >= 20) {
+    if (fullIndicators.trend === "ALTA" || ema9 > ema20) {
+      callConfluences.push(`ADX (${adx.toFixed(1)}): Força de Tendência Institucional Confirmada`);
     } else {
-      isPut = true;
-      putScore += 20;
+      putConfluences.push(`ADX (${adx.toFixed(1)}): Força de Tendência Institucional Confirmada`);
     }
   }
 
+  // 8. Volume Delta & VSA
+  if (volumeDelta > 0) {
+    callConfluences.push(`Volume Delta: Pressão Compradora Ativa (+${volumeDelta.toFixed(1)}%)`);
+  } else if (volumeDelta < 0) {
+    putConfluences.push(`Volume Delta: Pressão Vendedora Ativa (${volumeDelta.toFixed(1)}%)`);
+  }
+
+  // 9. Price Action Puro (Padrões de Vela)
+  if (
+    pattern.includes("Martelo") ||
+    pattern.includes("Alta") ||
+    pattern.includes("Morning") ||
+    pattern.includes("Dragonfly")
+  ) {
+    callConfluences.push(`Price Action: ${pattern}`);
+  } else if (
+    pattern.includes("Estrela") ||
+    pattern.includes("Baixa") ||
+    pattern.includes("Evening") ||
+    pattern.includes("Gravestone")
+  ) {
+    putConfluences.push(`Price Action: ${pattern}`);
+  }
+
+  // 10. Suporte & Resistência de Microestrutura (Próxima)
+  if (Math.abs(currentPrice - nearSupport) <= atr * 1.5) {
+    callConfluences.push(`Microestrutura: Suporte Imediato em $${nearSupport.toLocaleString("pt-BR")}`);
+  }
+  if (Math.abs(currentPrice - nearResistance) <= atr * 1.5) {
+    putConfluences.push(`Microestrutura: Resistência Imediata em $${nearResistance.toLocaleString("pt-BR")}`);
+  }
+
+  // 11. SMC - Order Block
+  if (smcOB?.type === "BULLISH") {
+    callConfluences.push(`SMC: Mitigação de Bullish Order Block em $${smcOB.top.toFixed(2)}`);
+  } else if (smcOB?.type === "BEARISH") {
+    putConfluences.push(`SMC: Mitigação de Bearish Order Block em $${smcOB.bottom.toFixed(2)}`);
+  }
+
+  // 12. SMC - Fair Value Gap (FVG)
+  if (smcFVG?.type === "BULLISH") {
+    callConfluences.push("SMC: Rebalanceamento de Liquidez em Fair Value Gap (FVG)");
+  } else if (smcFVG?.type === "BEARISH") {
+    putConfluences.push("SMC: Rebalanceamento de Liquidez em Fair Value Gap (FVG)");
+  }
+
+  // 13. SMC - Break of Structure (BOS / CHoCH)
+  if (smcStruct === "BOS_BULL" || smcStruct === "CHOCH_BULL") {
+    callConfluences.push("SMC: Quebra de Estrutura Altista Confirmada (BOS / CHoCH)");
+  } else if (smcStruct === "BOS_BEAR" || smcStruct === "CHOCH_BEAR") {
+    putConfluences.push("SMC: Quebra de Estrutura Baixista Confirmada (BOS / CHoCH)");
+  }
+
+  // 14. SMC / ICT - Liquidity Sweep (Stop Hunt)
+  if (sweep?.type === "SWEEP_LOWS") {
+    callConfluences.push("ICT: Caça de Liquidez em Fundos Prévios (Liquidity Sweep)");
+  } else if (sweep?.type === "SWEEP_HIGHS") {
+    putConfluences.push("ICT: Caça de Liquidez em Topos Prévios (Liquidity Sweep)");
+  }
+
+  // 15. ICT - Optimal Trade Entry (OTE / Fibonacci Discount/Premium)
+  if (ote?.discountPremium === "DISCOUNT" || ote?.isOteZone) {
+    callConfluences.push(`ICT: Zona OTE / Desconto de Fibonacci (${ote?.fibLevel || 38.2}%)`);
+  } else if (ote?.discountPremium === "PREMIUM" || ote?.isOteZone) {
+    putConfluences.push(`ICT: Zona OTE / Prêmio de Fibonacci (${ote?.fibLevel || 61.8}%)`);
+  }
+
+  const isCall = callConfluences.length >= putConfluences.length;
   const direction = isCall ? "CALL" : "PUT";
-
-  const detectedPatterns: string[] = [];
-  if (isCall) {
-    if (rsi < 35) detectedPatterns.push(`RSI em Sobrevenda Extrema (${rsi.toFixed(1)})`);
-    if (rsi >= 35 && rsi < 50) detectedPatterns.push(`Recuperação de Força do RSI (${rsi.toFixed(1)})`);
-    if (ema9 > ema20) detectedPatterns.push("Cruzamento Altista das Médias EMA 9 > EMA 20");
-    if (currentPrice > sma50) detectedPatterns.push("Tendência Primária de Alta (Preço > SMA 50)");
-    if (currentPrice <= bbLower * 1.002) detectedPatterns.push("Retração na Banda de Bollinger Inferior");
-    if (currentPrice <= support * 1.002) detectedPatterns.push(`Rejeição Forte no Suporte em ${support.toLocaleString("pt-BR")}`);
-    if (stochK < 25) detectedPatterns.push(`Estocástico em Região de Sobrevenda (%K: ${stochK.toFixed(1)})`);
-    if (stochK > stochD) detectedPatterns.push("Cruzamento de Alta do Estocástico (%K > %D)");
-    if (macdHist > 0) detectedPatterns.push("Momentum Altista do Histograma MACD");
-    if (candles.length >= 5) {
-      const avgVol = candles.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
-      if (lastCandle.volume > avgVol * 1.15) detectedPatterns.push("Fluxo de Volume Comprador Acima da Média");
-    }
-    if (pattern && pattern !== "Sem dados" && pattern !== "Vela de Continuidade" && pattern !== "Acumulação Neutra") {
-      detectedPatterns.push(`Gatilho de Price Action: ${pattern}`);
-    }
-  } else {
-    if (rsi > 65) detectedPatterns.push(`RSI em Sobrecompra Extrema (${rsi.toFixed(1)})`);
-    if (rsi <= 65 && rsi > 50) detectedPatterns.push(`Correção de Força do RSI (${rsi.toFixed(1)})`);
-    if (ema9 < ema20) detectedPatterns.push("Cruzamento Baixista das Médias EMA 9 < EMA 20");
-    if (currentPrice < sma50) detectedPatterns.push("Tendência Primária de Baixa (Preço < SMA 50)");
-    if (currentPrice >= bbUpper * 0.998) detectedPatterns.push("Retração na Banda de Bollinger Superior");
-    if (currentPrice >= resistance * 0.998) detectedPatterns.push(`Absorção de Oferta na Resistência em ${resistance.toLocaleString("pt-BR")}`);
-    if (stochK > 75) detectedPatterns.push(`Estocástico em Região de Sobrecompra (%K: ${stochK.toFixed(1)})`);
-    if (stochK < stochD) detectedPatterns.push("Cruzamento de Baixa do Estocástico (%K < %D)");
-    if (macdHist < 0) detectedPatterns.push("Momentum Baixista do Histograma MACD");
-    if (candles.length >= 5) {
-      const avgVol = candles.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
-      if (lastCandle.volume > avgVol * 1.15) detectedPatterns.push("Fluxo de Volume Vendedor Acima da Média");
-    }
-    if (pattern && pattern !== "Sem dados" && pattern !== "Vela de Continuidade" && pattern !== "Acumulação Neutra") {
-      detectedPatterns.push(`Gatilho de Price Action: ${pattern}`);
-    }
-  }
-
-  // Scale confidenceScore to range (50% - 98%) based strictly on the number of real confluences (N)
+  const detectedPatterns = isCall ? callConfluences : putConfluences;
   const N = detectedPatterns.length;
-  let rawConfidence = 50;
+
+  // Real institutional confidence score
+  let confidenceScore = 50;
   if (N <= 1) {
-    rawConfidence = 50 + N * 10;
+    confidenceScore = 55.0;
   } else if (N === 2) {
-    rawConfidence = 68.5;
+    confidenceScore = 63.5;
   } else if (N === 3) {
-    rawConfidence = 76.2;
+    confidenceScore = 72.0;
   } else if (N === 4) {
-    rawConfidence = 84.8;
+    confidenceScore = 84.8;
   } else if (N === 5) {
-    rawConfidence = 89.5;
+    confidenceScore = 89.2;
   } else if (N === 6) {
-    rawConfidence = 93.4;
+    confidenceScore = 93.5;
   } else if (N === 7) {
-    rawConfidence = 96.1;
+    confidenceScore = 96.0;
   } else {
-    rawConfidence = Math.min(98.0, 96.0 + (N - 7) * 0.5);
+    confidenceScore = Math.min(98.5, +(96.0 + (N - 7) * 0.4).toFixed(1));
   }
-  const confidenceScore = parseFloat(rawConfidence.toFixed(1));
 
   const marketSentiment = isCall
-    ? confidenceScore > 80 ? "FORTE_ALTA" : "ALTA"
-    : confidenceScore > 80 ? "FORTE_BAIXA" : "BAIXA";
+    ? confidenceScore >= 85 ? "FORTE_ALTA" : "ALTA"
+    : confidenceScore >= 85 ? "FORTE_BAIXA" : "BAIXA";
+
+  // NEAR DEFENSE REGION (Próxima da entrada na microestrutura M1/M2/M5/M15)
+  const defenseOffset = Math.max(currentPrice * 0.0006, +(atr * 1.1).toFixed(2));
+  const defensePrice = isCall
+    ? +(currentPrice - defenseOffset).toFixed(2)
+    : +(currentPrice + defenseOffset).toFixed(2);
+  const distancePercent = +((defenseOffset / currentPrice) * 100).toFixed(2);
 
   const triggerZone = isCall
-    ? `Entrada em retração na faixa ${support.toLocaleString("pt-BR")} - ${(support * 1.001).toFixed(2)}`
-    : `Entrada em retração na faixa ${resistance.toLocaleString("pt-BR")} - ${(resistance * 0.999).toFixed(2)}`;
+    ? `Entrada em retração na taxa $${currentPrice.toLocaleString("pt-BR")} (Microestrutura ${timeframe.toUpperCase()})`
+    : `Entrada em retração na taxa $${currentPrice.toLocaleString("pt-BR")} (Microestrutura ${timeframe.toUpperCase()})`;
 
   const invalidationLevel = isCall
-    ? `Rompimento do suporte abaixo de ${(support * 0.997).toFixed(2)}`
-    : `Rompimento da resistência acima de ${(resistance * 1.003).toFixed(2)}`;
+    ? `Invalidação em $${defensePrice.toLocaleString("pt-BR")} (-${distancePercent}%) no fundo imediato`
+    : `Invalidação em $${defensePrice.toLocaleString("pt-BR")} (+${distancePercent}%) no topo imediato`;
 
   const strategyName = isCall
-    ? "Retração em Suporte Institucional (SMC + Price Action)"
-    : "Exaustão em Região de Oferta (FVG + Rejeição de Topo)";
+    ? "SMC Smart Flow + Price Action (SMC/ICT Confluence Core)"
+    : "SMC Liquidity Sweep + Reversão OTE (SMC/ICT Confluence Core)";
 
   const rationale = isCall
-    ? `Forte confluência altista identificada: ${detectedPatterns.slice(0, 3).join(", ")}.`
-    : `Forte confluência baixista identificada: ${detectedPatterns.slice(0, 3).join(", ")}.`;
+    ? `Identificadas ${N} confluências institucionais altistas (SMC, ICT, Price Action e Indicadores): ${detectedPatterns.slice(0, 3).join(", ")}.`
+    : `Identificadas ${N} confluências institucionais baixistas (SMC, ICT, Price Action e Indicadores): ${detectedPatterns.slice(0, 3).join(", ")}.`;
 
   const hioveQuickTip = isCall
     ? "Clique em COMPRA (CALL) assim que a vela der o pico de retração em direção à taxa de suporte."
     : "Clique em VENDA (PUT) no momento em que a vela esticar até a taxa de resistência da Hiove.";
 
+  const timeframeLabel = tf.includes("5m") || tf === "5"
+    ? "M5 (5 Minutos)"
+    : tf.includes("2m") || tf === "2"
+    ? "M2 (2 Minutos)"
+    : tf.includes("15m") || tf === "15"
+    ? "M15 (15 Minutos)"
+    : "M1 (1 Minuto)";
+
   return {
     direction,
     confidenceScore,
-    timeframeExpiry: timeframe === "5M" || timeframe === "5m" ? "Expiração 5 min" : timeframe === "2M" || timeframe === "2m" ? "Expiração 2 min" : "Próxima Vela (1 min)",
+    confluenceCount: N,
+    timeframeExpiry: timeframeLabel,
     triggerZone,
     invalidationLevel,
     detectedPatterns,
@@ -315,13 +372,19 @@ export function generateAlgorithmicAnalysis(
     rationale,
     hioveQuickTip,
     keyLevels: {
-      support,
-      resistance,
+      support: nearSupport,
+      resistance: nearResistance,
       pivot,
+    },
+    defenseZone: {
+      entryTrigger: currentPrice,
+      defensePrice,
+      distancePercent,
+      label: isCall ? `Defesa no fundo imediato ($${defensePrice})` : `Defesa no topo imediato ($${defensePrice})`,
     },
     ticker,
     priceAtAnalysis: currentPrice,
-    timestamp: Date.now()
+    timestamp: Date.now(),
   };
 }
 
@@ -454,13 +517,27 @@ export const candlexApiService = {
         ).join("\n");
 
         const prompt = `Analise os dados atuais do par ${ticker} no timeframe ${timeframe}:
-INDICADORES: RSI: ${indicators?.rsi}, EMA9: ${indicators?.ema9}, EMA20: ${indicators?.ema20}, Suporte: ${indicators?.support}, Resistência: ${indicators?.resistance}
-PADRÃO: ${indicators?.candlestickPattern}
+INDICADORES TÉCNICOS:
+- RSI (14): ${indicators?.rsi} (${indicators?.rsiStatus})
+- MACD: Linha ${indicators?.macdLine}, Sinal ${indicators?.macdSignal}, Histograma ${indicators?.macdHist}
+- Médias Móveis: EMA9: ${indicators?.ema9}, EMA20: ${indicators?.ema20}, EMA50: ${indicators?.ema50 || indicators?.sma50}
+- Bollinger Bands: Superior: ${indicators?.bollingerUpper}, Média: ${indicators?.bollingerMiddle}, Inferior: ${indicators?.bollingerLower}
+- Estocástico: %K: ${indicators?.stochK}, %D: ${indicators?.stochD}
+- Volatilidade & Força: ATR: ${indicators?.atr || "N/A"}, ADX: ${indicators?.adx || 25}, Volume Delta: ${indicators?.volumeDelta || 0}%
+- Micro Suporte: ${indicators?.nearSupport || indicators?.support}, Micro Resistência: ${indicators?.nearResistance || indicators?.resistance}
+- Padrão de Price Action: ${indicators?.candlestickPattern}
+- SMC Order Block: ${indicators?.smcOrderBlock ? `${indicators.smcOrderBlock.type} em ${indicators.smcOrderBlock.top}` : 'Nenhum'}
+- SMC Fair Value Gap (FVG): ${indicators?.smcFairValueGap ? `${indicators.smcFairValueGap.type}` : 'Nenhum'}
+- SMC Quebra de Estrutura: ${indicators?.smcStructure || 'RANGE'}
+- ICT Liquidity Sweep: ${indicators?.liquiditySweep?.detected ? indicators.liquiditySweep.type : 'Nenhum'}
+- ICT OTE / Fib Level: ${indicators?.ictOptimalTradeEntry ? `${indicators.ictOptimalTradeEntry.discountPremium} (${indicators.ictOptimalTradeEntry.fibLevel}%)` : '50%'}
 VELAS:
 ${candleContext}
-Gere uma análise técnica rigorosa para opções rápidas.
-IMPORTANTE: Você deve identificar e incluir MÚLTIPLAS confluências reais (apenas confluências técnicas reais presentes nos dados fornecidos: RSI, Estocástico, MACD, Bollinger, volume, suporte/resistência, médias móveis e padrões de vela) nos seus resultados sob a chave "detectedPatterns". Não liste confluências fictícias.
-A taxa de assertividade ("confidenceScore") deve ser calculada de acordo com as confluências reais encontradas, variando estritamente entre 50% e 98% (poucas confluências reais geram assertividade mais próxima de 50%, enquanto forte confluência em vários indicadores gera até 98%).
+
+Gere uma análise técnica institucional e profissional de alta precisão (SMC, ICT, Price Action e Indicadores).
+REGRA OBRIGATÓRIA: Identifique apenas confluências técnicas verdadeiras presentes nos dados. Se houver menos de 4 confluências, aponte assertividade moderada (<75%).
+Defina regiões de defesa e invalidação PRÓXIMAS da microestrutura (dentro de 0.05% a 0.25% de distância).
+
 Retorne EXCLUSIVAMENTE em formato JSON:
 {
   "direction": "CALL" | "PUT" | "NEUTRAL",
@@ -480,7 +557,7 @@ Retorne EXCLUSIVAMENTE em formato JSON:
           model: 'gemini-2.5-flash',
           contents: prompt,
           config: {
-            systemInstruction: "Você é o CandleX AI, mentor de alta precisão para a Hiove. Suas respostas devem ser formatadas estritamente em JSON.",
+            systemInstruction: "Você é o CandleX AI, mentor institucional de alta precisão especializado em SMC, ICT, Price Action e Análise Técnica para opções rápidas. Suas respostas devem ser formatadas estritamente em JSON.",
             responseMimeType: 'application/json',
             temperature: 0.1,
           }
@@ -494,23 +571,24 @@ Retorne EXCLUSIVAMENTE em formato JSON:
               const N = confluences.length;
               let rawConfidence = 50;
               if (N <= 1) {
-                rawConfidence = 50 + N * 10;
+                rawConfidence = 55.0;
               } else if (N === 2) {
-                rawConfidence = 68.5;
+                rawConfidence = 63.5;
               } else if (N === 3) {
-                rawConfidence = 76.2;
+                rawConfidence = 72.0;
               } else if (N === 4) {
                 rawConfidence = 84.8;
               } else if (N === 5) {
-                rawConfidence = 89.5;
+                rawConfidence = 89.2;
               } else if (N === 6) {
-                rawConfidence = 93.4;
+                rawConfidence = 93.5;
               } else if (N === 7) {
-                rawConfidence = 96.1;
+                rawConfidence = 96.0;
               } else {
-                rawConfidence = Math.min(98.0, 96.0 + (N - 7) * 0.5);
+                rawConfidence = Math.min(98.5, +(96.0 + (N - 7) * 0.4).toFixed(1));
               }
               parsed.confidenceScore = parseFloat(rawConfidence.toFixed(1));
+              parsed.confluenceCount = N;
             }
             return {
               ...parsed,
