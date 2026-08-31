@@ -320,6 +320,18 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
     decision,
   ]);
 
+  // Auto-dismiss rejected signal after 5 seconds to clear the screen cleanly
+  useEffect(() => {
+    if (decision === "REJECTED") {
+      const timer = setTimeout(() => {
+        setIsVisible(false);
+        if (onClearAnalysis) onClearAnalysis();
+        if (onClose) onClose();
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [decision, onClearAnalysis, onClose]);
+
   // AUTOMATIC RECORDING: Register signal as PENDING in Diário & Operações the moment it enters execution
   useEffect(() => {
     if (!analysis || isAnalyzing || !isVisible || decision !== "CONFIRMED") return;
@@ -527,10 +539,10 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
               : predictionResult === "LOSS"
               ? "border-rose-500 shadow-[0_0_50px_rgba(244,63,94,0.6)] animate-shake"
               : "border-slate-500 shadow-[0_0_50px_rgba(148,163,184,0.4)]"
-            : currentTime.getTime() >= entryDate.getTime()
-            ? "border-amber-500 shadow-[0_0_50px_rgba(245,158,11,0.6)]"
             : isRejected
             ? "border-rose-600 shadow-[0_0_50px_rgba(225,29,72,0.45)]"
+            : currentTime.getTime() >= entryDate.getTime()
+            ? "border-amber-500 shadow-[0_0_50px_rgba(245,158,11,0.6)]"
             : isConfirmed
             ? isCall
               ? "border-emerald-500 shadow-[0_0_50px_rgba(16,185,129,0.45)]"
@@ -548,10 +560,10 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
                 : predictionResult === "LOSS"
                 ? "bg-rose-950/70 border-rose-500/40"
                 : "bg-slate-900 border-slate-700"
-              : currentTime.getTime() >= entryDate.getTime()
-              ? "bg-amber-950/70 border-amber-500/40"
               : isRejected
               ? "bg-rose-950/70 border-rose-500/40"
+              : currentTime.getTime() >= entryDate.getTime()
+              ? "bg-amber-950/70 border-amber-500/40"
               : isConfirmed
               ? isCall
                 ? "bg-emerald-950/70 border-emerald-500/40"
@@ -568,10 +580,10 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
                     : predictionResult === "LOSS"
                     ? "bg-rose-400"
                     : "bg-slate-400"
-                  : currentTime.getTime() >= entryDate.getTime()
-                  ? "bg-amber-400"
                   : isRejected
                   ? "bg-rose-500"
+                  : currentTime.getTime() >= entryDate.getTime()
+                  ? "bg-amber-400"
                   : isConfirmed
                   ? isCall
                     ? "bg-emerald-400"
@@ -597,15 +609,15 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
                     EMPATE (DRAW)
                   </>
                 )
+              ) : isRejected ? (
+                <>
+                  <Ban className="w-3.5 h-3.5 text-rose-400" />
+                  SINAL CANCELADO (ANTI-LOSS)
+                </>
               ) : currentTime.getTime() >= entryDate.getTime() ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 text-amber-400 animate-spin" />
                   AGUARDANDO RESULTADO...
-                </>
-              ) : isRejected ? (
-                <>
-                  <Ban className="w-3.5 h-3.5 text-rose-400" />
-                  ENTRADA REJEITADA PELA IA
                 </>
               ) : isConfirmed ? (
                 <>
@@ -629,7 +641,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
             </div>
 
             <div className="flex items-center gap-1">
-              {predictionResult === null && currentTime.getTime() < entryDate.getTime() && (
+              {predictionResult === null && !isRejected && currentTime.getTime() < entryDate.getTime() && (
                 <button
                   type="button"
                   onClick={() => setIsMinimized(!isMinimized)}
@@ -643,6 +655,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
                 type="button"
                 onClick={() => {
                   setIsVisible(false);
+                  if (onClearAnalysis) onClearAnalysis();
                   if (onClose) onClose();
                 }}
                 className="p-1 rounded bg-[#141A26] hover:bg-rose-900/60 text-slate-300 hover:text-rose-300 transition-colors cursor-pointer border border-[#222E44]"
@@ -732,6 +745,63 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
                   <span>Nova Análise</span>
                 </button>
               )}
+            </div>
+          </div>
+        ) : isRejected ? (
+          /* Render Rejected Screen by Anti-Loss Filter */
+          <div className="p-6 text-center space-y-4 animate-in zoom-in-95 duration-300">
+            <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center bg-rose-500/20 border-4 border-rose-500 text-rose-400 shadow-[0_0_25px_rgba(244,63,94,0.5)] animate-shake">
+              <ShieldAlert className="w-9 h-9 stroke-[2.5]" />
+            </div>
+            
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-mono font-bold text-rose-400 uppercase tracking-widest block">
+                Filtro Institucional Anti-Loss
+              </span>
+              <h3 className="text-2xl font-black text-rose-400 tracking-wider uppercase">
+                SINAL CANCELADO PELA IA
+              </h3>
+              <p className="text-xs text-slate-300 font-mono">
+                Ativo: <strong className="text-white">{activeTicker}</strong> &bull; Timeframe {timeframe.toUpperCase()}
+              </p>
+            </div>
+
+            <div className="bg-[#0C101A]/90 p-3.5 rounded-xl border border-rose-500/30 max-w-sm mx-auto text-left space-y-2">
+              <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-rose-400">
+                <Ban className="w-4 h-4 text-rose-400 flex-shrink-0" />
+                <span>Auditoria dos {decisionThreshold}s Finais:</span>
+              </div>
+              <p className="text-xs font-mono text-rose-200/90 leading-relaxed bg-[#14101A] p-2.5 rounded-lg border border-rose-500/20">
+                {rejectionReason || "Sinal cancelado por baixa confluência institucional (< 4 confluências). Nenhuma operação foi aberta para proteger seu capital."}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2.5 max-w-sm mx-auto pt-1">
+              {onReScan && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onReScan) onReScan();
+                  }}
+                  className="flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-rose-600/30 via-rose-500/20 to-amber-600/30 hover:from-rose-600/40 hover:to-amber-600/40 border border-rose-500/50 text-rose-200 hover:text-white font-black text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer font-mono"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-rose-400" />
+                  <span>Escanear Outro Ativo</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsVisible(false);
+                  if (onClearAnalysis) onClearAnalysis();
+                  if (onClose) onClose();
+                }}
+                className="flex-1 py-2.5 px-3 rounded-xl bg-[#1A2234] hover:bg-[#26324D] text-slate-200 hover:text-white border border-[#2D3A54] font-black text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer font-mono"
+              >
+                <X className="w-3.5 h-3.5 text-slate-400" />
+                <span>Fechar Tela</span>
+              </button>
             </div>
           </div>
         ) : currentTime.getTime() >= entryDate.getTime() ? (
