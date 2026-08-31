@@ -16,26 +16,54 @@ const DEMO_USER: User = {
   createdAt: '2026-01-01T00:00:00Z',
 };
 
+export interface AuthProviderProps {
+  children: React.ReactNode;
+  initialUser?: { id: string; name: string; email: string; avatar?: string } | null;
+}
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children, initialUser }) => {
   const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('trader_academic_user');
+    if (initialUser && initialUser.id) {
+      return {
+        id: initialUser.id,
+        name: initialUser.name || 'Aluno',
+        email: initialUser.email || '',
+        avatar: initialUser.avatar,
+        createdAt: new Date().toISOString(),
+      };
+    }
+    const saved = localStorage.getItem('trader_academic_gestao_user');
     if (saved) {
       try {
         return JSON.parse(saved);
       } catch (e) {
-        return DEMO_USER;
+        return null;
       }
     }
-    return DEMO_USER;
+    return null;
   });
 
   useEffect(() => {
+    if (initialUser && initialUser.id) {
+      const u: User = {
+        id: initialUser.id,
+        name: initialUser.name || 'Aluno',
+        email: initialUser.email || '',
+        avatar: initialUser.avatar,
+        createdAt: new Date().toISOString(),
+      };
+      setUser(u);
+      localStorage.setItem('trader_academic_gestao_user', JSON.stringify(u));
+    }
+  }, [initialUser?.id, initialUser?.name, initialUser?.email, initialUser?.avatar]);
+
+  useEffect(() => {
     if (user) {
-      localStorage.setItem('trader_academic_user', JSON.stringify(user));
+      localStorage.setItem('trader_academic_gestao_user', JSON.stringify(user));
     } else {
-      localStorage.removeItem('trader_academic_user');
+      localStorage.removeItem('trader_academic_gestao_user');
     }
   }, [user]);
 

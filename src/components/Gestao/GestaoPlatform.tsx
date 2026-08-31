@@ -179,9 +179,9 @@ export interface GestaoPlatformProps {
   onOpenCandleX?: () => void;
 }
 
-export const GestaoPlatform: React.FC<GestaoPlatformProps> = ({ onBackToHome, onOpenCandleX }) => {
+export const GestaoPlatform: React.FC<GestaoPlatformProps> = ({ currentUser, onBackToHome, onOpenCandleX }) => {
   return (
-    <AuthProvider>
+    <AuthProvider initialUser={currentUser}>
       <TradingProvider>
         <MainLayout onBackToHome={onBackToHome} onOpenCandleX={onOpenCandleX} />
       </TradingProvider>

@@ -144,12 +144,12 @@ export const TradingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const { user } = useAuth();
   const userId = user?.id || 'guest';
 
-  // Storage keys scoped to user
-  const storageKey = useCallback((key: string) => `trader_academic_${userId}_${key}`, [userId]);
+  // Storage keys strictly scoped to each individual student
+  const storageKey = useCallback((key: string) => `trader_academic_gestao_${userId}_${key}`, [userId]);
 
   // Months configs
   const [allMonthConfigs, setAllMonthConfigs] = useState<MonthConfig[]>(() => {
-    const saved = localStorage.getItem(storageKey('month_configs'));
+    const saved = localStorage.getItem(`trader_academic_gestao_${userId}_month_configs`);
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -161,13 +161,13 @@ export const TradingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   });
 
   const [currentMonthId, setCurrentMonthId] = useState<string>(() => {
-    const saved = localStorage.getItem(storageKey('current_month_id'));
+    const saved = localStorage.getItem(`trader_academic_gestao_${userId}_current_month_id`);
     return saved || DEFAULT_MONTH_ID;
   });
 
   // Selected Modality
   const [selectedModality, setSelectedModalityState] = useState<TradingModality>(() => {
-    const saved = localStorage.getItem(storageKey('selected_modality'));
+    const saved = localStorage.getItem(`trader_academic_gestao_${userId}_selected_modality`);
     if (saved && ['ALL', 'BINARIAS', 'FOREX', 'B3', 'CRIPTO'].includes(saved)) {
       return saved as TradingModality;
     }
@@ -181,13 +181,12 @@ export const TradingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Operations
   const [operations, setOperations] = useState<Operation[]>(() => {
-    const saved = localStorage.getItem(storageKey('operations'));
+    const saved = localStorage.getItem(`trader_academic_gestao_${userId}_operations`);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          // Filter out old mock demo operations
-          return parsed.filter((op: any) => op.userId !== 'user-demo');
+          return parsed.filter((op: any) => op.userId === userId || (!op.userId && userId === 'guest'));
         }
       } catch (e) {
         // fallback
@@ -198,12 +197,12 @@ export const TradingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Transactions
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    const saved = localStorage.getItem(storageKey('transactions'));
+    const saved = localStorage.getItem(`trader_academic_gestao_${userId}_transactions`);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          return parsed.filter((t: any) => t.userId !== 'user-demo');
+          return parsed.filter((t: any) => t.userId === userId || (!t.userId && userId === 'guest'));
         }
       } catch (e) {
         // fallback
@@ -214,7 +213,7 @@ export const TradingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Time Logs
   const [timeLogs, setTimeLogs] = useState<DailyOperationalTime[]>(() => {
-    const saved = localStorage.getItem(storageKey('time_logs'));
+    const saved = localStorage.getItem(`trader_academic_gestao_${userId}_time_logs`);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -234,7 +233,7 @@ export const TradingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // 5x2 Session State
   const [session5x2, setSession5x2] = useState<Management5x2Session>(() => {
-    const saved = localStorage.getItem(storageKey('session_5x2'));
+    const saved = localStorage.getItem(`trader_academic_gestao_${userId}_session_5x2`);
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -257,6 +256,73 @@ export const TradingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       currentProfit: 0,
     };
   });
+
+  // Reload state whenever the authenticated student (userId) changes
+  useEffect(() => {
+    const savedConfigs = localStorage.getItem(storageKey('month_configs'));
+    if (savedConfigs) {
+      try {
+        setAllMonthConfigs(JSON.parse(savedConfigs));
+      } catch (e) {
+        setAllMonthConfigs([DEFAULT_MONTH_CONFIG]);
+      }
+    } else {
+      setAllMonthConfigs([DEFAULT_MONTH_CONFIG]);
+    }
+
+    const savedMonthId = localStorage.getItem(storageKey('current_month_id'));
+    setCurrentMonthId(savedMonthId || DEFAULT_MONTH_ID);
+
+    const savedOps = localStorage.getItem(storageKey('operations'));
+    if (savedOps) {
+      try {
+        const parsed = JSON.parse(savedOps);
+        setOperations(Array.isArray(parsed) ? parsed.filter((op: any) => op.userId === userId || (!op.userId && userId === 'guest')) : []);
+      } catch (e) {
+        setOperations([]);
+      }
+    } else {
+      setOperations([]);
+    }
+
+    const savedTrans = localStorage.getItem(storageKey('transactions'));
+    if (savedTrans) {
+      try {
+        const parsed = JSON.parse(savedTrans);
+        setTransactions(Array.isArray(parsed) ? parsed.filter((t: any) => t.userId === userId || (!t.userId && userId === 'guest')) : []);
+      } catch (e) {
+        setTransactions([]);
+      }
+    } else {
+      setTransactions([]);
+    }
+
+    const savedLogs = localStorage.getItem(storageKey('time_logs'));
+    if (savedLogs) {
+      try {
+        const parsed = JSON.parse(savedLogs);
+        setTimeLogs(Array.isArray(parsed) ? parsed : []);
+      } catch (e) {
+        setTimeLogs([]);
+      }
+    } else {
+      setTimeLogs([]);
+    }
+
+    const savedSession = localStorage.getItem(storageKey('session_5x2'));
+    if (savedSession) {
+      try {
+        setSession5x2(JSON.parse(savedSession));
+      } catch (e) {}
+    }
+
+    const savedMod = localStorage.getItem(storageKey('selected_modality'));
+    if (savedMod && ['ALL', 'BINARIAS', 'FOREX', 'B3', 'CRIPTO'].includes(savedMod)) {
+      setSelectedModalityState(savedMod as TradingModality);
+    } else {
+      setSelectedModalityState('ALL');
+    }
+  }, [userId, storageKey]);
 
   // Save changes to localStorage on state changes
   useEffect(() => {
