@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { soundManager } from "../utils/soundEffects";
 import { TradeRecord } from "../../../types";
-import { getCandleTimeRemaining } from "../utils/technicalIndicators";
+import { getCandleTimeRemaining, getSynchronizedDate } from "../utils/technicalIndicators";
 
 interface BrokerOrderPanelProps {
   activeTicker: string;
@@ -55,7 +55,7 @@ export const BrokerOrderPanel: React.FC<BrokerOrderPanelProps> = ({
   // Live clock
   useEffect(() => {
     const updateTime = () => {
-      const now = new Date();
+      const now = getSynchronizedDate();
       setCurrentTimeStr(now.toLocaleTimeString("pt-BR"));
       const { formatted } = getCandleTimeRemaining(now, `${expiryMinutes}m`);
       setCandleCountdown(formatted);

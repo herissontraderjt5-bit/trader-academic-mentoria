@@ -27,7 +27,7 @@ import {
 import { AiAnalysisResult, TechnicalIndicators, Candle, TradeRecord, BankrollConfig } from "../../../types";
 import { soundManager } from "../utils/soundEffects";
 import { candlexApiService } from "../services/apiService";
-import { getCandleTimeRemaining } from "../utils/technicalIndicators";
+import { getCandleTimeRemaining, getSynchronizedDate, getSynchronizedTimestamp } from "../utils/technicalIndicators";
 import confetti from "canvas-confetti";
 
 interface CenterSignalOverlayProps {
@@ -66,7 +66,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
   const [isVisible, setIsVisible] = useState<boolean>(true);
   const [isMinimized, setIsMinimized] = useState<boolean>(false);
   const [lastSignalTimestamp, setLastSignalTimestamp] = useState<number | null>(null);
-  const [currentTime, setCurrentTime] = useState<Date>(new Date());
+  const [currentTime, setCurrentTime] = useState<Date>(getSynchronizedDate());
   
   // Real technical decision states
   const [decision, setDecision] = useState<"PENDING" | "CONFIRMED" | "REJECTED">("PENDING");
@@ -148,8 +148,8 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
 
   // Calculate the fixed start of the candle when the signal was generated
   const signalCandleStart = useMemo(() => {
-    if (!analysis || !analysis.timestamp) return Date.now();
-    return Math.floor(analysis.timestamp / candleLengthMs) * candleLengthMs;
+    const ts = analysis?.timestamp || getSynchronizedTimestamp();
+    return Math.floor(ts / candleLengthMs) * candleLengthMs;
   }, [analysis, candleLengthMs]);
 
   // Dates for start of next candle (entry) and end (expiry) relative to the signal generation time
@@ -201,10 +201,10 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
     return "PRE_WAITING";
   }, [decision, secondsRemaining, decisionThreshold, currentTime, entryDate]);
 
-  // Live clock updating every 100ms for maximum real-time precision and smooth countdowns
+  // Live clock updating every 100ms with Exchange/TradingView synchronized time
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentTime(new Date());
+      setCurrentTime(getSynchronizedDate());
     }, 100);
     return () => clearInterval(timer);
   }, []);

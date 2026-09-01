@@ -29,7 +29,7 @@ import {
   User,
 } from "../../types";
 
-import { calculateAllIndicators } from "./utils/technicalIndicators";
+import { calculateAllIndicators, getCandleTimeRemaining, getSynchronizedDate } from "./utils/technicalIndicators";
 import { soundManager } from "./utils/soundEffects";
 import { candlexApiService } from "./services/apiService";
 import { supabaseService } from "../../services/supabaseService";
@@ -706,28 +706,11 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
     if (!autoTraderConfig.enabled) return;
 
     const checkInterval = setInterval(() => {
-      const now = new Date();
-      const tf = timeframe.toLowerCase();
-      const isM5 = tf.includes("5m") || tf === "5" || tf === "m5";
-      const isM2 = tf.includes("2m") || tf === "2" || tf === "m2";
-      const candleLengthMs = isM5 ? 300000 : (isM2 ? 120000 : 60000);
+      const now = getSynchronizedDate();
+      const { remainingSeconds: secondsRemaining, candleLengthMs } = getCandleTimeRemaining(now, timeframe);
       const currentCandleStart = Math.floor(now.getTime() / candleLengthMs) * candleLengthMs;
-
-      // Calculate remaining seconds
-      const seconds = now.getSeconds();
-      const milliseconds = now.getMilliseconds();
-      const totalSecondsOfCurrentMinute = seconds + milliseconds / 1000;
-      let secondsRemaining = 60 - totalSecondsOfCurrentMinute;
-      if (isM5) {
-        const minutes = now.getMinutes();
-        const elapsedSeconds = (minutes % 5) * 60 + totalSecondsOfCurrentMinute;
-        secondsRemaining = 300 - elapsedSeconds;
-      } else if (isM2) {
-        const minutes = now.getMinutes();
-        const elapsedSeconds = (minutes % 2) * 60 + totalSecondsOfCurrentMinute;
-        secondsRemaining = 120 - elapsedSeconds;
-      }
-
+      const isM5 = candleLengthMs === 300000;
+      const isM2 = candleLengthMs === 120000;
       const targetRemaining = isM5 ? 20 : (isM2 ? 15 : 12); // Pre-scan 12-20s before candle close
 
       // Trigger analysis when the candle hits the target window and it hasn't triggered for this candle yet

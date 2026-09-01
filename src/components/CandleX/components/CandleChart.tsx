@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from "react";
 import { Candle, TechnicalIndicators } from "../../../types";
-import { getCandleTimeRemaining } from "../utils/technicalIndicators";
+import { getCandleTimeRemaining, getSynchronizedDate, getSynchronizedTimestamp } from "../utils/technicalIndicators";
 import {
   Maximize2,
   ZoomIn,
@@ -47,12 +47,12 @@ export const CandleChart: React.FC<CandleChartProps> = ({
   const [activeDrawingTool, setActiveDrawingTool] = useState<string>("none");
   const [drawnLines, setDrawnLines] = useState<Array<{ y: number; label: string; color: string }>>([]);
 
-  // High-frequency live tick to ensure canvas timer is always fresh and never frozen
-  const [tick, setTick] = useState<number>(Date.now());
+  // High-frequency live tick to ensure canvas timer is always fresh and never frozen (Exchange-synced)
+  const [tick, setTick] = useState<number>(getSynchronizedTimestamp());
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setTick(Date.now());
+      setTick(getSynchronizedTimestamp());
     }, 100);
     return () => clearInterval(timer);
   }, []);
@@ -229,7 +229,7 @@ export const CandleChart: React.FC<CandleChartProps> = ({
     ctx.stroke();
     ctx.setLineDash([]);
 
-    const { formatted: liveCountdownStr } = getCandleTimeRemaining(new Date(), interval);
+    const { formatted: liveCountdownStr } = getCandleTimeRemaining(getSynchronizedDate(), interval);
 
     // Expiration Line Header Badge
     ctx.fillStyle = "#FFFFFF";

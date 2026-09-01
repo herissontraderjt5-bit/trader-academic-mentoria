@@ -1,11 +1,80 @@
 import { Candle, TechnicalIndicators } from "../../../types";
 
-export function getCandleTimeRemaining(now: Date = new Date(), timeframe: string = "1m"): {
+// Exchange Server Time Synchronizer (NTP/TradingView/Binance clock sync)
+let serverOffsetMs = 0;
+let isSyncing = false;
+let lastSyncTime = 0;
+
+export async function syncExchangeTime(): Promise<number> {
+  if (isSyncing) return serverOffsetMs;
+  isSyncing = true;
+  
+  const sources = [
+    "https://api.binance.com/api/v3/time",
+    "https://data-api.binance.vision/api/v3/time",
+    "https://api.bybit.com/v5/market/time"
+  ];
+
+  for (const url of sources) {
+    try {
+      const t0 = performance.now();
+      const res = await fetch(url, { signal: AbortSignal.timeout(2500) });
+      const t1 = performance.now();
+      const latency = (t1 - t0) / 2;
+
+      if (res.ok) {
+        const data = await res.json();
+        let serverTimestamp = 0;
+        if (data.serverTime) {
+          serverTimestamp = typeof data.serverTime === "number" ? data.serverTime : parseInt(data.serverTime, 10);
+        } else if (data.result?.timeNano) {
+          serverTimestamp = Math.floor(parseInt(data.result.timeNano, 10) / 1000000);
+        } else if (data.result?.timeSecond) {
+          serverTimestamp = parseInt(data.result.timeSecond, 10) * 1000;
+        }
+
+        if (serverTimestamp > 0) {
+          const estimatedServerNow = serverTimestamp + latency;
+          serverOffsetMs = estimatedServerNow - Date.now();
+          lastSyncTime = Date.now();
+          break;
+        }
+      }
+    } catch {
+      // Continue to next source
+    }
+  }
+
+  isSyncing = false;
+  return serverOffsetMs;
+}
+
+// Auto-sync on client initialization and periodically every 20 seconds
+if (typeof window !== "undefined") {
+  syncExchangeTime();
+  setInterval(() => {
+    if (Date.now() - lastSyncTime > 20000) {
+      syncExchangeTime();
+    }
+  }, 20000);
+}
+
+export function getSynchronizedDate(): Date {
+  return new Date(Date.now() + serverOffsetMs);
+}
+
+export function getSynchronizedTimestamp(): number {
+  return Date.now() + serverOffsetMs;
+}
+
+export function getCandleTimeRemaining(customDate?: Date, timeframe: string = "1m"): {
   remainingSeconds: number;
   formatted: string;
   candleLengthMs: number;
   elapsedSeconds: number;
+  synchronizedDate: Date;
 } {
+  const now = customDate || getSynchronizedDate();
   const tf = (timeframe || "1m").toLowerCase();
   const seconds = now.getSeconds();
   const milliseconds = now.getMilliseconds();
@@ -41,6 +110,7 @@ export function getCandleTimeRemaining(now: Date = new Date(), timeframe: string
     formatted: `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`,
     candleLengthMs,
     elapsedSeconds,
+    synchronizedDate: now,
   };
 }
 
