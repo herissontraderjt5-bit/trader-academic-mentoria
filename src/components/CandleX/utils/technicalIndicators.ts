@@ -433,65 +433,95 @@ export function calculateOTE(candles: Candle[]): { isOteZone: boolean; discountP
   return { isOteZone, discountPremium, fibLevel };
 }
 
-// 13. Candlestick Price Action Patterns
+// 13. Candlestick Price Action Patterns (Strict Mathematical Japanese Candlestick Criteria)
 export function detectCandlestickPattern(candles: Candle[]): string {
-  if (candles.length < 3) return "Acumulação Neutra";
+  if (!candles || candles.length < 3) return "Fluxo Normal";
 
-  const c3 = candles[candles.length - 1]; // current/latest closed
-  const c2 = candles[candles.length - 2];
-  const c1 = candles[candles.length - 3];
+  const len = candles.length;
+  const c3 = candles[len - 1]; // current/latest closed candle
+  const c2 = candles[len - 2];
+  const c1 = candles[len - 3];
 
   const body3 = Math.abs(c3.close - c3.open);
-  const range3 = c3.high - c3.low || 0.0001;
+  const range3 = Math.max(0.0001, c3.high - c3.low);
   const isBull3 = c3.close > c3.open;
   const isBear3 = c3.close < c3.open;
 
   const upperWick3 = c3.high - Math.max(c3.open, c3.close);
   const lowerWick3 = Math.min(c3.open, c3.close) - c3.low;
 
-  // Pinbar / Hammer
-  if (lowerWick3 >= body3 * 2 && upperWick3 <= body3 * 0.5) {
-    return isBull3 ? "Martelo / Pinbar Bullish de Rejeição de Fundo" : "Martelo de Alta";
+  const body2 = Math.abs(c2.close - c2.open);
+  const range2 = Math.max(0.0001, c2.high - c2.low);
+  const isBear2 = c2.close < c2.open;
+  const isBull2 = c2.close > c2.open;
+
+  // 1. Strict Bullish Hammer (Martelo de Alta)
+  // Requisitos: Corpo pequeno no topo, pavio inferior longo (>=55% do range total e >=2x o corpo), pavio superior minúsculo (<=12% do range) e corpo comprador ou rejeição em fundo prévio
+  const isHammerShape = lowerWick3 >= range3 * 0.55 && lowerWick3 >= body3 * 1.8 && upperWick3 <= range3 * 0.15 && body3 >= range3 * 0.10;
+  if (isHammerShape) {
+    if (isBull3) {
+      return "Martelo de Alta (Bullish Hammer - Rejeição de Fundo)";
+    } else {
+      return "Pinbar de Rejeição de Fundo";
+    }
   }
 
-  // Shooting Star / Inverted Hammer
-  if (upperWick3 >= body3 * 2 && lowerWick3 <= body3 * 0.5) {
-    return isBear3 ? "Estrela Cadente / Pinbar Bearish de Rejeição de Topo" : "Martelo Invertido";
+  // 2. Strict Shooting Star (Estrela Cadente)
+  // Requisitos: Corpo pequeno na base, pavio superior longo (>=55% do range total e >=2x o corpo), pavio inferior minúsculo (<=12% do range) e corpo vendedor
+  const isShootingStarShape = upperWick3 >= range3 * 0.55 && upperWick3 >= body3 * 1.8 && lowerWick3 <= range3 * 0.15 && body3 >= range3 * 0.10;
+  if (isShootingStarShape) {
+    if (isBear3) {
+      return "Estrela Cadente (Shooting Star - Rejeição de Topo)";
+    } else {
+      return "Pinbar de Rejeição de Topo";
+    }
   }
 
-  // Doji
-  if (body3 <= range3 * 0.1) {
-    if (lowerWick3 > range3 * 0.6) return "Dragonfly Doji (Rejeição de Fundo)";
-    if (upperWick3 > range3 * 0.6) return "Gravestone Doji (Rejeição de Topo)";
-    return "Doji de Indecisão";
-  }
-
-  // Bullish Engulfing
-  if (c2.close < c2.open && c3.close > c3.open && c3.open <= c2.close && c3.close >= c2.open) {
+  // 3. Strict Bullish Engulfing (Engolfo de Alta)
+  // Requisitos: Vela anterior vermelha, vela atual verde com corpo maior e cobrindo completamente a abertura/fechamento anterior
+  if (isBear2 && isBull3 && body3 > body2 * 1.05 && c3.open <= c2.close * 1.0005 && c3.close >= c2.open * 0.9995 && body3 >= range3 * 0.5) {
     return "Engolfo de Alta (Bullish Engulfing Institucional)";
   }
 
-  // Bearish Engulfing
-  if (c2.close > c2.open && c3.close < c3.open && c3.open >= c2.close && c3.close <= c2.open) {
+  // 4. Strict Bearish Engulfing (Engolfo de Baixa)
+  // Requisitos: Vela anterior verde, vela atual vermelha com corpo maior e cobrindo completamente a abertura/fechamento anterior
+  if (isBull2 && isBear3 && body3 > body2 * 1.05 && c3.open >= c2.close * 0.9995 && c3.close <= c2.open * 1.0005 && body3 >= range3 * 0.5) {
     return "Engolfo de Baixa (Bearish Engulfing Institucional)";
   }
 
-  // Morning Star
-  if (c1.close < c1.open && Math.abs(c2.close - c2.open) < (c1.high - c1.low) * 0.3 && c3.close > c3.open && c3.close > (c1.open + c1.close) / 2) {
-    return "Estrela da Manhã (Reversão Altista)";
+  // 5. Morning Star (Estrela da Manhã)
+  const isBear1 = c1.close < c1.open;
+  if (isBear1 && body2 < range2 * 0.4 && isBull3 && c3.close > (c1.open + c1.close) / 2 && body3 > range3 * 0.45) {
+    return "Estrela da Manhã (Morning Star - Reversão de Alta)";
   }
 
-  // Evening Star
-  if (c1.close > c1.open && Math.abs(c2.close - c2.open) < (c1.high - c1.low) * 0.3 && c3.close < c3.open && c3.close < (c1.open + c1.close) / 2) {
-    return "Estrela da Noite (Reversão Baixista)";
+  // 6. Evening Star (Estrela da Noite)
+  const isBull1 = c1.close > c1.open;
+  if (isBull1 && body2 < range2 * 0.4 && isBear3 && c3.close < (c1.open + c1.close) / 2 && body3 > range3 * 0.45) {
+    return "Estrela da Noite (Evening Star - Reversão de Baixa)";
   }
 
-  // Marubozu
-  if (body3 > range3 * 0.85) {
-    return isBull3 ? "Marubozu de Alta (Pressão Compradora Pura)" : "Marubozu de Baixa (Pressão Vendedora Pura)";
+  // 7. Marubozu (Vela de Força Pura sem pavios)
+  if (body3 >= range3 * 0.88 && range3 >= 0.0005) {
+    return isBull3 ? "Marubozu de Alta (Força Compradora Institucional)" : "Marubozu de Baixa (Força Vendedora Institucional)";
   }
 
-  return "Vela de Continuidade";
+  // 8. Doji (Indecisão pura)
+  if (body3 <= range3 * 0.08) {
+    if (lowerWick3 >= range3 * 0.65) return "Dragonfly Doji (Rejeição de Fundo)";
+    if (upperWick3 >= range3 * 0.65) return "Gravestone Doji (Rejeição de Topo)";
+    return "Doji (Indecisão Neutra)";
+  }
+
+  // 9. Rejeição Genérica por Pavio
+  if (lowerWick3 >= range3 * 0.45) {
+    return "Rejeição de Fundo por Pavio Inferior";
+  }
+  if (upperWick3 >= range3 * 0.45) {
+    return "Rejeição de Topo por Pavio Superior";
+  }
+
+  return isBull3 ? "Vela de Continuidade Altista" : "Vela de Continuidade Baixista";
 }
 
 // 14 & 15. Master Indicators Engine with Near Defense Region

@@ -537,7 +537,7 @@ export default function CandleXWorkstation({
       const result = await candlexApiService.analyze(
         activeTicker,
         timeframe.toUpperCase(),
-        candles.slice(-20),
+        candles,
         latestIndicators
       );
 
