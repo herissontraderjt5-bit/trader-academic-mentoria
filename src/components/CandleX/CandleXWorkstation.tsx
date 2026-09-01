@@ -242,7 +242,7 @@ export default function CandleXWorkstation({
     }
   };
 
-  // Connect to Hiove WebSocket
+  // Connect to Hiove API
   const connectToHiove = useCallback(async (forceReconnect = false) => {
     if (!autoTraderConfig.hioveEmail || !autoTraderConfig.hiovePassword) {
       return;
@@ -256,91 +256,114 @@ export default function CandleXWorkstation({
       const tenantId = "01JWYBZHW6DM9D7NKPBGJFDZEA";
       console.log("Authenticating with Hiove API...");
       
-      const authRes = await fetch("https://broker-api.mybrokerdev.com/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-tenant-id": tenantId,
-          "x-timestamp": String(Date.now())
-        },
-        body: JSON.stringify({
-          email: autoTraderConfig.hioveEmail,
-          password: autoTraderConfig.hiovePassword,
-          tenantId: tenantId,
-          recaptchaToken: "bypass-2"
-        })
-      });
+      let token: string | null = null;
 
-      if (!authRes.ok) {
-        console.error("Hiove authentication failed, status:", authRes.status);
-        // Clear token
-        setHioveAccountInfo((prev) => ({ ...prev, token: null, userId: null }));
-        // Turn off robot if it was enabled on REAL account
-        if (autoTraderConfig.enabled && autoTraderConfig.accountType === "REAL") {
-          const nextConfig = { ...autoTraderConfig, enabled: false };
-          setAutoTraderConfig(nextConfig);
-          if (currentUser && currentUser.id !== 'usr-guest') {
-            localStorage.setItem(`candlex_autotrader_${currentUser.id}`, JSON.stringify(nextConfig));
-            supabaseService.saveCandleXAutoTrader(currentUser.id, nextConfig);
-          }
-          soundManager.speakAlert("Falha na autenticação da Hiove. Robô desativado.");
+      // 1. Try server-side proxy first (bypasses CORS and browser restrictions)
+      try {
+        const proxyRes = await fetch("/api/hiove/proxy", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            endpoint: "/auth/login",
+            method: "POST",
+            payload: {
+              email: autoTraderConfig.hioveEmail,
+              password: autoTraderConfig.hiovePassword,
+              tenantId: tenantId,
+              recaptchaToken: "bypass-2"
+            }
+          })
+        });
+
+        if (proxyRes.ok) {
+          const authData = await proxyRes.json();
+          token = authData.token || (authData.data && authData.data.token) || null;
         }
-        return;
+      } catch (proxyErr) {
+        console.warn("Hiove proxy error on login, trying direct fetch fallback:", proxyErr);
       }
 
-      const authData = await authRes.json();
-      const token = authData.token || (authData.data && authData.data.token);
+      // 2. Direct fetch fallback if proxy failed
+      if (!token) {
+        const authRes = await fetch("https://broker-api.mybrokerdev.com/auth/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-tenant-id": tenantId,
+            "x-timestamp": String(Date.now())
+          },
+          body: JSON.stringify({
+            email: autoTraderConfig.hioveEmail,
+            password: autoTraderConfig.hiovePassword,
+            tenantId: tenantId,
+            recaptchaToken: "bypass-2"
+          })
+        });
+
+        if (authRes.ok) {
+          const authData = await authRes.json();
+          token = authData.token || (authData.data && authData.data.token) || null;
+        }
+      }
 
       if (!token) {
-        console.error("Failed to parse token from Hiove response:", authData);
+        console.warn("Could not authenticate with Hiove API with provided credentials");
         setHioveAccountInfo((prev) => ({ ...prev, token: null, userId: null }));
         return;
       }
 
-      // Fetch /auth/me with token to get userId (room)
-      const meRes = await fetch("https://broker-api.mybrokerdev.com/auth/me", {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "x-tenant-id": tenantId,
-          "x-timestamp": String(Date.now())
+      // Fetch profile /auth/me for userId
+      let userId: string | null = null;
+      try {
+        const meProxy = await fetch("/api/hiove/proxy", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ endpoint: "/auth/me", method: "GET", token })
+        });
+        if (meProxy.ok) {
+          const meData = await meProxy.json();
+          userId = meData.id || (meData.data && meData.data.id) || (meData.user && meData.user.id) || (meData.data && meData.data.user?.id) || null;
         }
-      });
-
-      let userId = null;
-      if (meRes.ok) {
-        const meData = await meRes.json();
-        userId = meData.id || (meData.data && meData.data.id) || (meData.user && meData.user.id) || (meData.data && meData.data.user?.id);
-      }
+      } catch {}
 
       if (!userId) {
-        console.error("Failed to fetch user ID from auth/me profile request");
-        setHioveAccountInfo((prev) => ({ ...prev, token: null, userId: null }));
-        return;
+        try {
+          const meRes = await fetch("https://broker-api.mybrokerdev.com/auth/me", {
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "x-tenant-id": tenantId,
+              "x-timestamp": String(Date.now())
+            }
+          });
+          if (meRes.ok) {
+            const meData = await meRes.json();
+            userId = meData.id || (meData.data && meData.data.id) || (meData.user && meData.user.id) || (meData.data && meData.data.user?.id) || null;
+          }
+        } catch {}
       }
 
-      // Fetch current wallets balances
-      const walletsRes = await fetch("https://broker-api.mybrokerdev.com/users/wallets", {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "x-tenant-id": tenantId,
-          "x-timestamp": String(Date.now())
-        }
-      });
-      
+      // Fetch wallets
       let balance = 0;
       let demoBalance = 10000;
-      if (walletsRes.ok) {
-        const wallets = await walletsRes.json();
-        const walletsList = Array.isArray(wallets) ? wallets : (wallets.data && Array.isArray(wallets.data) ? wallets.data : []);
-        const realWallet = walletsList.find((w: any) => w.type === "REAL");
-        const demoWallet = walletsList.find((w: any) => w.type === "DEMO");
-        if (realWallet) balance = realWallet.balance;
-        if (demoWallet) demoBalance = demoWallet.balance;
-      }
+      try {
+        const walletsProxy = await fetch("/api/hiove/proxy", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ endpoint: "/users/wallets", method: "GET", token })
+        });
+        if (walletsProxy.ok) {
+          const wallets = await walletsProxy.json();
+          const walletsList = Array.isArray(wallets) ? wallets : (wallets.data && Array.isArray(wallets.data) ? wallets.data : []);
+          const realWallet = walletsList.find((w: any) => w.type === "REAL");
+          const demoWallet = walletsList.find((w: any) => w.type === "DEMO");
+          if (realWallet) balance = realWallet.balance;
+          if (demoWallet) demoBalance = demoWallet.balance;
+        }
+      } catch {}
 
       setHioveAccountInfo({
         token,
-        userId,
+        userId: userId || "user",
         balance,
         demoBalance
       });
@@ -451,48 +474,67 @@ export default function CandleXWorkstation({
 
       console.log("Placing real Hiove trade via API...", { symbol, direction: tradeDirection, amount, isDemo });
       
-      const res = await fetch("https://broker-api.mybrokerdev.com/trades/open-async", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${hioveAccountInfo.token}`,
-          "x-tenant-id": tenantId,
-          "x-timestamp": String(Date.now())
-        },
-        body: JSON.stringify({
-          isDemo,
-          closeType,
-          direction: tradeDirection,
-          symbol,
-          expirationType: "CANDLE_CLOSE",
-          amount,
-          builderBot: true
-        })
-      });
+      const payload = {
+        isDemo,
+        closeType,
+        direction: tradeDirection,
+        symbol,
+        expirationType: "CANDLE_CLOSE",
+        amount,
+        builderBot: true
+      };
 
-      if (res.ok) {
-        const data = await res.json();
-        console.log("Real trade executed successfully on Hiove:", data);
-        return true;
-      } else {
-        const errText = await res.text();
-        console.error("Failed to execute trade on Hiove, status:", res.status, errText);
-        
-        // If unauthorized/expired, clear credentials and deactivate
-        if (res.status === 401) {
-          setHioveAccountInfo((prev) => ({ ...prev, token: null, userId: null }));
-          if (autoTraderConfig.enabled && autoTraderConfig.accountType === "REAL") {
-            const nextConfig = { ...autoTraderConfig, enabled: false };
-            setAutoTraderConfig(nextConfig);
-            if (currentUser && currentUser.id !== 'usr-guest') {
-              localStorage.setItem(`candlex_autotrader_${currentUser.id}`, JSON.stringify(nextConfig));
-              supabaseService.saveCandleXAutoTrader(currentUser.id, nextConfig);
-            }
-            soundManager.speakAlert("Sessão da Hiove expirada. Robô desativado.");
+      let success = false;
+
+      // 1. Try server-side proxy first
+      try {
+        const proxyRes = await fetch("/api/hiove/proxy", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            endpoint: "/trades/open-async",
+            method: "POST",
+            token: hioveAccountInfo.token,
+            payload
+          })
+        });
+
+        if (proxyRes.ok) {
+          const data = await proxyRes.json();
+          console.log("Real trade executed successfully via proxy on Hiove:", data);
+          success = true;
+        }
+      } catch (proxyErr) {
+        console.warn("Proxy trade error, trying direct fetch fallback:", proxyErr);
+      }
+
+      // 2. Direct fetch fallback
+      if (!success) {
+        const res = await fetch("https://broker-api.mybrokerdev.com/trades/open-async", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${hioveAccountInfo.token}`,
+            "x-tenant-id": tenantId,
+            "x-timestamp": String(Date.now())
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          console.log("Real trade executed successfully on Hiove:", data);
+          success = true;
+        } else {
+          const errText = await res.text();
+          console.error("Failed to execute trade on Hiove, status:", res.status, errText);
+          if (res.status === 401) {
+            setHioveAccountInfo((prev) => ({ ...prev, token: null, userId: null }));
           }
         }
-        return false;
       }
+
+      return success;
     } catch (e) {
       console.error("Error executing Hiove trade:", e);
       return false;

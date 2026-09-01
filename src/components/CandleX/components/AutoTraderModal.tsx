@@ -428,18 +428,16 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold text-slate-300 flex items-center justify-between">
                   <span>CONTA DA CORRETORA:</span>
-                  {config.accountType === "REAL" && (
-                    hioveToken ? (
-                      <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/30 flex items-center gap-1">
-                        <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
-                        CONECTADO
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-bold text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30 flex items-center gap-1">
-                        <span className="w-1 h-1 rounded-full bg-amber-500" />
-                        DESCONECTADO
-                      </span>
-                    )
+                  {hioveToken ? (
+                    <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/30 flex items-center gap-1">
+                      <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
+                      CONECTADO
+                    </span>
+                  ) : (
+                    <span className="text-[9px] font-bold text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30 flex items-center gap-1">
+                      <span className="w-1 h-1 rounded-full bg-amber-500" />
+                      OFFLINE
+                    </span>
                   )}
                 </label>
                 <select
@@ -459,7 +457,7 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
                 <input
                   type="email"
                   value={config.hioveEmail || ""}
-                  onChange={(e) => onChangeConfig({ ...config, hioveEmail: e.target.value })}
+                  onChange={(e) => onChangeConfig({ ...config, hioveEmail: e.target.value.trim() })}
                   placeholder="seu-email@exemplo.com"
                   className="w-full bg-[#0B0E14] border border-[#1E2638] focus:border-[#FF7A00] rounded-lg px-3 py-2 text-white font-mono text-sm outline-none"
                 />
@@ -486,7 +484,7 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
                 <label className="text-[11px] font-bold text-slate-300 flex items-center justify-between">
                   <span>3. VALOR DE ENTRADA (STAKE):</span>
                   <span className="text-amber-400 font-mono text-[11px] font-bold">
-                    {currencySymbol} {config.stakeAmount.toFixed(2)}
+                    {currencySymbol} {(config.stakeAmount || 1).toFixed(2)}
                   </span>
                 </label>
                 <div className="flex items-center gap-2">
@@ -495,33 +493,41 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
                       {currencySymbol}
                     </span>
                     <input
-                      type="number"
-                      min={1}
-                      step={1}
-                      value={config.stakeAmount}
-                      onChange={(e) =>
-                        onChangeConfig({
-                          ...config,
-                          stakeAmount: Math.max(1, parseFloat(e.target.value) || 1),
-                        })
-                      }
+                      type="text"
+                      inputMode="decimal"
+                      value={config.stakeAmount === 0 ? "" : config.stakeAmount}
+                      placeholder="1"
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9.]/g, "");
+                        if (val === "") {
+                          onChangeConfig({ ...config, stakeAmount: 0 });
+                        } else {
+                          const num = parseFloat(val);
+                          onChangeConfig({ ...config, stakeAmount: isNaN(num) ? 0 : num });
+                        }
+                      }}
+                      onBlur={() => {
+                        if (!config.stakeAmount || config.stakeAmount < 1) {
+                          onChangeConfig({ ...config, stakeAmount: 1 });
+                        }
+                      }}
                       className="w-full bg-[#0B0E14] border border-[#1E2638] focus:border-[#FF7A00] rounded-lg pl-9 pr-3 py-2 text-white font-mono font-bold text-sm outline-none"
                     />
                   </div>
                   {/* Preset quick buttons */}
-                  <div className="flex gap-1">
-                    {[5, 10, 25, 50].map((amt) => (
+                  <div className="flex gap-1 flex-wrap">
+                    {[1, 2, 5, 10, 25, 50].map((amt) => (
                       <button
                         key={amt}
                         type="button"
                         onClick={() => handlePresetStake(amt)}
-                        className={`px-2 py-2 rounded-lg text-[10px] font-bold font-mono border cursor-pointer ${
+                        className={`px-2 py-1.5 rounded-lg text-[10px] font-bold font-mono border cursor-pointer transition-all ${
                           config.stakeAmount === amt
-                            ? "bg-[#FF7A00] text-slate-950 border-[#FF7A00]"
+                            ? "bg-[#FF7A00] text-slate-950 border-[#FF7A00] font-black"
                             : "bg-[#0B0E14] border-[#1E2638] text-slate-400 hover:text-white"
                         }`}
                       >
-                        +{amt}
+                        ${amt}
                       </button>
                     ))}
                   </div>
@@ -539,16 +545,24 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
                 <div className="flex items-center gap-2">
                   <div className="relative flex-1">
                     <input
-                      type="number"
-                      min={60}
-                      max={98}
-                      value={config.minPayout}
-                      onChange={(e) =>
-                        onChangeConfig({
-                          ...config,
-                          minPayout: Math.min(98, Math.max(60, parseInt(e.target.value) || 80)),
-                        })
-                      }
+                      type="text"
+                      inputMode="numeric"
+                      value={config.minPayout === 0 ? "" : config.minPayout}
+                      placeholder="80"
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9]/g, "");
+                        if (val === "") {
+                          onChangeConfig({ ...config, minPayout: 0 });
+                        } else {
+                          const num = parseInt(val, 10);
+                          onChangeConfig({ ...config, minPayout: isNaN(num) ? 0 : Math.min(98, num) });
+                        }
+                      }}
+                      onBlur={() => {
+                        if (!config.minPayout || config.minPayout < 50) {
+                          onChangeConfig({ ...config, minPayout: 80 });
+                        }
+                      }}
                       className="w-full bg-[#0B0E14] border border-[#1E2638] focus:border-[#FF7A00] rounded-lg px-3 py-2 text-white font-mono font-bold text-sm outline-none"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">
@@ -562,7 +576,7 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
                         key={p}
                         type="button"
                         onClick={() => onChangeConfig({ ...config, minPayout: p })}
-                        className={`px-2 py-2 rounded-lg text-[10px] font-bold font-mono border cursor-pointer ${
+                        className={`px-2 py-1.5 rounded-lg text-[10px] font-bold font-mono border cursor-pointer ${
                           config.minPayout === p
                             ? "bg-emerald-500 text-slate-950 border-emerald-500 font-black"
                             : "bg-[#0B0E14] border-[#1E2638] text-slate-400 hover:text-white"
@@ -598,32 +612,40 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
                       {currencySymbol}
                     </span>
                     <input
-                      type="number"
-                      min={5}
-                      step={5}
-                      value={config.dailyStopWin}
-                      onChange={(e) =>
-                        onChangeConfig({
-                          ...config,
-                          dailyStopWin: Math.max(5, parseFloat(e.target.value) || 10),
-                        })
-                      }
+                      type="text"
+                      inputMode="decimal"
+                      value={config.dailyStopWin === 0 ? "" : config.dailyStopWin}
+                      placeholder="50"
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9.]/g, "");
+                        if (val === "") {
+                          onChangeConfig({ ...config, dailyStopWin: 0 });
+                        } else {
+                          const num = parseFloat(val);
+                          onChangeConfig({ ...config, dailyStopWin: isNaN(num) ? 0 : num });
+                        }
+                      }}
+                      onBlur={() => {
+                        if (!config.dailyStopWin || config.dailyStopWin < 1) {
+                          onChangeConfig({ ...config, dailyStopWin: 50 });
+                        }
+                      }}
                       className="w-full bg-[#0B0E14] border border-[#1E2638] focus:border-emerald-500 rounded-lg pl-9 pr-3 py-2 text-emerald-300 font-mono font-bold text-sm outline-none"
                     />
                   </div>
-                  <div className="flex gap-1">
-                    {[50, 100, 200, 500].map((w) => (
+                  <div className="flex gap-1 flex-wrap">
+                    {[10, 25, 50, 100, 200].map((w) => (
                       <button
                         key={w}
                         type="button"
                         onClick={() => handlePresetStopWin(w)}
-                        className={`px-2 py-2 rounded-lg text-[10px] font-bold font-mono border cursor-pointer ${
+                        className={`px-2 py-1.5 rounded-lg text-[10px] font-bold font-mono border cursor-pointer ${
                           config.dailyStopWin === w
                             ? "bg-emerald-500 text-slate-950 border-emerald-500 font-black"
                             : "bg-[#0B0E14] border-[#1E2638] text-slate-400 hover:text-emerald-300"
                         }`}
                       >
-                        {w}
+                        ${w}
                       </button>
                     ))}
                   </div>
@@ -647,32 +669,40 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
                       {currencySymbol}
                     </span>
                     <input
-                      type="number"
-                      min={5}
-                      step={5}
-                      value={config.dailyStopLoss}
-                      onChange={(e) =>
-                        onChangeConfig({
-                          ...config,
-                          dailyStopLoss: Math.max(5, parseFloat(e.target.value) || 10),
-                        })
-                      }
+                      type="text"
+                      inputMode="decimal"
+                      value={config.dailyStopLoss === 0 ? "" : config.dailyStopLoss}
+                      placeholder="10"
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9.]/g, "");
+                        if (val === "") {
+                          onChangeConfig({ ...config, dailyStopLoss: 0 });
+                        } else {
+                          const num = parseFloat(val);
+                          onChangeConfig({ ...config, dailyStopLoss: isNaN(num) ? 0 : num });
+                        }
+                      }}
+                      onBlur={() => {
+                        if (!config.dailyStopLoss || config.dailyStopLoss < 1) {
+                          onChangeConfig({ ...config, dailyStopLoss: 10 });
+                        }
+                      }}
                       className="w-full bg-[#0B0E14] border border-[#1E2638] focus:border-rose-500 rounded-lg pl-9 pr-3 py-2 text-rose-300 font-mono font-bold text-sm outline-none"
                     />
                   </div>
-                  <div className="flex gap-1">
-                    {[25, 50, 100, 200].map((l) => (
+                  <div className="flex gap-1 flex-wrap">
+                    {[5, 10, 20, 50, 100].map((l) => (
                       <button
                         key={l}
                         type="button"
                         onClick={() => handlePresetStopLoss(l)}
-                        className={`px-2 py-2 rounded-lg text-[10px] font-bold font-mono border cursor-pointer ${
+                        className={`px-2 py-1.5 rounded-lg text-[10px] font-bold font-mono border cursor-pointer ${
                           config.dailyStopLoss === l
-                            ? "bg-rose-500 text-white border-rose-500 font-black"
+                            ? "bg-rose-500 text-slate-950 border-rose-500 font-black"
                             : "bg-[#0B0E14] border-[#1E2638] text-slate-400 hover:text-rose-300"
                         }`}
                       >
-                        {l}
+                        ${l}
                       </button>
                     ))}
                   </div>
