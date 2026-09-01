@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { AiAnalysisResult, TechnicalIndicators, Candle, TradeRecord, BankrollConfig } from "../../../types";
 import { soundManager } from "../utils/soundEffects";
+import { candlexApiService } from "../services/apiService";
 import confetti from "canvas-confetti";
 
 interface CenterSignalOverlayProps {
@@ -73,6 +74,8 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
   const lastDecisionCandleStartRef = useRef<number | null>(null);
   const hasAnnouncedDecisionRef = useRef<boolean>(false);
   const hasRegisteredPendingRef = useRef<boolean>(false);
+  const lockedEntryPriceRef = useRef<number | null>(null);
+  const isResolvingRef = useRef<boolean>(false);
 
   const [predictionResult, setPredictionResult] = useState<"WIN" | "LOSS" | "DRAW" | null>(null);
   const [hasResolvedOutcome, setHasResolvedOutcome] = useState<boolean>(false);
@@ -213,11 +216,11 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
     return "PRE_WAITING";
   }, [decision, secondsRemaining, decisionThreshold, currentTime, entryDate]);
 
-  // Live clock updating every 250ms for maximum real-time accuracy
+  // Live clock updating every 100ms for maximum real-time precision and smooth countdowns
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
-    }, 250);
+    }, 100);
     return () => clearInterval(timer);
   }, []);
 
@@ -233,6 +236,8 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
       lastDecisionCandleStartRef.current = null;
       hasAnnouncedDecisionRef.current = false;
       hasRegisteredPendingRef.current = false;
+      lockedEntryPriceRef.current = null;
+      isResolvingRef.current = false;
       setPredictionResult(null);
       setHasResolvedOutcome(false);
       setPosition({ x: 0, y: 0 }); // Reset drag position to center
@@ -243,7 +248,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
   useEffect(() => {
     if (isAnalyzing || !analysis || !isVisible) return;
 
-    // FIX: Only evaluate during the preparation candle BEFORE entryDate and only once per signal
+    // Only evaluate during the preparation candle BEFORE entryDate and only once per signal
     const nowMs = currentTime.getTime();
     if (nowMs >= entryDate.getTime() || decision !== "PENDING" || hasAnnouncedDecisionRef.current) {
       return;
@@ -275,34 +280,34 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         setResolvedDir(dir);
         setRejectionReason(`Filtro Anti-Loss Ativado: Apenas ${confluenceCount} confluência(s) institucional(is) detectada(s). O CandleX exige no mínimo 4 confluências (SMC, ICT, Price Action e Indicadores) para liberar a entrada com segurança.`);
         soundManager.playRejectAlert();
-        soundManager.speakAlert(`Sinal cancelado pelo Filtro Anti-Loss! Apenas ${confluenceCount} confluências detectadas, mínimo exigido é quatro.`);
+        soundManager.speakAlert("Sinal cancelado pelo Filtro Anti-Loss");
       } else if (isExtremeOverbought) {
         setDecision("REJECTED");
         setResolvedDir(dir);
         setRejectionReason("RSI extremo em sobrecompra (>80). Filtro Anti-Loss ativado para evitar reversão contra a compra.");
         soundManager.playRejectAlert();
-        soundManager.speakAlert("Entrada rejeitada! RSI em sobrecompra extrema.");
+        soundManager.speakAlert("Entrada rejeitada! RSI em sobrecompra extrema");
       } else if (isExtremeOversold) {
         setDecision("REJECTED");
         setResolvedDir(dir);
         setRejectionReason("RSI extremo em sobrevenda (<20). Filtro Anti-Loss ativado para evitar reversão contra a venda.");
         soundManager.playRejectAlert();
-        soundManager.speakAlert("Entrada rejeitada! RSI em sobrevenda extrema.");
+        soundManager.speakAlert("Entrada rejeitada! RSI em sobrevenda extrema");
       } else if (isAgainstTrend && (analysis.confidenceScore || 90) < 85) {
         setDecision("REJECTED");
         setResolvedDir(dir);
         setRejectionReason(`Operação contra a tendência principal de ${trend} com confiança moderada (${analysis.confidenceScore}%).`);
         soundManager.playRejectAlert();
-        soundManager.speakAlert("Entrada rejeitada por baixa confluência contra a tendência.");
+        soundManager.speakAlert("Entrada rejeitada por baixa confluência contra a tendência");
       } else {
         setDecision("CONFIRMED");
         setResolvedDir(dir);
         if (dir === "CALL") {
           soundManager.playCallAlert();
-          soundManager.speakAlert(`Sinal confirmado aos ${decisionThreshold} segundos com ${confluenceCount} confluências! COMPRA (CALL) em ${activeTicker}.`);
+          soundManager.speakAlert(`Sinal confirmado: COMPRA em ${activeTicker}`);
         } else {
           soundManager.playPutAlert();
-          soundManager.speakAlert(`Sinal confirmado aos ${decisionThreshold} segundos com ${confluenceCount} confluências! VENDA (PUT) em ${activeTicker}.`);
+          soundManager.speakAlert(`Sinal confirmado: VENDA em ${activeTicker}`);
         }
       }
     }
@@ -332,18 +337,24 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
     }
   }, [decision, onClearAnalysis, onClose]);
 
-  // AUTOMATIC RECORDING: Register signal as PENDING in Diário & Operações the moment it enters execution
+  // AUTOMATIC RECORDING: Lock the real entry price & register signal as PENDING in Diário the moment it enters execution
   useEffect(() => {
     if (!analysis || isAnalyzing || !isVisible || decision !== "CONFIRMED") return;
 
     if (currentTime.getTime() >= entryDate.getTime() && !hasRegisteredPendingRef.current && !hasResolvedOutcome) {
       hasRegisteredPendingRef.current = true;
+      
+      // Lock the exact entry price at the start of the candle
+      const entryTimeSecs = Math.floor(entryDate.getTime() / 1000);
+      const liveCandle = candles.find((c) => c.time === entryTimeSecs);
+      const openPrice = liveCandle?.open || candles[candles.length - 1]?.close || analysis.priceAtAnalysis || 0;
+      lockedEntryPriceRef.current = openPrice;
+
       if (onSaveSignalTrade) {
         const stakeAmount = bankrollConfig
           ? Math.max(1, +(bankrollConfig.currentBalance * (bankrollConfig.baseStakePercent || 2) / 100).toFixed(2))
           : 10;
         const expMins = timeframe.toLowerCase().includes("5m") ? 5 : (timeframe.toLowerCase().includes("2m") ? 2 : 1);
-        const openPrice = analysis.priceAtAnalysis || (candles[candles.length - 1]?.close || 0);
 
         onSaveSignalTrade({
           id: `sig_${signalCandleStart}`,
@@ -379,41 +390,61 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
     candles,
   ]);
 
-  // Real-time prediction resolution when expiry is reached
+  // Real-time prediction resolution when expiry is reached with fresh candle verification
   useEffect(() => {
-    if (!analysis || isAnalyzing || hasResolvedOutcome) return;
+    if (!analysis || isAnalyzing || hasResolvedOutcome || isResolvingRef.current) return;
     if (decision === "REJECTED") return; // Rejections don't run as trades
 
     const expiryTime = expiryDate.getTime();
     if (currentTime.getTime() >= expiryTime) {
-      const entryTimeSecs = Math.floor(entryDate.getTime() / 1000);
-      const stepSecs = candleLengthMs / 1000;
+      isResolvingRef.current = true;
 
-      // Robust candle matching: exact match OR closest candle within duration
-      let candle = candles.find((c) => c.time === entryTimeSecs);
-      if (!candle && candles.length > 0) {
-        candle = candles.find((c) => Math.abs(c.time - entryTimeSecs) < stepSecs);
-      }
-      if (!candle && candles.length > 0) {
-        // Fallback to latest closed candle
-        candle = candles[candles.length - 1];
-      }
+      const resolveExecution = async () => {
+        const entryTimeSecs = Math.floor(entryDate.getTime() / 1000);
+        const stepSecs = candleLengthMs / 1000;
 
-      if (candle || analysis) {
-        setHasResolvedOutcome(true);
-        const openPrice = candle ? candle.open : (analysis.priceAtAnalysis || 0);
-        const closePrice = candle ? candle.close : (openPrice);
+        let targetCandle: Candle | undefined = candles.find((c) => c.time === entryTimeSecs);
+
+        // Fetch fresh candles to ensure we have the finalized, closed candle
+        try {
+          const freshCandles = await candlexApiService.getCandles(activeTicker, timeframe, 10);
+          if (freshCandles && Array.isArray(freshCandles) && freshCandles.length > 0) {
+            const foundInFresh = freshCandles.find((c) => c.time === entryTimeSecs);
+            if (foundInFresh) {
+              targetCandle = foundInFresh;
+            } else {
+              const closestInFresh = freshCandles.find((c) => Math.abs(c.time - entryTimeSecs) < stepSecs);
+              if (closestInFresh) targetCandle = closestInFresh;
+            }
+          }
+        } catch (e) {
+          console.warn("Could not fetch fresh candle on expiry resolution:", e);
+        }
+
+        // Fallbacks if not found
+        if (!targetCandle && candles.length > 0) {
+          targetCandle = candles.find((c) => Math.abs(c.time - entryTimeSecs) < stepSecs);
+        }
+        if (!targetCandle && candles.length > 0) {
+          targetCandle = candles[candles.length - 1];
+        }
+
+        const openPrice = lockedEntryPriceRef.current || (targetCandle ? targetCandle.open : (analysis.priceAtAnalysis || 0));
+        const closePrice = targetCandle ? targetCandle.close : openPrice;
 
         let outcome: "WIN" | "LOSS" | "DRAW" = "DRAW";
         if (resolvedDirection === "CALL") {
           if (closePrice > openPrice) outcome = "WIN";
           else if (closePrice < openPrice) outcome = "LOSS";
+          else outcome = "DRAW";
         } else if (resolvedDirection === "PUT") {
           if (closePrice < openPrice) outcome = "WIN";
           else if (closePrice > openPrice) outcome = "LOSS";
+          else outcome = "DRAW";
         }
 
         setPredictionResult(outcome);
+        setHasResolvedOutcome(true);
 
         // Stake and PnL calculation for history saving
         const stakeAmount = bankrollConfig
@@ -427,7 +458,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         // Play sounds and visual effects
         if (outcome === "WIN") {
           soundManager.playWin();
-          soundManager.speakAlert(`Vitória! Sinal da IA finalizado com WIN no ativo ${activeTicker}.`);
+          soundManager.speakAlert(`Vitória! WIN confirmado em ${activeTicker}.`);
           try {
             confetti({
               particleCount: 100,
@@ -436,10 +467,10 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
             });
           } catch (e) {}
         } else if (outcome === "LOSS") {
-          soundManager.playRejectAlert();
-          soundManager.speakAlert(`Derrota! Sinal da IA finalizado com Loss em ${activeTicker}.`);
+          soundManager.playLoss();
+          soundManager.speakAlert(`Loss confirmado em ${activeTicker}.`);
         } else {
-          soundManager.speakAlert(`Empate! Sinal da IA finalizado em ${activeTicker}.`);
+          soundManager.speakAlert(`Empate em ${activeTicker}.`);
         }
 
         // SAVE SIGNAL RESULT PERMANENTLY TO HISTORY, SUPABASE & LOCALSTORAGE
@@ -464,13 +495,13 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         }
 
         // Auto close overlay after 8 seconds
-        const timer = setTimeout(() => {
+        setTimeout(() => {
           setIsVisible(false);
           if (onClearAnalysis) onClearAnalysis();
         }, 8000);
+      };
 
-        return () => clearTimeout(timer);
-      }
+      resolveExecution();
     }
   }, [
     currentTime,

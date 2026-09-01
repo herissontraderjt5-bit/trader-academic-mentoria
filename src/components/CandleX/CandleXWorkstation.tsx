@@ -500,31 +500,23 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
     try {
       const latestIndicators = indicators || calculateAllIndicators(candles);
       
-      // Scanning animation simulation duration (2s for smooth experience)
-      const scanAnim = new Promise((resolve) => setTimeout(resolve, 2000));
-      
-      const analysisPromise = candlexApiService.analyze(
+      const result = await candlexApiService.analyze(
         activeTicker,
         timeframe.toUpperCase(),
         candles.slice(-20),
         latestIndicators
       );
 
-      const [result] = await Promise.all([analysisPromise, scanAnim]);
-
       if (result) {
         setAiAnalysis(result);
 
-        // Audio notifications on signals
+        // Audio notifications on signals (chimes only to avoid blocking 10s decision voice)
         if (result.confidenceScore >= 70) {
           if (result.direction === "CALL") {
             soundManager.playCallAlert();
           } else if (result.direction === "PUT") {
             soundManager.playPutAlert();
           }
-          soundManager.speakAlert(
-            `Alerta CandleX: Análise concluída em ${activeTicker}. Assertividade ${result.confidenceScore}%.`
-          );
         }
       }
     } catch (e) {
@@ -655,6 +647,7 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
         const candleLengthMs = isM5 ? 300000 : (isM2 ? 120000 : 60000);
         
         // Start of the entry candle (the next candle)
+        // Start of the entry candle (the next candle boundary)
         const entryCandleStartMs = Math.ceil((now.getTime() + 1000) / candleLengthMs) * candleLengthMs;
 
         // Avoid double entry on the same candle
@@ -669,7 +662,7 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
         const logId = "auto_" + Date.now();
         const pendingItem: AutoTradeLogItem = {
           id: logId,
-          timestamp: Date.now(),
+          timestamp: entryCandleStartMs,
           ticker: activeTicker,
           direction,
           stake,
@@ -701,7 +694,7 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
           confidenceAtEntry: result.confidenceScore,
         });
 
-        soundManager.speakAlert(`Robô executou entrada de ${direction} em ${activeTicker}.`);
+        soundManager.speakAlert(`Robô executou entrada de ${direction === "CALL" ? "Compra" : "Venda"} em ${activeTicker}`);
       }
     } catch (e) {
       console.error("Auto Trader analysis error:", e);
@@ -735,17 +728,17 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
         secondsRemaining = 120 - elapsedSeconds;
       }
 
-      const targetRemaining = isM5 ? 150 : (isM2 ? 60 : 30); // 2m30s for M5, 60s for M2, 30s for M1
+      const targetRemaining = isM5 ? 20 : (isM2 ? 15 : 12); // Pre-scan 12-20s before candle close
 
       // Trigger analysis when the candle hits the target window and it hasn't triggered for this candle yet
-      if (secondsRemaining <= targetRemaining && secondsRemaining > targetRemaining - 3) {
+      if (secondsRemaining <= targetRemaining && secondsRemaining > targetRemaining - 4) {
         const lastTriggeredCandleStartRefVal = lastTriggeredCandleStartRef.current;
         if (lastTriggeredCandleStartRefVal !== currentCandleStart) {
           lastTriggeredCandleStartRef.current = currentCandleStart;
           runAutoTraderAnalysis();
         }
       }
-    }, 500);
+    }, 250);
 
     return () => clearInterval(checkInterval);
   }, [autoTraderConfig.enabled, timeframe, runAutoTraderAnalysis]);
@@ -886,8 +879,8 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
       if (!candle) {
         candle = candles.find((c) => Math.abs(c.time - entryCandleTimeSecs) < (stepMs / 1000));
       }
-      if (!candle && candles.length > 1) {
-        candle = candles[candles.length - 2];
+      if (!candle && candles.length > 0) {
+        candle = candles[candles.length - 1];
       }
 
       if (candle) {
@@ -898,9 +891,11 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
         if (t.direction === "CALL") {
           if (expiryPrice > entryPrice) outcome = "WIN";
           else if (expiryPrice < entryPrice) outcome = "LOSS";
+          else outcome = "DRAW";
         } else { // PUT
           if (expiryPrice < entryPrice) outcome = "WIN";
           else if (expiryPrice > entryPrice) outcome = "LOSS";
+          else outcome = "DRAW";
         }
 
         let pnl = 0;
@@ -915,11 +910,12 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
         // Speak outcome and play audio
         if (outcome === "WIN") {
           soundManager.playWin();
-          soundManager.speakAlert(`Vitória! Operação finalizada em ${t.ticker} com lucro de $ ${pnl}.`);
+          soundManager.speakAlert(`Vitória! Operação em ${t.ticker} com lucro de $ ${pnl}.`);
         } else if (outcome === "LOSS") {
-          soundManager.speakAlert(`Derrota! Operação finalizada em ${t.ticker} com perda de $ ${t.stake}.`);
+          soundManager.playLoss();
+          soundManager.speakAlert(`Loss confirmado em ${t.ticker}.`);
         } else {
-          soundManager.speakAlert(`Empate! Operação finalizada em ${t.ticker}.`);
+          soundManager.speakAlert(`Empate em ${t.ticker}.`);
         }
 
         // Update bankroll balance (add stake + pnl back if win, add stake back if draw)

@@ -279,6 +279,10 @@ class SoundEngine {
     });
   }
 
+  public playLoss() {
+    this.playLossChime();
+  }
+
   public speakAlert(text: string) {
     if (!this.voiceEnabled || typeof window === "undefined" || !("speechSynthesis" in window)) return;
     try {
@@ -308,11 +312,18 @@ class SoundEngine {
         spokenText = spokenText.replace(regex, item.val);
       }
 
-      const utterance = new SpeechSynthesisUtterance(spokenText);
-      utterance.lang = "pt-BR";
-      utterance.rate = 1.05;
-      utterance.pitch = 1.0;
-      window.speechSynthesis.speak(utterance);
+      // Small delay on speaking after cancel to prevent Chrome audio glitching
+      setTimeout(() => {
+        try {
+          const utterance = new SpeechSynthesisUtterance(spokenText);
+          utterance.lang = "pt-BR";
+          utterance.rate = 1.15;
+          utterance.pitch = 1.0;
+          window.speechSynthesis.speak(utterance);
+        } catch (err) {
+          console.warn("SpeechSynthesis play error:", err);
+        }
+      }, 20);
     } catch (e) {
       console.warn("Speech synthesis error:", e);
     }
