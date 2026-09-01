@@ -670,17 +670,17 @@ ${confluencesList}
                   <span
                     className={`px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wide ${
                       analysis.direction === "CALL"
-                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/50"
+                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.2)]"
                         : analysis.direction === "PUT"
-                        ? "bg-rose-500/20 text-rose-400 border border-rose-500/50"
-                        : "bg-slate-700/40 text-slate-300 border border-slate-600"
+                        ? "bg-rose-500/20 text-rose-400 border border-rose-500/50 shadow-[0_0_10px_rgba(244,63,94,0.2)]"
+                        : "bg-amber-500/20 text-amber-400 border border-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.2)] animate-pulse"
                     }`}
                   >
                     {analysis.direction === "CALL"
                       ? "COMPRA (CALL) ↗"
                       : analysis.direction === "PUT"
                       ? "VENDA (PUT) ↘"
-                      : "AGUARDAR ↔"}
+                      : "AGUARDAR FLUXO ⏸"}
                   </span>
                 </div>
               </div>

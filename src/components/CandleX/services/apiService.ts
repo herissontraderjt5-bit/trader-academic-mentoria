@@ -177,6 +177,60 @@ export function generateAlgorithmicAnalysis(
     ? recentCandles.reduce((acc, c) => acc + (c.volume || 0), 0) / recentCandles.length 
     : lastCandle.volume || 1;
 
+  // Calculate Quadrant Color Alternation (Padrão Xadrez / Ping-Pong Sem Fluxo)
+  const recentLast5 = candles.slice(-5);
+  let colorFlips = 0;
+  const colorsArray = recentLast5.map((c) => (c.close >= c.open ? "G" : "R"));
+  for (let i = 1; i < colorsArray.length; i++) {
+    if (colorsArray[i] !== colorsArray[i - 1]) colorFlips++;
+  }
+  const isAlternatingQuadrant = fullIndicators.isAlternatingQuadrant || (recentLast5.length >= 4 && colorFlips >= 3);
+  const colorEmojiSeq = colorsArray.map((c) => (c === "G" ? "🟢" : "🔴")).join(" ");
+
+  // ANTI-LOSS FILTER: Quadrante de Cores Alternadas (Bloqueio Total)
+  if (isAlternatingQuadrant) {
+    const timeframeLabel = tf.includes("5m") || tf === "5"
+      ? "M5 (5 Minutos)"
+      : tf.includes("2m") || tf === "2"
+      ? "M2 (2 Minutos)"
+      : tf.includes("15m") || tf === "15"
+      ? "M15 (15 Minutos)"
+      : "M1 (1 Minuto)";
+
+    return {
+      direction: "NEUTRAL",
+      confidenceScore: 50.0,
+      confluenceCount: 0,
+      timeframeExpiry: timeframeLabel,
+      triggerZone: `Aguardar rompimento do quadrante de cores (${colorEmojiSeq})`,
+      invalidationLevel: `Faixa de consolidação $${nearSupport.toLocaleString("pt-BR")} - $${nearResistance.toLocaleString("pt-BR")}`,
+      detectedPatterns: [
+        `⚠️ Alerta Anti-Loss: Quadrante de Cores Alternadas (${colorEmojiSeq})`,
+        `Sem Fluxo Definido: Alternância constante de velas positivas e negativas`,
+        `Filtro Choppy Ativo: Risco elevado de reversão contrária na próxima vela`,
+        `Ação Recomendada: Aguardar confirmação de fluxo com 2 velas da mesma cor`
+      ],
+      strategyName: "Bloqueio Anti-Loss: Quadrante Xadrez (Sem Fluxo)",
+      marketSentiment: "LATERAL",
+      rationale: `Mercado em alternância de cores sem fluxo direcional (${colorEmojiSeq}). Operação bloqueada para proteger o capital contra falso rompimento.`,
+      hioveQuickTip: "NÃO OPERE AGORA: O mercado está alternando cores vela a vela. Aguarde uma confirmação de fluxo com 2 velas seguidas da mesma cor.",
+      keyLevels: {
+        support: nearSupport,
+        resistance: nearResistance,
+        pivot,
+      },
+      defenseZone: {
+        entryTrigger: currentPrice,
+        defensePrice: currentPrice,
+        distancePercent: 0,
+        label: `Aguardar confirmação de fluxo (${colorEmojiSeq})`,
+      },
+      ticker,
+      priceAtAnalysis: currentPrice,
+      timestamp: Date.now(),
+    };
+  }
+
   // 1. STRICT INSTITUTIONAL TREND IDENTIFICATION
   let trend = fullIndicators.trend || "LATERAL";
   const isBullishTrend = (ema9 > ema20 && currentPrice >= ema20) || (currentPrice >= sma50 && ema9 >= ema20);

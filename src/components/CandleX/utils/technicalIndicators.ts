@@ -524,7 +524,31 @@ export function detectCandlestickPattern(candles: Candle[]): string {
   return isBull3 ? "Vela de Continuidade Altista" : "Vela de Continuidade Baixista";
 }
 
-// 14 & 15. Master Indicators Engine with Near Defense Region
+// 14. Quadrant Color Alternation & Choppy Market Detector (Padrão Xadrez / Ping-Pong Sem Fluxo)
+export function detectColorAlternation(candles: Candle[]): { isAlternating: boolean; flipsCount: number; colorSequence: string } {
+  if (!candles || candles.length < 4) {
+    return { isAlternating: false, flipsCount: 0, colorSequence: "" };
+  }
+
+  const recent = candles.slice(-5); // last 5 candles
+  const colors = recent.map((c) => (c.close >= c.open ? "G" : "R")); // Green / Red
+  const colorSequence = colors.map((c) => (c === "G" ? "🟢" : "🔴")).join(" ");
+
+  let flips = 0;
+  for (let i = 1; i < colors.length; i++) {
+    if (colors[i] !== colors[i - 1]) {
+      flips++;
+    }
+  }
+
+  // If in the last 4-5 candles there are 3 or 4 color flips (e.g. G-R-G-R or R-G-R-G or G-R-G-R-G)
+  // this is a definitive alternating quadrant with NO continuous directional flow.
+  const isAlternating = flips >= 3;
+
+  return { isAlternating, flipsCount: flips, colorSequence };
+}
+
+// 15. Master Indicators Engine with Near Defense Region
 export function calculateAllIndicators(candles: Candle[]): TechnicalIndicators {
   if (candles.length === 0) {
     return {
@@ -550,6 +574,8 @@ export function calculateAllIndicators(candles: Candle[]): TechnicalIndicators {
       resistance: 0,
       candlestickPattern: "Sem dados",
       trend: "LATERAL",
+      isAlternatingQuadrant: false,
+      choppyMarket: false,
     };
   }
 
@@ -595,11 +621,18 @@ export function calculateAllIndicators(candles: Candle[]): TechnicalIndicators {
   const pattern = detectCandlestickPattern(candles);
   const rsiStatus = rsi >= 70 ? "Sobrecompra" : rsi <= 30 ? "Sobrevenda" : "Neutro";
 
+  // Quadrant color alternation detection
+  const alternation = detectColorAlternation(candles);
+  const isAlternatingQuadrant = alternation.isAlternating;
+  const choppyMarket = isAlternatingQuadrant || (adx < 20 && Math.abs(ema9 - ema20) / currentPrice < 0.0003);
+
   let trend: "ALTA" | "BAIXA" | "LATERAL" = "LATERAL";
-  if (ema9 > ema20 && currentPrice > ema9) {
-    trend = "ALTA";
-  } else if (ema9 < ema20 && currentPrice < ema9) {
-    trend = "BAIXA";
+  if (!isAlternatingQuadrant) {
+    if (ema9 > ema20 && currentPrice > ema9) {
+      trend = "ALTA";
+    } else if (ema9 < ema20 && currentPrice < ema9) {
+      trend = "BAIXA";
+    }
   }
 
   // Calculate near defense region (1 to 1.2x ATR from entry trigger)
@@ -642,8 +675,10 @@ export function calculateAllIndicators(candles: Candle[]): TechnicalIndicators {
     smcOrderBlock,
     smcFairValueGap,
     smcStructure,
-    ictOptimalTradeEntry,
     liquiditySweep,
+    ictOptimalTradeEntry,
     defenseZone,
+    isAlternatingQuadrant,
+    choppyMarket,
   };
 }

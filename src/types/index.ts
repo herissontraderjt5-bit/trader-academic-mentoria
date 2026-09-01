@@ -228,6 +228,8 @@ export interface TechnicalIndicators {
     detected: boolean;
     type: "SWEEP_HIGHS" | "SWEEP_LOWS" | "NONE";
   };
+  isAlternatingQuadrant?: boolean;
+  choppyMarket?: boolean;
   defenseZone?: {
     entryTrigger: number;
     defensePrice: number;

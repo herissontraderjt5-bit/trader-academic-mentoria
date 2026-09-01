@@ -109,6 +109,44 @@ function generateAlgorithmicAnalysis(ticker, timeframe, candles, indicators = {}
     ? recentCandles.reduce((acc, c) => acc + (c.volume || 0), 0) / recentCandles.length 
     : lastCandle.volume || 1;
 
+  // Calculate Quadrant Color Alternation (Padrão Xadrez / Ping-Pong Sem Fluxo)
+  const recentLast5 = candles.slice(-5);
+  let colorFlips = 0;
+  const colorsArray = recentLast5.map((c) => (c.close >= c.open ? "G" : "R"));
+  for (let i = 1; i < colorsArray.length; i++) {
+    if (colorsArray[i] !== colorsArray[i - 1]) colorFlips++;
+  }
+  const isAlternatingQuadrant = indicators?.isAlternatingQuadrant || (recentLast5.length >= 4 && colorFlips >= 3);
+  const colorEmojiSeq = colorsArray.map((c) => (c === "G" ? "🟢" : "🔴")).join(" ");
+
+  // ANTI-LOSS FILTER: Quadrante de Cores Alternadas (Bloqueio Total)
+  if (isAlternatingQuadrant) {
+    const timeframeExpiryLabel = timeframe === "5M" || timeframe === "5m" ? "Expiração 5 min" : timeframe === "2M" || timeframe === "2m" ? "Expiração 2 min" : "Próxima Vela (1 min)";
+    return {
+      direction: "NEUTRAL",
+      confidenceScore: 50.0,
+      confluenceCount: 0,
+      timeframeExpiry: timeframeExpiryLabel,
+      triggerZone: `Aguardar rompimento do quadrante de cores (${colorEmojiSeq})`,
+      invalidationLevel: `Faixa de consolidação $${nearSupport.toLocaleString("pt-BR")} - $${nearResistance.toLocaleString("pt-BR")}`,
+      detectedPatterns: [
+        `⚠️ Alerta Anti-Loss: Quadrante de Cores Alternadas (${colorEmojiSeq})`,
+        `Sem Fluxo Definido: Alternância constante de velas positivas e negativas`,
+        `Filtro Choppy Ativo: Risco elevado de reversão contrária na próxima vela`,
+        `Ação Recomendada: Aguardar confirmação de fluxo com 2 velas da mesma cor`
+      ],
+      strategyName: "Bloqueio Anti-Loss: Quadrante Xadrez (Sem Fluxo)",
+      marketSentiment: "LATERAL",
+      rationale: `Mercado em alternância de cores sem fluxo direcional (${colorEmojiSeq}). Operação bloqueada para proteger o capital contra falso rompimento.`,
+      hioveQuickTip: "NÃO OPERE AGORA: O mercado está alternando cores vela a vela. Aguarde uma confirmação de fluxo com 2 velas seguidas da mesma cor.",
+      keyLevels: {
+        support: nearSupport,
+        resistance: nearResistance,
+        pivot,
+      },
+    };
+  }
+
   // 1. STRICT INSTITUTIONAL TREND IDENTIFICATION
   let trend = indicators?.trend || "LATERAL";
   const isBullishTrend = (ema9 > ema20 && currentPrice >= ema20) || (currentPrice >= sma50 && ema9 >= ema20);
