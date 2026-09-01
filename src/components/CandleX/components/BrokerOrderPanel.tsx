@@ -57,18 +57,21 @@ export const BrokerOrderPanel: React.FC<BrokerOrderPanelProps> = ({
       const now = new Date();
       setCurrentTimeStr(now.toLocaleTimeString("pt-BR"));
 
-      // Fake / realistic sync candle timer (seconds remaining in current minute)
-      const sec = 59 - now.getSeconds();
-      const min = 4 - (now.getMinutes() % 5);
+      const seconds = now.getSeconds();
+      const totalSecs = expiryMinutes === 5 ? 300 - ((now.getMinutes() % 5) * 60 + seconds)
+                      : expiryMinutes === 2 ? 120 - ((now.getMinutes() % 2) * 60 + seconds)
+                      : 60 - seconds;
+      const min = Math.floor(Math.max(0, totalSecs) / 60);
+      const sec = Math.max(0, totalSecs) % 60;
       setCandleCountdown(
         `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`
       );
     };
 
     updateTime();
-    const interval = setInterval(updateTime, 1000);
+    const interval = setInterval(updateTime, 250);
     return () => clearInterval(interval);
-  }, []);
+  }, [expiryMinutes]);
 
   const handleExecute = (direction: "CALL" | "PUT") => {
     if (direction === "CALL") {

@@ -26,6 +26,36 @@ interface CandleChartProps {
   onOpenIndicatorsModal?: () => void;
 }
 
+function calculateCandleCountdown(now: Date, intervalStr: string): { formatted: string; totalSecondsRemaining: number } {
+  const tf = (intervalStr || "1m").toLowerCase();
+  const seconds = now.getSeconds();
+  const milliseconds = now.getMilliseconds();
+  const totalSecondsOfCurrentMinute = seconds + milliseconds / 1000;
+  
+  let totalRemaining = 60 - totalSecondsOfCurrentMinute;
+  if (tf.includes("5m") || tf === "5" || tf === "m5") {
+    const minutes = now.getMinutes();
+    const elapsedSeconds = (minutes % 5) * 60 + totalSecondsOfCurrentMinute;
+    totalRemaining = 300 - elapsedSeconds;
+  } else if (tf.includes("2m") || tf === "2" || tf === "m2") {
+    const minutes = now.getMinutes();
+    const elapsedSeconds = (minutes % 2) * 60 + totalSecondsOfCurrentMinute;
+    totalRemaining = 120 - elapsedSeconds;
+  } else if (tf.includes("15m") || tf === "15" || tf === "m15") {
+    const minutes = now.getMinutes();
+    const elapsedSeconds = (minutes % 15) * 60 + totalSecondsOfCurrentMinute;
+    totalRemaining = 900 - elapsedSeconds;
+  }
+
+  const remaining = Math.max(0, Math.ceil(totalRemaining));
+  const mins = Math.floor(remaining / 60);
+  const secs = remaining % 60;
+  return {
+    formatted: `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`,
+    totalSecondsRemaining: remaining,
+  };
+}
+
 export const CandleChart: React.FC<CandleChartProps> = ({
   candles,
   ticker,
@@ -46,18 +76,13 @@ export const CandleChart: React.FC<CandleChartProps> = ({
   const [activeDrawingTool, setActiveDrawingTool] = useState<string>("none");
   const [drawnLines, setDrawnLines] = useState<Array<{ y: number; label: string; color: string }>>([]);
 
-  // Live countdown state for the expiration line
-  const [candleCountdown, setCandleCountdown] = useState<string>("03:47");
+  // High-frequency live tick to ensure canvas timer is always fresh and never frozen
+  const [tick, setTick] = useState<number>(Date.now());
 
   useEffect(() => {
     const timer = setInterval(() => {
-      const now = new Date();
-      const sec = 59 - (now.getSeconds() % 60);
-      const min = 4 - (now.getMinutes() % 5);
-      setCandleCountdown(
-        `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`
-      );
-    }, 1000);
+      setTick(Date.now());
+    }, 100);
     return () => clearInterval(timer);
   }, []);
 
@@ -233,13 +258,15 @@ export const CandleChart: React.FC<CandleChartProps> = ({
     ctx.stroke();
     ctx.setLineDash([]);
 
+    const { formatted: liveCountdownStr } = calculateCandleCountdown(new Date(), interval);
+
     // Expiration Line Header Badge
     ctx.fillStyle = "#FFFFFF";
     ctx.font = "bold 10px sans-serif";
     ctx.textAlign = "left";
     ctx.fillText("Tempo da Vela", expirationX + 4, paddingTop + 10);
     ctx.font = "bold 11px monospace";
-    ctx.fillText(candleCountdown, expirationX + 4, paddingTop + 26);
+    ctx.fillText(liveCountdownStr, expirationX + 4, paddingTop + 26);
 
     // Live Price Horizontal Dotted Ray Line
     const latestCandle = visibleCandles[visibleCandles.length - 1];
@@ -281,7 +308,7 @@ export const CandleChart: React.FC<CandleChartProps> = ({
     // Seconds timer below price
     ctx.font = "bold 8.5px monospace";
     ctx.fillText(
-      `00:${String(59 - (new Date().getSeconds() % 60)).padStart(2, "0")}`,
+      liveCountdownStr,
       width - paddingRight + tagWidth / 2,
       livePriceY + 8
     );
@@ -385,7 +412,8 @@ export const CandleChart: React.FC<CandleChartProps> = ({
     lastAiDirection,
     mousePos,
     showLevels,
-    candleCountdown,
+    tick,
+    interval,
   ]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
