@@ -147,6 +147,14 @@ export interface PlatformSettings {
   lifetimePrice?: number;
   referralCommissionPercent?: number;
   minWithdrawalAmount?: number;
+  // CandleX AI Maintenance & Update System
+  candlexMaintenanceMode?: boolean;
+  candlexMaintenanceTitle?: string;
+  candlexMaintenanceMessage?: string;
+  candlexMaintenanceEta?: string;
+  candlexAiVersion?: string;
+  candlexMaintenanceProgress?: number;
+  candlexAllowAdminBypass?: boolean;
 }
 
 export interface WithdrawalRequest {

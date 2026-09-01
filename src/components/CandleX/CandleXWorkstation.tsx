@@ -1,5 +1,24 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { X } from "lucide-react";
+import { 
+  X, 
+  AlertTriangle, 
+  Cpu, 
+  Sparkles, 
+  Clock, 
+  ArrowLeft, 
+  RefreshCw, 
+  CheckCircle2, 
+  Zap, 
+  Wrench, 
+  ShieldAlert, 
+  ExternalLink, 
+  Eye, 
+  BarChart3, 
+  MessageCircle,
+  Flame,
+  Check,
+  Radio
+} from "lucide-react";
 import { NeuralAnalyzerSidebar } from "./components/NeuralAnalyzerSidebar";
 import { TradingViewRealChart } from "./components/TradingViewRealChart";
 import { HioveBrokerFrame } from "./components/HioveBrokerFrame";
@@ -27,6 +46,7 @@ import {
   AutoTraderSession,
   AutoTradeLogItem,
   User,
+  PlatformSettings,
 } from "../../types";
 
 import { calculateAllIndicators, getCandleTimeRemaining, getSynchronizedDate } from "./utils/technicalIndicators";
@@ -38,6 +58,9 @@ import confetti from "canvas-confetti";
 interface CandleXWorkstationProps {
   currentUser: User;
   onBackToHome: () => void;
+  settings?: PlatformSettings;
+  onUpdateSettings?: (settings: PlatformSettings) => void;
+  onOpenGestao?: () => void;
 }
 
 const INITIAL_BANKROLL_CONFIG: BankrollConfig = {
@@ -83,7 +106,18 @@ const INITIAL_TABS = [
   { id: "GBPUSD", label: "GBP/USD", type: "FOREX" },
 ];
 
-export default function CandleXWorkstation({ currentUser, onBackToHome }: CandleXWorkstationProps) {
+export default function CandleXWorkstation({ 
+  currentUser, 
+  onBackToHome,
+  settings,
+  onUpdateSettings,
+  onOpenGestao,
+}: CandleXWorkstationProps) {
+  const isAdmin = currentUser.role === 'admin' || ['viniciussestremmm@gmail.com', 'herisson.trader.jt5@gmail.com'].includes(currentUser.email?.toLowerCase() || '');
+  const [adminPreviewStudentMode, setAdminPreviewStudentMode] = useState(false);
+  const isMaintenanceActive = Boolean(settings?.candlexMaintenanceMode);
+  const allowAdminBypass = settings?.candlexAllowAdminBypass ?? true;
+
   const [mobileTab, setMobileTab] = useState<"chart" | "ai">("chart");
   const [activeTicker, setActiveTicker] = useState<string>("ETHUSDT");
   const [timeframe, setTimeframe] = useState<string>("1m");
@@ -976,9 +1010,243 @@ export default function CandleXWorkstation({ currentUser, onBackToHome }: Candle
 
   const currentPrice = candles[candles.length - 1]?.close || 0;
 
+  // If CandleX AI is in maintenance mode and user is student (or admin in preview mode or bypass disabled)
+  if (isMaintenanceActive && (!isAdmin || !allowAdminBypass || adminPreviewStudentMode)) {
+    return (
+      <div className="min-h-screen bg-[#06060a] text-white flex flex-col font-sans relative overflow-x-hidden selection:bg-orange-500 selection:text-white">
+        
+        {/* Glow ambient background effects */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-gradient-to-b from-orange-600/15 via-amber-500/5 to-transparent blur-3xl pointer-events-none rounded-full"></div>
+        <div className="absolute -top-20 -right-20 w-96 h-96 bg-orange-500/10 blur-[100px] pointer-events-none rounded-full"></div>
+        <div className="absolute -bottom-20 -left-20 w-96 h-96 bg-amber-500/10 blur-[100px] pointer-events-none rounded-full"></div>
+
+        {/* Top Header */}
+        <header className="w-full border-b border-orange-900/30 bg-[#0a0a0f]/80 backdrop-blur-xl px-4 sm:px-8 py-3.5 flex items-center justify-between z-20">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center text-black font-black shadow-lg shadow-orange-500/30">
+              <Flame className="w-5 h-5 fill-current" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-black text-sm tracking-tight text-white uppercase font-mono">
+                  <span className="text-orange-500">CANDLEX</span> AI
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-orange-500/20 text-orange-400 border border-orange-500/30 font-mono">
+                  {settings?.candlexAiVersion || 'v2.6.0 Neural'}
+                </span>
+              </div>
+              <p className="text-[10px] text-zinc-500 font-mono">Terminal de Inteligência Artificial & Sinais</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {isAdmin && adminPreviewStudentMode && (
+              <button
+                onClick={() => setAdminPreviewStudentMode(false)}
+                className="px-3.5 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-black text-xs font-black uppercase transition-all shadow-md cursor-pointer"
+              >
+                Sair do Modo Preview (Voltar ADM)
+              </button>
+            )}
+            <button
+              onClick={onBackToHome}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-zinc-300 hover:text-white text-xs font-bold transition-all cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Voltar à Mentoria</span>
+            </button>
+          </div>
+        </header>
+
+        {/* Admin Preview Top Notice */}
+        {isAdmin && adminPreviewStudentMode && (
+          <div className="w-full bg-amber-500 text-black px-4 py-2 text-center text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-md">
+            <Eye className="w-4 h-4" />
+            <span>MODO DE PRÉ-VISUALIZAÇÃO: É assim que os alunos visualizam a tela de manutenção neste momento.</span>
+          </div>
+        )}
+
+        {/* Central Futuristic Maintenance Card */}
+        <main className="flex-1 flex items-center justify-center p-4 sm:p-6 z-10">
+          <div className="w-full max-w-2xl bg-gradient-to-b from-[#12121c] via-[#0e0e16] to-[#0a0a0f] border border-orange-500/30 rounded-3xl p-6 sm:p-10 shadow-2xl shadow-orange-500/5 space-y-6 animate-in zoom-in-95 duration-200 relative overflow-hidden">
+            
+            {/* Glowing Accent Ring */}
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="relative">
+                <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-amber-500/20 to-orange-600/30 border border-orange-500/40 flex items-center justify-center text-orange-400 shadow-xl shadow-orange-500/20">
+                  <Cpu className="w-10 h-10 animate-pulse" />
+                </div>
+                <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-amber-500 text-black flex items-center justify-center font-bold text-xs shadow-md">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[11px] font-black uppercase tracking-widest font-mono">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+                  <span>ATUALIZAÇÃO NEURAL EM ANDAMENTO</span>
+                </div>
+
+                <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                  {settings?.candlexMaintenanceTitle || 'Atenção: CandleX-IA está em manutenção e atualização'}
+                </h1>
+
+                <p className="text-xs sm:text-sm text-zinc-300 max-w-xl mx-auto leading-relaxed">
+                  {settings?.candlexMaintenanceMessage || 'Nossa inteligência artificial está passando por uma recalibração neural com novos modelos de análise institucional SMC e validação de confluências. O serviço será restabelecido em breve.'}
+                </p>
+              </div>
+            </div>
+
+            {/* Status Grid Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+              <div className="p-3.5 rounded-2xl bg-[#161622] border border-[#27273d] text-center space-y-1">
+                <span className="text-[10px] font-bold text-zinc-400 font-mono uppercase flex items-center justify-center gap-1">
+                  <Clock className="w-3 h-3 text-orange-400" /> Previsão
+                </span>
+                <p className="text-xs font-black text-amber-300 font-mono truncate">
+                  {settings?.candlexMaintenanceEta || 'Hoje às 22:00'}
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-[#161622] border border-[#27273d] text-center space-y-1">
+                <span className="text-[10px] font-bold text-zinc-400 font-mono uppercase flex items-center justify-center gap-1">
+                  <Cpu className="w-3 h-3 text-orange-400" /> Versão IA
+                </span>
+                <p className="text-xs font-black text-orange-400 font-mono truncate">
+                  {settings?.candlexAiVersion || 'v2.6.0 Neural'}
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-[#161622] border border-[#27273d] text-center space-y-1">
+                <span className="text-[10px] font-bold text-zinc-400 font-mono uppercase flex items-center justify-center gap-1">
+                  <Zap className="w-3 h-3 text-orange-400" /> Progresso
+                </span>
+                <p className="text-xs font-black text-emerald-400 font-mono">
+                  {settings?.candlexMaintenanceProgress ?? 85}% Concluído
+                </p>
+              </div>
+            </div>
+
+            {/* Neural Checkpoint Progress Bar */}
+            <div className="p-4 rounded-2xl bg-[#0e0e17] border border-[#202030] space-y-3">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-white font-mono flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-orange-400" /> Sincronização do Modelo Neural
+                </span>
+                <span className="font-black text-orange-400 font-mono">{settings?.candlexMaintenanceProgress ?? 85}%</span>
+              </div>
+              
+              <div className="w-full h-2.5 bg-zinc-900 rounded-full overflow-hidden border border-white/10 p-0.5">
+                <div
+                  className="h-full bg-gradient-to-r from-orange-500 via-amber-400 to-emerald-400 rounded-full transition-all duration-500 animate-pulse shadow-lg shadow-orange-500/50"
+                  style={{ width: `${settings?.candlexMaintenanceProgress ?? 85}%` }}
+                ></div>
+              </div>
+
+              <div className="space-y-1.5 pt-1">
+                <div className="flex items-center gap-2 text-[11px] text-emerald-400 font-mono">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>1. Feeds de velas Hiove & Quotex sincronizados</span>
+                </div>
+                <div className="flex items-center gap-2 text-[11px] text-emerald-400 font-mono">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>2. Calibração dos pesos neurais SMC & Order Blocks</span>
+                </div>
+                <div className="flex items-center gap-2 text-[11px] text-amber-300 font-mono animate-pulse">
+                  <RefreshCw className="w-3.5 h-3.5 shrink-0 animate-spin" />
+                  <span>3. Validação de taxa de assertividade em backtest ({settings?.candlexMaintenanceProgress ?? 85}%)</span>
+                </div>
+                <div className="flex items-center gap-2 text-[11px] text-zinc-500 font-mono">
+                  <Clock className="w-3.5 h-3.5 shrink-0" />
+                  <span>4. Liberação oficial do terminal para os alunos</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+              <button
+                onClick={onBackToHome}
+                className="w-full py-3.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-orange-600/30 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Voltar para as Aulas</span>
+              </button>
+
+              {onOpenGestao ? (
+                <button
+                  onClick={onOpenGestao}
+                  className="w-full py-3.5 rounded-xl bg-[#1a1a27] hover:bg-[#252538] border border-[#2d2d44] text-white font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <BarChart3 className="w-4 h-4 text-orange-400" />
+                  <span>Acessar Gestão de Banca</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => window.location.reload()}
+                  className="w-full py-3.5 rounded-xl bg-[#1a1a27] hover:bg-[#252538] border border-[#2d2d44] text-white font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <RefreshCw className="w-4 h-4 text-orange-400" />
+                  <span>Verificar Novamente</span>
+                </button>
+              )}
+            </div>
+
+            {settings?.supportWhatsapp && (
+              <div className="text-center pt-1">
+                <a
+                  href={`https://wa.me/${settings.supportWhatsapp}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-[11px] text-zinc-400 hover:text-orange-400 font-mono transition-colors"
+                >
+                  <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Dúvidas? Fale com a equipe no WhatsApp de Suporte</span>
+                </a>
+              </div>
+            )}
+
+          </div>
+        </main>
+
+        {/* Footer */}
+        <footer className="w-full text-center py-4 text-[11px] text-zinc-500 font-mono border-t border-white/5 bg-black/40">
+          Trader Academic • CandleX-IA System Status • {settings?.candlexAiVersion || 'v2.6.0 Neural'}
+        </footer>
+
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-[calc(100vh-120px)] md:h-[calc(100vh-64px)] w-full bg-[#0B0E14] text-slate-100 overflow-hidden font-sans select-none relative">
       
+      {/* Admin Maintenance Bypass Notice Banner */}
+      {isMaintenanceActive && isAdmin && (
+        <div className="bg-gradient-to-r from-amber-950/95 via-orange-950/90 to-black border-b border-amber-500/40 px-4 py-2 flex flex-wrap items-center justify-between gap-3 text-xs z-50 flex-shrink-0">
+          <div className="flex items-center gap-2 text-amber-300 font-bold">
+            <AlertTriangle className="w-4 h-4 text-amber-400 animate-pulse shrink-0" />
+            <span>MODO MANUTENÇÃO ATIVO: Alunos visualizam o aviso de atualização. Você está acessando pelo modo de Administrador.</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setAdminPreviewStudentMode(true)}
+              className="px-3 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-zinc-300 text-[11px] font-bold flex items-center gap-1.5 cursor-pointer"
+            >
+              <Eye className="w-3.5 h-3.5 text-orange-400" />
+              <span>Ver como Aluno</span>
+            </button>
+            <button
+              onClick={() => onUpdateSettings?.({ ...settings, candlexMaintenanceMode: false })}
+              className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-black text-[11px] font-extrabold flex items-center gap-1.5 cursor-pointer shadow-md"
+            >
+              <Check className="w-3.5 h-3.5" />
+              <span>Desativar Manutenção</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 1. Hiove Topbar Switcher */}
       <HioveUnifiedTopBar
         activeTicker={activeTicker}

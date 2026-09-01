@@ -625,6 +625,13 @@ export const supabaseService = {
         lifetimePrice: data.lifetime_price,
         referralCommissionPercent: Number(data.referral_commission_percent ?? 10.00),
         minWithdrawalAmount: Number(data.min_withdrawal_amount ?? 50.00),
+        candlexMaintenanceMode: data.candlex_maintenance_mode ?? false,
+        candlexMaintenanceTitle: data.candlex_maintenance_title || 'Atenção: CandleX-IA está em manutenção e atualização',
+        candlexMaintenanceMessage: data.candlex_maintenance_message || 'Nossa inteligência artificial está passando por uma recalibração neural com novos modelos de análise institucional SMC e validação de confluências. O serviço será restabelecido em breve.',
+        candlexMaintenanceEta: data.candlex_maintenance_eta || 'Previsão de retorno: Hoje às 22:00',
+        candlexAiVersion: data.candlex_ai_version || 'v2.6.0 Neural Ultra',
+        candlexMaintenanceProgress: Number(data.candlex_maintenance_progress ?? 85),
+        candlexAllowAdminBypass: data.candlex_allow_admin_bypass ?? true,
       };
     } catch (e) {
       console.error('Error fetching settings:', e);
@@ -650,6 +657,13 @@ export const supabaseService = {
         lifetime_price: settings.lifetimePrice,
         referral_commission_percent: settings.referralCommissionPercent,
         min_withdrawal_amount: settings.minWithdrawalAmount,
+        candlex_maintenance_mode: settings.candlexMaintenanceMode ?? false,
+        candlex_maintenance_title: settings.candlexMaintenanceTitle || '',
+        candlex_maintenance_message: settings.candlexMaintenanceMessage || '',
+        candlex_maintenance_eta: settings.candlexMaintenanceEta || '',
+        candlex_ai_version: settings.candlexAiVersion || 'v2.6.0',
+        candlex_maintenance_progress: settings.candlexMaintenanceProgress ?? 85,
+        candlex_allow_admin_bypass: settings.candlexAllowAdminBypass ?? true,
         updated_at: new Date().toISOString(),
       });
     } catch (e) {

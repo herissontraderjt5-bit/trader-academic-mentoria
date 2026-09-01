@@ -11,8 +11,14 @@ export const INITIAL_SETTINGS: PlatformSettings = {
   bannerHeadline: 'DOMINE O MERCADO COM MÉTODO E DISCIPLINA',
   bannerSubtext: 'Acesse o curso gratuito de Opções Binárias e faça o upgrade para a Formação Completa VIP por apenas R$ 499,90.',
   primaryColor: '#ff6b00',
-  caktoCheckoutUrl: 'https://pay.cakto.com.br/checkout/trader-academic-vip',
   lifetimePrice: 499.90,
+  candlexMaintenanceMode: false,
+  candlexMaintenanceTitle: 'Atenção: CandleX-IA está em manutenção e atualização',
+  candlexMaintenanceMessage: 'Nossa inteligência artificial está passando por uma recalibração neural com novos modelos de análise institucional SMC e validação de confluências. O serviço será restabelecido em breve.',
+  candlexMaintenanceEta: 'Previsão de retorno: Hoje às 22:00',
+  candlexAiVersion: 'v2.6.0 Neural Ultra',
+  candlexMaintenanceProgress: 85,
+  candlexAllowAdminBypass: true,
 };
 
 export const INITIAL_MODULES: Module[] = [

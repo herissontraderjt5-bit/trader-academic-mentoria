@@ -100,7 +100,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div className="hidden lg:flex items-center gap-2 ml-6">
               <button
                 onClick={() => setActiveView('candlex')}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer shadow-md ${
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer shadow-md relative ${
                   activeView === 'candlex'
                     ? 'bg-gradient-to-r from-orange-600 to-amber-500 text-black border border-orange-400 shadow-orange-600/30'
                     : 'bg-orange-950/20 border border-orange-500/30 text-orange-400 hover:text-white hover:bg-orange-500/30'
@@ -108,6 +108,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 <Sparkles className="w-3.5 h-3.5 fill-current text-orange-500 animate-pulse" />
                 <span>CandleX AI</span>
+                {settings?.candlexMaintenanceMode && (
+                  <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-amber-500 text-black font-mono animate-pulse">
+                    MANUTENÇÃO
+                  </span>
+                )}
               </button>
 
               <button
@@ -486,10 +491,15 @@ export const Navbar: React.FC<NavbarProps> = ({
                 setActiveView('candlex');
                 setIsMobileMenuOpen(false);
               }}
-              className="w-full flex items-center justify-center gap-1.5 p-2.5 mt-2 rounded-xl bg-gradient-to-r from-orange-600 to-amber-500 text-black text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-md"
+              className="w-full flex items-center justify-center gap-1.5 p-2.5 mt-2 rounded-xl bg-gradient-to-r from-orange-600 to-amber-500 text-black text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-md relative"
             >
               <Sparkles className="w-4 h-4 text-black fill-current animate-pulse" />
               <span>Entrar no CandleX AI</span>
+              {settings?.candlexMaintenanceMode && (
+                <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-black text-amber-400 font-mono">
+                  MANUTENÇÃO
+                </span>
+              )}
             </button>
 
             <button

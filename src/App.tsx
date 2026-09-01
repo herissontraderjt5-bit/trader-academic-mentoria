@@ -613,6 +613,9 @@ export default function App() {
                 <CandleXWorkstation
                   currentUser={currentUser}
                   onBackToHome={() => setActiveView('home')}
+                  settings={settings}
+                  onUpdateSettings={(sett) => { setSettings(sett); storageService.saveSettings(sett); }}
+                  onOpenGestao={() => setActiveView('gestao')}
                 />
               ) : (
                 <>
