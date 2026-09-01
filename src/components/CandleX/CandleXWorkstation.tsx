@@ -950,43 +950,46 @@ export default function CandleXWorkstation({
           return nextBr;
         });
 
-        // Update AutoTrader session stats
-        setAutoTraderSession((prevSession) => {
-          const nextWins = prevSession.wins + (outcome === "WIN" ? 1 : 0);
-          const nextLosses = prevSession.losses + (outcome === "LOSS" ? 1 : 0);
-          const nextDraws = prevSession.draws + (outcome === "DRAW" ? 1 : 0);
-          const nextTotalPnl = +(prevSession.totalPnl + pnl).toFixed(2);
+        // ONLY update AutoTrader session stats if the trade originated from AutoTrader
+        const isAutoTraderTrade = t.strategyUsed?.toLowerCase().includes("autotrader") || t.strategyUsed?.toLowerCase().includes("robô");
+        if (isAutoTraderTrade && autoTraderConfig.enabled) {
+          setAutoTraderSession((prevSession) => {
+            const nextWins = prevSession.wins + (outcome === "WIN" ? 1 : 0);
+            const nextLosses = prevSession.losses + (outcome === "LOSS" ? 1 : 0);
+            const nextDraws = prevSession.draws + (outcome === "DRAW" ? 1 : 0);
+            const nextTotalPnl = +(prevSession.totalPnl + pnl).toFixed(2);
 
-          let nextStatus = prevSession.status;
-          if (nextTotalPnl >= autoTraderConfig.dailyStopWin) {
-            nextStatus = "STOP_WIN";
-            confetti();
-            soundManager.speakAlert("Meta diária atingida! Robô finalizado com sucesso.");
-            setAutoTraderConfig((c) => ({ ...c, enabled: false }));
-          } else if (nextTotalPnl <= -autoTraderConfig.dailyStopLoss) {
-            nextStatus = "STOP_LOSS";
-            soundManager.speakAlert("Limite de Stop Loss diário atingido. Robô desligado por segurança.");
-            setAutoTraderConfig((c) => ({ ...c, enabled: false }));
-          }
-
-          // Update matching entry in Auto Trader history
-          const updatedHistory = prevSession.history.map((h) => {
-            if (h.ticker === t.ticker && h.direction === t.direction && Math.abs(h.timestamp - t.timestamp) < 5000) {
-              return { ...h, result: outcome, pnl };
+            let nextStatus = prevSession.status;
+            if (nextTotalPnl >= autoTraderConfig.dailyStopWin) {
+              nextStatus = "STOP_WIN";
+              confetti();
+              soundManager.speakAlert("Meta diária do Robô atingida! AutoTrader finalizado com sucesso.");
+              setAutoTraderConfig((c) => ({ ...c, enabled: false }));
+            } else if (nextTotalPnl <= -autoTraderConfig.dailyStopLoss) {
+              nextStatus = "STOP_LOSS";
+              soundManager.speakAlert("Limite de Stop Loss diário atingido. AutoTrader pausado por segurança.");
+              setAutoTraderConfig((c) => ({ ...c, enabled: false }));
             }
-            return h;
-          });
 
-          return {
-            ...prevSession,
-            wins: nextWins,
-            losses: nextLosses,
-            draws: nextDraws,
-            totalPnl: nextTotalPnl,
-            status: nextStatus,
-            history: updatedHistory,
-          };
-        });
+            // Update matching entry in Auto Trader history
+            const updatedHistory = prevSession.history.map((h) => {
+              if (h.ticker === t.ticker && h.direction === t.direction && Math.abs(h.timestamp - t.timestamp) < 5000) {
+                return { ...h, result: outcome, pnl };
+              }
+              return h;
+            });
+
+            return {
+              ...prevSession,
+              wins: nextWins,
+              losses: nextLosses,
+              draws: nextDraws,
+              totalPnl: nextTotalPnl,
+              status: nextStatus,
+              history: updatedHistory,
+            };
+          });
+        }
 
         const resolvedTrade = { ...t, result: outcome, pnl, expiryPrice };
         setRecentResultNotification(resolvedTrade);
