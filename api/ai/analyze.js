@@ -319,6 +319,8 @@ function generateAlgorithmicAnalysis(ticker, timeframe, candles, indicators = {}
 
   const callCount = callConfluences.length;
   const putCount = putConfluences.length;
+  const isLastCandleGreen = lastCandle.close >= lastCandle.open;
+  const isLastCandleRed = lastCandle.close < lastCandle.open;
 
   if (trend === "ALTA") {
     if (callCount >= 2 && callCount >= putCount) {
@@ -351,6 +353,70 @@ function generateAlgorithmicAnalysis(ticker, timeframe, candles, indicators = {}
       direction = "PUT";
       detectedPatterns = Array.from(new Set(putConfluences));
     }
+  }
+
+  const timeframeExpiryLabel = timeframe === "5M" || timeframe === "5m" ? "Expiração 5 min" : timeframe === "2M" || timeframe === "2m" ? "Expiração 2 min" : "Próxima Vela (1 min)";
+
+  // PRE-SIGNAL COLOR CONFIRMATION RULE:
+  // Sinal de COMPRA (CALL) exige vela anterior positiva (verde).
+  if (direction === "CALL" && !isLastCandleGreen) {
+    return {
+      direction: "NEUTRAL",
+      confidenceScore: 50.0,
+      confluenceCount: 0,
+      timeframeExpiry: timeframeExpiryLabel,
+      triggerZone: `Aguardando vela compradora verde acima de $${lastCandle.close.toFixed(2)}`,
+      invalidationLevel: `Abaixo de $${(nearSupport * 0.998).toFixed(2)}`,
+      detectedPatterns: [
+        "⚠️ Aguardando Confirmação de Cor: Última vela fechou vermelha",
+        "Regra de Entrada Institucional: Sinal de COMPRA (CALL) exige vela verde prévia",
+        "Proteção Anti-Loss: Evitando compra durante correção vendedora",
+        "Aguarde o fechamento de uma vela positiva para confirmar o fluxo"
+      ],
+      strategyName: "Aguardando Vela Compradora (CALL)",
+      marketSentiment: "ALTA",
+      rationale: "Tendência altista identificada, mas a vela anterior fechou negativa. Aguardando vela verde para confirmar retomada do fluxo comprador.",
+      hioveQuickTip: "AGUARDE: Não compre agora. Espere a próxima vela fechar VERDE (positiva) para confirmar o fluxo de alta.",
+      keyLevels: {
+        support: nearSupport,
+        resistance: nearResistance,
+        pivot,
+      },
+    };
+  }
+
+  // Sinal de VENDA (PUT) exige vela anterior negativa (vermelha).
+  if (direction === "PUT" && !isLastCandleRed) {
+    return {
+      direction: "NEUTRAL",
+      confidenceScore: 50.0,
+      confluenceCount: 0,
+      timeframeExpiry: timeframeExpiryLabel,
+      triggerZone: `Aguardando vela vendedora vermelha abaixo de $${lastCandle.close.toFixed(2)}`,
+      invalidationLevel: `Acima de $${(nearResistance * 1.002).toFixed(2)}`,
+      detectedPatterns: [
+        "⚠️ Aguardando Confirmação de Cor: Última vela fechou verde",
+        "Regra de Entrada Institucional: Sinal de VENDA (PUT) exige vela vermelha prévia",
+        "Proteção Anti-Loss: Evitando venda durante correção compradora",
+        "Aguarde o fechamento de uma vela negativa para confirmar o fluxo"
+      ],
+      strategyName: "Aguardando Vela Vendedora (PUT)",
+      marketSentiment: "BAIXA",
+      rationale: "Tendência baixista identificada, mas a vela anterior fechou positiva. Aguardando vela vermelha para confirmar retomada do fluxo vendedor.",
+      hioveQuickTip: "AGUARDE: Não venda agora. Espere a próxima vela fechar VERMELHA (negativa) para confirmar o fluxo de baixa.",
+      keyLevels: {
+        support: nearSupport,
+        resistance: nearResistance,
+        pivot,
+      },
+    };
+  }
+
+  // Add confirmed prior candle color as a valid confluence
+  if (direction === "CALL" && isLastCandleGreen) {
+    detectedPatterns.unshift("Confirmação de Cor: Vela anterior fechou positiva (Verde) confirmando fluxo comprador");
+  } else if (direction === "PUT" && isLastCandleRed) {
+    detectedPatterns.unshift("Confirmação de Cor: Vela anterior fechou negativa (Vermelha) confirmando fluxo vendedor");
   }
 
   // If even with filtering we have 0 or 1, provide the baseline mathematical alignment
