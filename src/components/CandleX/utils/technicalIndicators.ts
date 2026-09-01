@@ -1,5 +1,49 @@
 import { Candle, TechnicalIndicators } from "../../../types";
 
+export function getCandleTimeRemaining(now: Date = new Date(), timeframe: string = "1m"): {
+  remainingSeconds: number;
+  formatted: string;
+  candleLengthMs: number;
+  elapsedSeconds: number;
+} {
+  const tf = (timeframe || "1m").toLowerCase();
+  const seconds = now.getSeconds();
+  const milliseconds = now.getMilliseconds();
+  const totalSecondsOfCurrentMinute = seconds + milliseconds / 1000;
+
+  let candleLengthMs = 60 * 1000;
+  let elapsedSeconds = totalSecondsOfCurrentMinute;
+  let totalRemaining = 60 - totalSecondsOfCurrentMinute;
+
+  if (tf.includes("5m") || tf === "5" || tf === "m5") {
+    candleLengthMs = 300 * 1000;
+    const minutes = now.getMinutes();
+    elapsedSeconds = (minutes % 5) * 60 + totalSecondsOfCurrentMinute;
+    totalRemaining = 300 - elapsedSeconds;
+  } else if (tf.includes("2m") || tf === "2" || tf === "m2") {
+    candleLengthMs = 120 * 1000;
+    const minutes = now.getMinutes();
+    elapsedSeconds = (minutes % 2) * 60 + totalSecondsOfCurrentMinute;
+    totalRemaining = 120 - elapsedSeconds;
+  } else if (tf.includes("15m") || tf === "15" || tf === "m15") {
+    candleLengthMs = 900 * 1000;
+    const minutes = now.getMinutes();
+    elapsedSeconds = (minutes % 15) * 60 + totalSecondsOfCurrentMinute;
+    totalRemaining = 900 - elapsedSeconds;
+  }
+
+  const remainingSeconds = Math.max(0, Math.ceil(totalRemaining));
+  const mins = Math.floor(remainingSeconds / 60);
+  const secs = remainingSeconds % 60;
+
+  return {
+    remainingSeconds,
+    formatted: `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`,
+    candleLengthMs,
+    elapsedSeconds,
+  };
+}
+
 export function calculateEMA(prices: number[], period: number): number[] {
   if (prices.length === 0) return [];
   const k = 2 / (period + 1);

@@ -27,6 +27,7 @@ import {
 import { AiAnalysisResult, TechnicalIndicators, Candle, TradeRecord, BankrollConfig } from "../../../types";
 import { soundManager } from "../utils/soundEffects";
 import { candlexApiService } from "../services/apiService";
+import { getCandleTimeRemaining } from "../utils/technicalIndicators";
 import confetti from "canvas-confetti";
 
 interface CenterSignalOverlayProps {
@@ -134,25 +135,9 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
     return { confirmationThreshold: 30, decisionThreshold: 10, candleLengthMs: 60 * 1000 };
   }, [timeframe]);
 
-  // Calculate real remaining seconds on the current candle
-  const secondsRemaining = useMemo(() => {
-    const tf = timeframe.toLowerCase();
-    const seconds = currentTime.getSeconds();
-    const milliseconds = currentTime.getMilliseconds();
-    const totalSecondsOfCurrentMinute = seconds + milliseconds / 1000;
-    
-    if (tf.includes("5m") || tf === "5" || tf === "m5") {
-      const minutes = currentTime.getMinutes();
-      const elapsedSeconds = (minutes % 5) * 60 + totalSecondsOfCurrentMinute;
-      return 300 - elapsedSeconds;
-    } else if (tf.includes("2m") || tf === "2" || tf === "m2") {
-      const minutes = currentTime.getMinutes();
-      const elapsedSeconds = (minutes % 2) * 60 + totalSecondsOfCurrentMinute;
-      return 120 - elapsedSeconds;
-    } else {
-      // Default to M1
-      return 60 - totalSecondsOfCurrentMinute;
-    }
+  // Calculate real remaining seconds on the current candle using unified time utility
+  const { remainingSeconds: secondsRemaining } = useMemo(() => {
+    return getCandleTimeRemaining(currentTime, timeframe);
   }, [currentTime, timeframe]);
 
   // Start of current candle

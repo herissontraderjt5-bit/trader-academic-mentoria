@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { soundManager } from "../utils/soundEffects";
 import { TradeRecord } from "../../../types";
+import { getCandleTimeRemaining } from "../utils/technicalIndicators";
 
 interface BrokerOrderPanelProps {
   activeTicker: string;
@@ -44,7 +45,7 @@ export const BrokerOrderPanel: React.FC<BrokerOrderPanelProps> = ({
   const [payoutPercent, setPayoutPercent] = useState<number>(89);
   const [expiryMinutes, setExpiryMinutes] = useState<number>(1);
   const [currentTimeStr, setCurrentTimeStr] = useState<string>("");
-  const [candleCountdown, setCandleCountdown] = useState<string>("04:17");
+  const [candleCountdown, setCandleCountdown] = useState<string>("00:00");
   const [lastExecuted, setLastExecuted] = useState<{
     direction: "CALL" | "PUT";
     stake: number;
@@ -56,20 +57,12 @@ export const BrokerOrderPanel: React.FC<BrokerOrderPanelProps> = ({
     const updateTime = () => {
       const now = new Date();
       setCurrentTimeStr(now.toLocaleTimeString("pt-BR"));
-
-      const seconds = now.getSeconds();
-      const totalSecs = expiryMinutes === 5 ? 300 - ((now.getMinutes() % 5) * 60 + seconds)
-                      : expiryMinutes === 2 ? 120 - ((now.getMinutes() % 2) * 60 + seconds)
-                      : 60 - seconds;
-      const min = Math.floor(Math.max(0, totalSecs) / 60);
-      const sec = Math.max(0, totalSecs) % 60;
-      setCandleCountdown(
-        `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`
-      );
+      const { formatted } = getCandleTimeRemaining(now, `${expiryMinutes}m`);
+      setCandleCountdown(formatted);
     };
 
     updateTime();
-    const interval = setInterval(updateTime, 250);
+    const interval = setInterval(updateTime, 100);
     return () => clearInterval(interval);
   }, [expiryMinutes]);
 

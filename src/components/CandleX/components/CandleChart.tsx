@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from "react";
 import { Candle, TechnicalIndicators } from "../../../types";
+import { getCandleTimeRemaining } from "../utils/technicalIndicators";
 import {
   Maximize2,
   ZoomIn,
@@ -24,36 +25,6 @@ interface CandleChartProps {
   lastAiDirection?: "CALL" | "PUT" | "NEUTRAL";
   currentPrice: number;
   onOpenIndicatorsModal?: () => void;
-}
-
-function calculateCandleCountdown(now: Date, intervalStr: string): { formatted: string; totalSecondsRemaining: number } {
-  const tf = (intervalStr || "1m").toLowerCase();
-  const seconds = now.getSeconds();
-  const milliseconds = now.getMilliseconds();
-  const totalSecondsOfCurrentMinute = seconds + milliseconds / 1000;
-  
-  let totalRemaining = 60 - totalSecondsOfCurrentMinute;
-  if (tf.includes("5m") || tf === "5" || tf === "m5") {
-    const minutes = now.getMinutes();
-    const elapsedSeconds = (minutes % 5) * 60 + totalSecondsOfCurrentMinute;
-    totalRemaining = 300 - elapsedSeconds;
-  } else if (tf.includes("2m") || tf === "2" || tf === "m2") {
-    const minutes = now.getMinutes();
-    const elapsedSeconds = (minutes % 2) * 60 + totalSecondsOfCurrentMinute;
-    totalRemaining = 120 - elapsedSeconds;
-  } else if (tf.includes("15m") || tf === "15" || tf === "m15") {
-    const minutes = now.getMinutes();
-    const elapsedSeconds = (minutes % 15) * 60 + totalSecondsOfCurrentMinute;
-    totalRemaining = 900 - elapsedSeconds;
-  }
-
-  const remaining = Math.max(0, Math.ceil(totalRemaining));
-  const mins = Math.floor(remaining / 60);
-  const secs = remaining % 60;
-  return {
-    formatted: `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`,
-    totalSecondsRemaining: remaining,
-  };
 }
 
 export const CandleChart: React.FC<CandleChartProps> = ({
@@ -258,7 +229,7 @@ export const CandleChart: React.FC<CandleChartProps> = ({
     ctx.stroke();
     ctx.setLineDash([]);
 
-    const { formatted: liveCountdownStr } = calculateCandleCountdown(new Date(), interval);
+    const { formatted: liveCountdownStr } = getCandleTimeRemaining(new Date(), interval);
 
     // Expiration Line Header Badge
     ctx.fillStyle = "#FFFFFF";
