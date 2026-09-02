@@ -275,6 +275,10 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
     return new Date(signalCandleStart);
   }, [signalCandleStart]);
 
+  const signalTradeId = useMemo(() => {
+    return `candlex_sig_${analysis?.timestamp || signalCandleStart}`;
+  }, [analysis?.timestamp, signalCandleStart]);
+
   const expiryDate = useMemo(() => {
     return new Date(signalCandleStart + candleLengthMs);
   }, [signalCandleStart, candleLengthMs]);
@@ -496,9 +500,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
     decision,
   ]);
 
-  const signalTradeId = useMemo(() => {
-    return `candlex_sig_${analysis?.timestamp || signalCandleStart}`;
-  }, [analysis?.timestamp, signalCandleStart]);
+
 
   // Lock entry price and register pending trade when entry candle starts
   useEffect(() => {
