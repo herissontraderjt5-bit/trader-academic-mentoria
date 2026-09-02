@@ -682,6 +682,34 @@ export default function CandleXWorkstation({
     }
   };
 
+  const handleRecordTrade = async (
+    tradeData: Omit<TradeRecord, "id" | "timestamp" | "result" | "pnl">
+  ) => {
+    const newTrade: TradeRecord = {
+      ...tradeData,
+      id: "ord_" + Date.now() + "_" + Math.random().toString(36).substr(2, 3),
+      timestamp: Date.now(),
+      result: "PENDING",
+      pnl: 0,
+    };
+
+    const updatedTrades = [newTrade, ...trades];
+    setTrades(updatedTrades);
+
+    const nextBankroll = {
+      ...bankrollConfig,
+      currentBalance: Math.max(0, +(bankrollConfig.currentBalance - tradeData.stake).toFixed(2)),
+    };
+    setBankrollConfig(nextBankroll);
+
+    if (currentUser && currentUser.id !== 'usr-guest') {
+      localStorage.setItem(`candlex_trades_${currentUser.id}`, JSON.stringify(updatedTrades));
+      localStorage.setItem(`candlex_bankroll_${currentUser.id}`, JSON.stringify(nextBankroll));
+      await supabaseService.saveCandleXTrade(currentUser.id, newTrade);
+      await supabaseService.saveCandleXBankroll(currentUser.id, nextBankroll);
+    }
+  };
+
   const handleSaveSignalTrade = async (tradeData: TradeRecord) => {
     const tradeId = tradeData.id;
     const existingIndex = trades.findIndex(
