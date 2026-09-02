@@ -630,15 +630,27 @@ export default function CandleXWorkstation({
     }
   }, [candles, indicators, activeTicker, timeframe, isAnalyzing]);
 
+  const prevSelectionRef = useRef<string>(`${activeTicker}_${timeframe}`);
+
   useEffect(() => {
-    setAiAnalysis(null);
-    lastAnalysisTimeRef.current = 0;
-    fetchMarketData().then(() => {
-      setTimeout(() => {
-        runAiAnalysis(true);
-      }, 400);
-    });
-  }, [activeTicker, timeframe, fetchMarketData, runAiAnalysis]);
+    const currentKey = `${activeTicker}_${timeframe}`;
+    if (prevSelectionRef.current !== currentKey) {
+      prevSelectionRef.current = currentKey;
+      setAiAnalysis(null);
+      lastAnalysisTimeRef.current = 0;
+
+      candlexApiService.getCandles(activeTicker, timeframe, 60).then((data) => {
+        if (data && Array.isArray(data) && data.length > 0) {
+          setCandles(data);
+          const computed = calculateAllIndicators(data);
+          setIndicators(computed);
+          candlexApiService.analyze(activeTicker, timeframe.toUpperCase(), data, computed).then((res) => {
+            if (res) setAiAnalysis(res);
+          }).catch(() => {});
+        }
+      }).catch(() => {});
+    }
+  }, [activeTicker, timeframe]);
 
   const lastTriggeredCandleStartRef = useRef<number | null>(null);
 
