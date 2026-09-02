@@ -632,7 +632,13 @@ export default function CandleXWorkstation({
 
   useEffect(() => {
     setAiAnalysis(null);
-  }, [activeTicker, timeframe]);
+    lastAnalysisTimeRef.current = 0;
+    fetchMarketData().then(() => {
+      setTimeout(() => {
+        runAiAnalysis(true);
+      }, 400);
+    });
+  }, [activeTicker, timeframe, fetchMarketData, runAiAnalysis]);
 
   const lastTriggeredCandleStartRef = useRef<number | null>(null);
 

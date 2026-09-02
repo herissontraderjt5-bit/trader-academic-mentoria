@@ -526,7 +526,7 @@ export function detectCandlestickPattern(candles: Candle[]): string {
 
 // 14. Quadrant Color Alternation & Choppy Market Detector (Padrão Xadrez / Ping-Pong Sem Fluxo)
 export function detectColorAlternation(candles: Candle[]): { isAlternating: boolean; flipsCount: number; colorSequence: string } {
-  if (!candles || candles.length < 5) {
+  if (!candles || candles.length < 4) {
     return { isAlternating: false, flipsCount: 0, colorSequence: "" };
   }
 
@@ -544,17 +544,18 @@ export function detectColorAlternation(candles: Candle[]): { isAlternating: bool
     }
   }
 
-  // True Quadrant Alternation is STRICTLY an alternating ping-pong pattern:
-  // "GRGRG" or "RGRGR" (4 flips) or "GRGR" / "RGRG" (3 flips in last 4)
-  const isStrictPingPong = colorStr === "GRGRG" || colorStr === "RGRGR" || last4Str === "GRGR" || last4Str === "RGRG";
+  // Quadrante de Cores: alternância ping-pong nas últimas 4 ou 5 velas
+  // "GRGRG" / "RGRGR" ou "GRGR" / "RGRG" ou 3+ trocas de cor consecutivas
+  const isStrictPingPong =
+    colorStr === "GRGRG" ||
+    colorStr === "RGRGR" ||
+    last4Str === "GRGR" ||
+    last4Str === "RGRG" ||
+    (colors.length === 4 && (colorStr === "GRGR" || colorStr === "RGRG"));
 
-  // Check if price is trapped in a tight flat sideways range
-  const lastCandle = recent[recent.length - 1];
-  const firstCandle = recent[0];
-  const rangeVariation = Math.abs(lastCandle.close - firstCandle.open) / (lastCandle.close || 1);
-  const isFlatRange = rangeVariation < 0.0015;
+  const hasHighAlternation = flips >= 3 && (last4Str === "GRGR" || last4Str === "RGRG" || colorStr.endsWith("GRG") || colorStr.endsWith("RGR"));
 
-  const isAlternating = isStrictPingPong && isFlatRange;
+  const isAlternating = isStrictPingPong || hasHighAlternation;
 
   return { isAlternating, flipsCount: flips, colorSequence };
 }

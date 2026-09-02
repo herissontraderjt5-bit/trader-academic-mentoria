@@ -1,6 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import { Candle, TechnicalIndicators, AiAnalysisResult } from '../../../types';
-import { calculateAllIndicators } from '../utils/technicalIndicators';
+import { calculateAllIndicators, detectColorAlternation } from '../utils/technicalIndicators';
 
 // Read API key injected by Vite
 const GEMINI_API_KEY = (process.env as any).GEMINI_API_KEY || '';
@@ -242,6 +242,51 @@ export function generateAlgorithmicAnalysis(
     };
   }
 
+  // 0. QUADRANT COLOR ALTERNATION CHECK (Filtro Choppy / Xadrez)
+  const alternation = detectColorAlternation(candles);
+  const timeframeLabel = tf.includes("5m") || tf === "5"
+    ? "M5 (5 Minutos)"
+    : tf.includes("2m") || tf === "2"
+    ? "M2 (2 Minutos)"
+    : tf.includes("15m") || tf === "15"
+    ? "M15 (15 Minutos)"
+    : "M1 (1 Minuto)";
+
+  if (alternation.isAlternating || indicators?.isAlternatingQuadrant) {
+    return {
+      direction: "NEUTRAL",
+      confidenceScore: 50.0,
+      confluenceCount: 0,
+      timeframeExpiry: timeframeLabel,
+      triggerZone: `Aguardar rompimento do padrão de quadrante em $${currentPrice.toFixed(2)}`,
+      invalidationLevel: `Faixa $${nearSupport} - $${nearResistance}`,
+      detectedPatterns: [
+        `⚠️ Filtro Anti-Loss: Quadrante de Cores Alternadas (${alternation.colorSequence || "🔴 🟢 🔴 🟢 🔴"})`,
+        "Mercado xadrez sem fluxo direcional detectado",
+        "Proteção de Capital: Entrada cancelada pela IA contra falso rompimento",
+        "Aguarde o encerramento do ciclo de alternância para novo sinal"
+      ],
+      strategyName: "Cancelado: Quadrante de Cores",
+      marketSentiment: "LATERAL",
+      rationale: `Filtro Anti-Loss Ativado: Quadrante de cores alternadas (${alternation.colorSequence || "🔴 🟢 🔴 🟢 🔴"}). Mercado sem fluxo direcional. Entrada cancelada.`,
+      hioveQuickTip: "SINAL CANCELADO: Mercado em quadrante de cores alternadas (xadrez). Aguarde fluxo direcional claro.",
+      keyLevels: {
+        support: nearSupport,
+        resistance: nearResistance,
+        pivot,
+      },
+      defenseZone: {
+        entryTrigger: currentPrice,
+        defensePrice: currentPrice,
+        distancePercent: 0,
+        label: "Operação Cancelada (Quadrante de Cores)",
+      },
+      ticker,
+      priceAtAnalysis: currentPrice,
+      timestamp: Date.now(),
+    };
+  }
+
   // 1. STRICT INSTITUTIONAL TREND IDENTIFICATION
   const recent6 = candles.slice(-6);
   const greenCount = recent6.filter((c) => c.close >= c.open).length;
@@ -421,14 +466,6 @@ export function generateAlgorithmicAnalysis(
   let detectedPatterns: string[] = isLastCandleGreen
     ? Array.from(new Set(callConfluences))
     : Array.from(new Set(putConfluences));
-
-  const timeframeLabel = tf.includes("5m") || tf === "5"
-    ? "M5 (5 Minutos)"
-    : tf.includes("2m") || tf === "2"
-    ? "M2 (2 Minutos)"
-    : tf.includes("15m") || tf === "15"
-    ? "M15 (15 Minutos)"
-    : "M1 (1 Minuto)";
 
   // Add confirmed candle color and momentum confluences
   if (direction === "CALL" && isLastCandleGreen) {

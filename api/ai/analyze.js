@@ -114,10 +114,18 @@ function generateAlgorithmicAnalysis(ticker, timeframe, candles, indicators = {}
   const colorsArray = recentLast5.map((c) => (c.close >= c.open ? "G" : "R"));
   const colorStr = colorsArray.join("");
   const last4Str = colorsArray.slice(-4).join("");
-  const isStrictPingPong = colorStr === "GRGRG" || colorStr === "RGRGR" || last4Str === "GRGR" || last4Str === "RGRG";
-  const firstCandle = recentLast5[0] || lastCandle;
-  const isFlatRange = Math.abs(lastCandle.close - firstCandle.open) / (lastCandle.close || 1) < 0.0015;
-  const isAlternatingQuadrant = Boolean(indicators?.isAlternatingQuadrant) || (isStrictPingPong && isFlatRange);
+  let flips = 0;
+  for (let i = 1; i < colorsArray.length; i++) {
+    if (colorsArray[i] !== colorsArray[i - 1]) flips++;
+  }
+  const isStrictPingPong =
+    colorStr === "GRGRG" ||
+    colorStr === "RGRGR" ||
+    last4Str === "GRGR" ||
+    last4Str === "RGRG" ||
+    (colorsArray.length === 4 && (colorStr === "GRGR" || colorStr === "RGRG"));
+  const hasHighAlternation = flips >= 3 && (last4Str === "GRGR" || last4Str === "RGRG" || colorStr.endsWith("GRG") || colorStr.endsWith("RGR"));
+  const isAlternatingQuadrant = Boolean(indicators?.isAlternatingQuadrant) || isStrictPingPong || hasHighAlternation;
   const colorEmojiSeq = colorsArray.map((c) => (c === "G" ? "🟢" : "🔴")).join(" ");
 
   // ANTI-LOSS FILTER: Quadrante de Cores Alternadas (Bloqueio Total)
