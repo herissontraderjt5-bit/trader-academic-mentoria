@@ -264,31 +264,31 @@ ${confluencesList}
         {/* PLACAR RESUMIDO DE OPERAÇÕES E TRADES */}
         <div
           onClick={onOpenOperations}
-          className="bg-[#10141E] border border-[#1E2638] hover:border-[#FF7A00]/50 rounded-xl px-3.5 py-2.5 flex items-center justify-between cursor-pointer transition-all shadow-md group"
+          className="bg-[#10141E] border border-[#1E2638] hover:border-[#FF7A00]/50 rounded-xl px-4 py-3 flex items-center justify-between cursor-pointer transition-all shadow-md group"
           title="Clique para abrir o histórico de Operações & Trades"
         >
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-[#FF7A00] animate-pulse" />
-            <span className="text-[11px] font-black uppercase text-slate-300 tracking-wider">
+            <div className="w-2.5 h-2.5 rounded-full bg-[#FF7A00] animate-pulse" />
+            <span className="text-xs font-black uppercase text-slate-200 tracking-wider">
               PLACAR
             </span>
           </div>
 
-          <div className="flex items-center gap-3 font-mono">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-black text-emerald-400 tracking-wider">WIN</span>
-              <span className="px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-black text-xs min-w-[28px] text-center">
+          <div className="flex items-center gap-3.5 font-mono">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-black text-emerald-400 tracking-wider">WIN</span>
+              <span className="px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-black text-base min-w-[34px] text-center shadow-inner">
                 {String(winsCount).padStart(2, '0')}
               </span>
             </div>
 
-            <span className="text-slate-600 font-bold">/</span>
+            <span className="text-slate-500 font-black text-base">/</span>
 
-            <div className="flex items-center gap-1.5">
-              <span className="px-2 py-0.5 rounded bg-rose-500/15 border border-rose-500/30 text-rose-400 font-black text-xs min-w-[28px] text-center">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-1 rounded-lg bg-rose-500/15 border border-rose-500/40 text-rose-300 font-black text-base min-w-[34px] text-center shadow-inner">
                 {String(lossesCount).padStart(2, '0')}
               </span>
-              <span className="text-xs font-black text-rose-400 tracking-wider">LOSS</span>
+              <span className="text-sm font-black text-rose-400 tracking-wider">LOSS</span>
             </div>
           </div>
         </div>
