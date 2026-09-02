@@ -8,12 +8,14 @@ import {
   Zap,
   Clock,
   Save,
+  Lock,
+  Edit2,
+  Check,
 } from 'lucide-react';
 import { useTrading } from '../../context/TradingContext';
 import { OperationResult } from '../../types';
 import { calculate5x2Management, calculateOperationProfit } from '../../utils/calculations';
 import { getTodayDateString, formatSecondsToTime } from '../../utils/formatters';
-import { ScreenTimePicker } from '../common/ScreenTimePicker';
 
 export const Management5x2View: React.FC = () => {
   const {
@@ -47,6 +49,11 @@ export const Management5x2View: React.FC = () => {
   );
   const [currentEntryAsset, setCurrentEntryAsset] = useState<string>('EUR/USD');
 
+  // Custom Fixed Entry Override (allows user to lock exact value like 10.60 throughout the entire month)
+  const [customFixedEntry, setCustomFixedEntry] = useState<number | null>(null);
+  const [isEditingFixedEntry, setIsEditingFixedEntry] = useState<boolean>(false);
+  const [tempFixedEntryInput, setTempFixedEntryInput] = useState<string>('');
+
   // Sync inputs when monthConfig changes
   useEffect(() => {
     const defPayout = Math.max(80, monthConfig.defaultPayout || 85);
@@ -56,6 +63,7 @@ export const Management5x2View: React.FC = () => {
     }
   }, [monthConfig.defaultPayout, monthConfig.customStrategies]);
 
+  // Base 5x2 parameters calculated strictly from Initial Bankroll of the month
   const mgmt = useMemo(() => {
     return calculate5x2Management(
       Number(monthConfig.initialBankroll || 100),
@@ -64,14 +72,30 @@ export const Management5x2View: React.FC = () => {
     );
   }, [monthConfig.initialBankroll, monthConfig.workingDays, monthConfig.defaultPayout]);
 
+  // Effective constant fixed entry throughout the month
+  const effectiveFixedEntry = useMemo(() => {
+    return customFixedEntry !== null ? customFixedEntry : mgmt.fixedEntryAmount;
+  }, [customFixedEntry, mgmt.fixedEntryAmount]);
+
+  // Effective daily stop loss (2 losses with the constant fixed entry)
+  const effectiveDailyStopLoss = useMemo(() => {
+    return Number((2 * effectiveFixedEntry).toFixed(2));
+  }, [effectiveFixedEntry]);
+
+  // Effective 5x0 target
+  const effectiveTarget5x0 = useMemo(() => {
+    const singleWin = calculateOperationProfit(effectiveFixedEntry, currentEntryPayout, 'WIN');
+    return Number((5 * singleWin).toFixed(2));
+  }, [effectiveFixedEntry, currentEntryPayout]);
+
   useEffect(() => {
     update5x2Settings({
-      fixedEntryAmount: mgmt.fixedEntryAmount,
-      dailyStopLoss: mgmt.dailyStopLoss,
+      fixedEntryAmount: effectiveFixedEntry,
+      dailyStopLoss: effectiveDailyStopLoss,
       payout: monthConfig.defaultPayout || 85,
-      dailyTargetWin: mgmt.dailyTarget5x0,
+      dailyTargetWin: effectiveTarget5x0,
     });
-  }, [mgmt.fixedEntryAmount, mgmt.dailyStopLoss, monthConfig.defaultPayout, mgmt.dailyTarget5x0]);
+  }, [effectiveFixedEntry, effectiveDailyStopLoss, monthConfig.defaultPayout, effectiveTarget5x0]);
 
   const winCount = session5x2.operations.filter((r) => r === 'WIN').length;
   const lossCount = session5x2.operations.filter((r) => r === 'LOSS').length;
@@ -85,10 +109,10 @@ export const Management5x2View: React.FC = () => {
     let profit = 0;
     const basePayout = monthConfig.defaultPayout || 85;
     session5x2.operations.forEach((res) => {
-      profit += calculateOperationProfit(mgmt.fixedEntryAmount, basePayout, res);
+      profit += calculateOperationProfit(effectiveFixedEntry, basePayout, res);
     });
     return Number(profit.toFixed(2));
-  }, [session5x2.opDetails, session5x2.operations, mgmt.fixedEntryAmount, monthConfig.defaultPayout]);
+  }, [session5x2.opDetails, session5x2.operations, effectiveFixedEntry, monthConfig.defaultPayout]);
 
   const isBlocked =
     session5x2.status === 'STOP_LOSS' ||
@@ -97,8 +121,8 @@ export const Management5x2View: React.FC = () => {
     lossCount >= 2;
 
   const currentWinProfit = useMemo(() => {
-    return calculateOperationProfit(mgmt.fixedEntryAmount, currentEntryPayout, 'WIN');
-  }, [mgmt.fixedEntryAmount, currentEntryPayout]);
+    return calculateOperationProfit(effectiveFixedEntry, currentEntryPayout, 'WIN');
+  }, [effectiveFixedEntry, currentEntryPayout]);
 
   const handleRecordResult = (result: OperationResult) => {
     if (isBlocked) return;
@@ -106,9 +130,17 @@ export const Management5x2View: React.FC = () => {
       result,
       currentEntryAsset,
       currentEntryStrategy,
-      mgmt.fixedEntryAmount,
+      effectiveFixedEntry,
       currentEntryPayout
     );
+  };
+
+  const handleSaveCustomFixedEntry = () => {
+    const val = parseFloat(tempFixedEntryInput);
+    if (!isNaN(val) && val > 0) {
+      setCustomFixedEntry(val);
+    }
+    setIsEditingFixedEntry(false);
   };
 
   const allStrategies = useMemo(() => {
@@ -132,7 +164,7 @@ export const Management5x2View: React.FC = () => {
 
   return (
     <div className="space-y-4 pb-10" id="view-management-5x2">
-      {/* Resumo Rápido e Limpo */}
+      {/* Header Resumido */}
       <div className="p-4 bg-[#0D111A] border border-[#1E2536] rounded-xl flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
@@ -140,13 +172,16 @@ export const Management5x2View: React.FC = () => {
           </div>
           <div>
             <h2 className="text-base font-bold text-white tracking-wide flex items-center gap-2">
-              Gestão 5x2 (Mão Fixa)
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
-                Stop = 2 LOSS
+              Gestão 5x2 (Entrada Fixa)
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 flex items-center gap-1">
+                <Lock className="w-3 h-3" />
+                Valor Constante o Mês Todo
               </span>
             </h2>
             <div className="flex items-center gap-2 text-xs text-slate-400 font-mono mt-0.5">
-              <span>Banca: <strong className="text-white">{formatCurrency(mgmt.bankroll)}</strong></span>
+              <span>Banca Inicial: <strong className="text-white">{formatCurrency(monthConfig.initialBankroll || 100)}</strong></span>
+              <span>•</span>
+              <span>{monthConfig.workingDays || 20} Dias Úteis</span>
               <span>•</span>
               <span>Saldo Atual: <strong className="text-emerald-400">{formatCurrency(monthlyStats.currentBankroll)}</strong></span>
             </div>
@@ -164,28 +199,67 @@ export const Management5x2View: React.FC = () => {
 
       {/* Cards Resumidos de Métricas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 font-mono">
-        {/* Mão Fixa */}
-        <div className="p-3.5 bg-[#0D111A] border border-cyan-500/30 rounded-xl space-y-1">
-          <span className="text-[10px] text-cyan-400 uppercase font-sans font-bold block">Valor da Mão Fixa</span>
-          <div className="text-xl font-black text-cyan-300">{formatCurrency(mgmt.fixedEntryAmount)}</div>
+        {/* Entrada Fixa do Mês */}
+        <div className="p-3.5 bg-[#0D111A] border border-cyan-500/40 rounded-xl space-y-1 relative group">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-cyan-400 uppercase font-sans font-bold flex items-center gap-1">
+              <Lock className="w-3 h-3 text-cyan-400" />
+              Entrada Fixa (Mês Todo)
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setTempFixedEntryInput(String(effectiveFixedEntry));
+                setIsEditingFixedEntry(!isEditingFixedEntry);
+              }}
+              className="text-[10px] text-slate-400 hover:text-cyan-300 flex items-center gap-0.5 font-sans"
+              title="Ajustar valor fixo"
+            >
+              <Edit2 className="w-2.5 h-2.5" />
+              {isEditingFixedEntry ? 'Cancelar' : 'Editar'}
+            </button>
+          </div>
+
+          {isEditingFixedEntry ? (
+            <div className="flex items-center gap-1 pt-1">
+              <input
+                type="number"
+                step="0.1"
+                value={tempFixedEntryInput}
+                onChange={(e) => setTempFixedEntryInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSaveCustomFixedEntry()}
+                className="w-full bg-[#121620] border border-cyan-500 rounded px-2 py-1 text-xs text-white font-mono font-bold"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={handleSaveCustomFixedEntry}
+                className="px-2 py-1 bg-cyan-600 hover:bg-cyan-500 text-white rounded text-xs font-bold shrink-0"
+              >
+                <Check className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <div className="text-xl font-black text-cyan-300">{formatCurrency(effectiveFixedEntry)}</div>
+          )}
           <span className="text-[11px] text-emerald-400 block">+ {formatCurrency(currentWinProfit)} no WIN ({currentEntryPayout}%)</span>
         </div>
 
         {/* Meta Diária (5x0) */}
         <div className="p-3.5 bg-[#0D111A] border border-emerald-500/30 rounded-xl space-y-1">
           <span className="text-[10px] text-emerald-400 uppercase font-sans font-bold block">Meta Diária (5x0)</span>
-          <div className="text-xl font-black text-emerald-400">+{formatCurrency(mgmt.dailyTarget5x0)}</div>
+          <div className="text-xl font-black text-emerald-400">+{formatCurrency(effectiveTarget5x0)}</div>
           <span className="text-[11px] text-slate-400 block">5 Vitórias consecutivas</span>
         </div>
 
-        {/* Stop Diário */}
+        {/* Stop Diário (2 Derrotas) */}
         <div className="p-3.5 bg-[#0D111A] border border-rose-500/30 rounded-xl space-y-1">
-          <span className="text-[10px] text-rose-400 uppercase font-sans font-bold block">Stop Diário (2 Derrotas)</span>
-          <div className="text-xl font-black text-rose-400">-{formatCurrency(mgmt.dailyStopLoss)}</div>
-          <span className="text-[11px] text-slate-400 block">Limite de perda no dia</span>
+          <span className="text-[10px] text-rose-400 uppercase font-sans font-bold block">Stop Diário (2 LOSS)</span>
+          <div className="text-xl font-black text-rose-400">-{formatCurrency(effectiveDailyStopLoss)}</div>
+          <span className="text-[11px] text-slate-400 block">2 x {formatCurrency(effectiveFixedEntry)}</span>
         </div>
 
-        {/* Placar Atual */}
+        {/* Placar da Sessão */}
         <div className="p-3.5 bg-[#0D111A] border border-[#1E2536] rounded-xl space-y-1">
           <span className="text-[10px] text-slate-400 uppercase font-sans font-bold block">Placar da Sessão</span>
           <div className="text-xl font-black flex items-center gap-2">
@@ -258,7 +332,7 @@ export const Management5x2View: React.FC = () => {
             {/* Ações */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 border-t border-[#1E2536]">
               <div className="font-mono text-xs">
-                <span>Entrada Fixa: <strong className="text-white text-sm">{formatCurrency(mgmt.fixedEntryAmount)}</strong></span>
+                <span>Entrada Fixa: <strong className="text-white text-sm">{formatCurrency(effectiveFixedEntry)}</strong></span>
                 <span className="text-slate-400 ml-2">(Se WIN: <strong className="text-emerald-400">+{formatCurrency(currentWinProfit)}</strong>)</span>
               </div>
 
@@ -298,7 +372,7 @@ export const Management5x2View: React.FC = () => {
             >
               <div>
                 <span className={`text-xs font-bold uppercase block ${lossCount < 2 && winCount > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                  {lossCount < 2 && winCount > 0 ? '🏆 Sessão 5x2 Finalizada com Lucro!' : '⚠️ Limite de 2 LOSS Atingido'}
+                  {lossCount < 2 && winCount > 0 ? '🏆 Sessão Finalizada com Lucro!' : '⚠️ Limite de 2 LOSS Atingido'}
                 </span>
                 <div className={`text-lg font-black font-mono ${currentSessionProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                   Resultado: {currentSessionProfit >= 0 ? `+${formatCurrency(currentSessionProfit)}` : formatCurrency(currentSessionProfit)} ({winCount}W - {lossCount}L)
