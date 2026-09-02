@@ -215,17 +215,44 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
       setLastSignalTimestamp(analysis.timestamp);
       setIsVisible(true);
       setIsMinimized(false);
-      setDecision("PENDING");
-      setResolvedDir("NEUTRAL");
-      setRejectionReason("");
       lastDecisionCandleStartRef.current = null;
-      hasAnnouncedDecisionRef.current = false;
       hasRegisteredPendingRef.current = false;
       lockedEntryPriceRef.current = null;
       isResolvingRef.current = false;
       setPredictionResult(null);
       setHasResolvedOutcome(false);
       setPosition({ x: 0, y: 0 }); // Reset drag position to center
+
+      // Check if this analysis is already cancelled / rejected at generation time
+      const patterns = analysis.detectedPatterns || [];
+      const hasQuadrantWarning = patterns.some((p) =>
+        p.toLowerCase().includes("quadrante") ||
+        p.toLowerCase().includes("anti-loss") ||
+        p.toLowerCase().includes("sem fluxo") ||
+        p.toLowerCase().includes("choppy") ||
+        p.toLowerCase().includes("divergência") ||
+        p.toLowerCase().includes("divergencia")
+      );
+
+      const isNeutral = analysis.direction === "NEUTRAL";
+      const isLowConfidence = (analysis.confidenceScore || 0) < 80;
+
+      if (isNeutral || isLowConfidence || hasQuadrantWarning) {
+        setDecision("REJECTED");
+        setResolvedDir("NEUTRAL");
+        hasAnnouncedDecisionRef.current = true;
+        const rejectTxt = analysis.rationale ||
+          patterns.find(p => p.includes("Anti-Loss") || p.includes("Divergência") || p.includes("Quadrante") || p.includes("Insuficientes")) ||
+          (isLowConfidence ? `Assertividade insuficiente (${analysis.confidenceScore}% < 80%). Entrada cancelada.` : "Sinal cancelado pelo Filtro Anti-Loss.");
+        setRejectionReason(rejectTxt);
+        soundManager.playRejectAlert();
+        soundManager.speakAlert("Sinal cancelado pelo Filtro Anti-Loss");
+      } else {
+        setDecision("PENDING");
+        setResolvedDir(analysis.direction);
+        setRejectionReason("");
+        hasAnnouncedDecisionRef.current = false;
+      }
     }
   }, [analysis, lastSignalTimestamp]);
 
@@ -525,17 +552,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
     onSaveSignalTrade,
   ]);
 
-  // Auto-dismiss rejected signal after 5 seconds to clear the screen cleanly
-  useEffect(() => {
-    if (decision === "REJECTED") {
-      const timer = setTimeout(() => {
-        setIsVisible(false);
-        if (onClearAnalysis) onClearAnalysis();
-        if (onClose) onClose();
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [decision, onClearAnalysis, onClose]);
+  // Keep rejected modal visible so the trader can read the reason and decide next action (no auto-blackout)
 
   // Auto-dismiss confirmation after the entry candle begins to let user view chart cleanly
   useEffect(() => {
