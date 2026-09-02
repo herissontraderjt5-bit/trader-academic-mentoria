@@ -4,7 +4,6 @@ import {
   CheckCircle,
   XCircle,
   Percent,
-  Calendar,
   Zap,
   RotateCcw,
   Sparkles,
@@ -13,6 +12,7 @@ import {
   Plus,
   Clock,
   Save,
+  ArrowRight,
 } from 'lucide-react';
 import { useTrading } from '../../context/TradingContext';
 import { getCurrentTimeString, getTodayDateString, formatSecondsToTime } from '../../utils/formatters';
@@ -31,7 +31,7 @@ export const Management2x1View: React.FC = () => {
     currentTimerSeconds,
   } = useTrading();
 
-  // Step 1 Customizations (Payout, Strategy, Asset):
+  // Step 1 Customizations
   const [step1Payout, setStep1Payout] = useState<number>(
     Math.max(80, monthConfig.defaultPayout || 85)
   );
@@ -40,7 +40,7 @@ export const Management2x1View: React.FC = () => {
   );
   const [step1Asset, setStep1Asset] = useState<string>('EUR/USD');
 
-  // Step 2 Customizations (Payout, Strategy, Asset):
+  // Step 2 Customizations
   const [step2Payout, setStep2Payout] = useState<number>(
     Math.max(80, monthConfig.defaultPayout || 85)
   );
@@ -58,7 +58,7 @@ export const Management2x1View: React.FC = () => {
   const [cycleResult, setCycleResult] = useState<'2x0_WIN' | '0x1_STOP' | '1x1_STOP' | null>(null);
   const [profitGenerated, setProfitGenerated] = useState<number>(0);
 
-  // Screen time state for when goal is reached or cycle finishes
+  // Screen time state
   const [screenTimeSeconds, setScreenTimeSeconds] = useState<number>(0);
   const [dayRegisteredSuccess, setDayRegisteredSuccess] = useState<boolean>(false);
 
@@ -78,7 +78,7 @@ export const Management2x1View: React.FC = () => {
     }
   }, [monthConfig.defaultPayout, monthConfig.customStrategies]);
 
-  // Calculate 2x1 Management with monthConfig parameters
+  // Calculate 2x1 Management
   const mgmt = useMemo(() => {
     return calculate2x1Management(
       Number(monthConfig.initialBankroll || 100),
@@ -120,9 +120,8 @@ export const Management2x1View: React.FC = () => {
         expiration: 'M1',
         strategy: step1Strategy,
         result: 'WIN',
-        notes: `Gestão 2x1 - Entrada 01 (Mão 1: ${formatCurrency(mgmt.firstEntryAmount)} | Payout ${step1Payout}% | Estratégia: ${step1Strategy} -> WIN +${formatCurrency(step1Profit)})`,
+        notes: `Gestão 2x1 - Entrada 01: ${formatCurrency(mgmt.firstEntryAmount)} -> WIN (+${formatCurrency(step1Profit)})`,
       });
-
       setCurrentStep('STEP_2');
     } else {
       addOperation({
@@ -136,16 +135,15 @@ export const Management2x1View: React.FC = () => {
         expiration: 'M1',
         strategy: step1Strategy,
         result: 'LOSS',
-        notes: `Gestão 2x1 - Entrada 01 (Stop Diário Atingido: -${formatCurrency(mgmt.firstEntryAmount)} | Estratégia: ${step1Strategy})`,
+        notes: `Gestão 2x1 - Entrada 01: Stop Diário (-${formatCurrency(mgmt.firstEntryAmount)})`,
       });
-
       setCycleResult('0x1_STOP');
       setProfitGenerated(-mgmt.firstEntryAmount);
       setCurrentStep('CYCLE_FINISHED');
     }
   };
 
-  // Execute Step 2 (Soros: 1st Entry + Profit from 1st Entry)
+  // Execute Step 2 (Soros)
   const handleExecuteStep2 = (result: 'WIN' | 'LOSS') => {
     const timeStr = getCurrentTimeString();
     if (result === 'WIN') {
@@ -160,9 +158,8 @@ export const Management2x1View: React.FC = () => {
         expiration: 'M1',
         strategy: step2Strategy,
         result: 'WIN',
-        notes: `Gestão 2x1 - Entrada 02 Soros (Mão 2: ${formatCurrency(step2EntryAmount)} | Payout ${step2Payout}% | Estratégia: ${step2Strategy} -> WIN +${formatCurrency(step2Profit)} | Meta 2x0 Batida!)`,
+        notes: `Gestão 2x1 - Entrada 02 Soros: ${formatCurrency(step2EntryAmount)} -> WIN (+${formatCurrency(step2Profit)} | Meta Batida!)`,
       });
-
       setCycleResult('2x0_WIN');
       setProfitGenerated(totalDynamicTargetProfit);
       setCurrentStep('CYCLE_FINISHED');
@@ -178,9 +175,8 @@ export const Management2x1View: React.FC = () => {
         expiration: 'M1',
         strategy: step2Strategy,
         result: 'LOSS',
-        notes: `Gestão 2x1 - Entrada 02 Soros (LOSS na 2ª Mão -> Stop do Dia: -${formatCurrency(mgmt.firstEntryAmount)} | Estratégia: ${step2Strategy})`,
+        notes: `Gestão 2x1 - Entrada 02 Soros: LOSS (-${formatCurrency(mgmt.firstEntryAmount)})`,
       });
-
       setCycleResult('1x1_STOP');
       setProfitGenerated(-mgmt.firstEntryAmount);
       setCurrentStep('CYCLE_FINISHED');
@@ -223,584 +219,277 @@ export const Management2x1View: React.FC = () => {
     return monthConfig.customAssets || ['EUR/USD', 'GBP/USD', 'USD/JPY', 'EUR/JPY', 'AUD/USD', 'BTC/USDT'];
   }, [monthConfig.customAssets]);
 
-  const payoutPresets = [80, 82, 85, 87, 90, 92, 95];
+  const payoutPresets = [80, 85, 87, 90, 92, 95];
 
   return (
-    <div className="space-y-6 pb-12" id="view-management-2x1">
-      {/* Header Banner */}
-      <div className="p-5 bg-[#0F0F12] border border-[#1E2028] rounded-xl flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center space-x-3.5">
-          <div className="w-11 h-11 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-orange-400">
-            <Target className="w-6 h-6" />
+    <div className="space-y-4 pb-10" id="view-management-2x1">
+      {/* Resumo Rápido e Limpo */}
+      <div className="p-4 bg-[#0D111A] border border-[#1E2536] rounded-xl flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-orange-400">
+            <Target className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-lg font-bold text-white tracking-wide">
-                Gestão 2x1 (Soros com Payout e Estratégia por Entrada)
-              </h2>
+            <h2 className="text-base font-bold text-white tracking-wide flex items-center gap-2">
+              Gestão 2x1 (Soros)
               <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-orange-500/20 text-orange-400 border border-orange-500/30">
-                Soros Nível 1
+                1 Entrada + 1 Soros
               </span>
-            </div>
-            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400 mt-1">
-              <span>Banca Base: <strong className="text-white font-mono">{formatCurrency(mgmt.bankroll)}</strong></span>
+            </h2>
+            <div className="flex items-center gap-2 text-xs text-slate-400 font-mono mt-0.5">
+              <span>Banca: <strong className="text-white">{formatCurrency(mgmt.bankroll)}</strong></span>
               <span>•</span>
-              <span>{mgmt.workingDays} Dias de Trabalho</span>
-              <span>•</span>
-              <span>Saldo Atual: <strong className="text-emerald-400 font-mono">{formatCurrency(monthlyStats.currentBankroll)}</strong></span>
+              <span>Saldo Atual: <strong className="text-emerald-400">{formatCurrency(monthlyStats.currentBankroll)}</strong></span>
             </div>
           </div>
         </div>
 
         <button
           onClick={handleResetCycle}
-          className="px-4 py-2 rounded-lg text-xs font-semibold bg-[#15161A] text-slate-300 border border-[#272935] hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-2"
+          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#151922] text-slate-300 border border-[#222B3D] hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-1.5"
         >
           <RotateCcw className="w-3.5 h-3.5 text-orange-400" />
-          Reiniciar Ciclo
+          Reiniciar
         </button>
       </div>
 
-      {/* Main Full-Width Section: Calculated Cards, Summary KPIs & Interactive Console */}
-      <div className="space-y-6">
-        {/* Top 2 Primary Calculation Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Card 1: Stop Diário & 1ª Mão de Entrada */}
-          <div className="p-5 bg-[#0F0F12] border border-[#1E2028] rounded-xl space-y-3 relative overflow-hidden">
-            <div className="flex items-center justify-between">
-              <span className="px-2.5 py-1 rounded text-[10px] font-bold uppercase bg-orange-500/15 text-orange-400 border border-orange-500/30">
-                Stop Diário / 1ª Mão
-              </span>
-              <span className="text-xs font-mono text-slate-400">
-                {mgmt.firstEntryPercent}% do Capital
-              </span>
-            </div>
-
-            <div>
-              <span className="text-[11px] text-slate-400 block">Valor da 1ª Entrada</span>
-              <span className="text-2xl font-black font-mono text-white tracking-tight">
-                {formatCurrency(mgmt.firstEntryAmount)}
-              </span>
-            </div>
-
-            <div className="p-3 bg-[#0A0A0B] border border-[#1E2028] rounded-lg space-y-1.5 font-mono text-xs">
-              <div className="flex justify-between text-slate-400">
-                <span>Payout Entrada 1:</span>
-                <strong className="text-white">{step1Payout}%</strong>
-              </div>
-              <div className="flex justify-between text-slate-400">
-                <span>Lucro Obtido no WIN:</span>
-                <strong className="text-emerald-400">+{formatCurrency(step1Profit)}</strong>
-              </div>
-              <div className="flex justify-between text-slate-400">
-                <span>Perda no LOSS (Stop do Dia):</span>
-                <strong className="text-rose-400">-{formatCurrency(mgmt.dailyStopLoss)}</strong>
-              </div>
-            </div>
-          </div>
-
-          {/* Card 2: 2ª Mão de Entrada (Soros Nível 1) */}
-          <div className="p-5 bg-[#0F0F12] border border-cyan-500/30 rounded-xl space-y-3 relative overflow-hidden">
-            <div className="flex items-center justify-between">
-              <span className="px-2.5 py-1 rounded text-[10px] font-bold uppercase bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">
-                2ª Mão (Soros Nível 1)
-              </span>
-              <span className="text-xs font-mono text-emerald-400 font-semibold">
-                Mão 1 + Lucro 1
-              </span>
-            </div>
-
-            <div>
-              <span className="text-[11px] text-slate-400 block">Valor da 2ª Entrada (Se der WIN)</span>
-              <span className="text-2xl font-black font-mono text-cyan-300 tracking-tight">
-                {formatCurrency(step2EntryAmount)}
-              </span>
-            </div>
-
-            <div className="p-3 bg-[#0A0A0B] border border-[#1E2028] rounded-lg space-y-1.5 font-mono text-xs">
-              <div className="flex justify-between text-slate-400">
-                <span>Payout Entrada 2:</span>
-                <strong className="text-white">{step2Payout}%</strong>
-              </div>
-              <div className="flex justify-between text-slate-400">
-                <span>Lucro da 2ª Mão:</span>
-                <strong className="text-emerald-400">+{formatCurrency(step2Profit)}</strong>
-              </div>
-              <div className="flex justify-between text-slate-400">
-                <span>Meta Líquida Total (2x0):</span>
-                <strong className="text-emerald-400 font-black">+{formatCurrency(totalDynamicTargetProfit)}</strong>
-              </div>
-            </div>
-          </div>
+      {/* Cards Resumidos: 1ª Mão & 2ª Mão Soros */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 font-mono">
+        {/* 1ª Mão */}
+        <div className="p-3.5 bg-[#0D111A] border border-[#1E2536] rounded-xl space-y-1">
+          <span className="text-[10px] text-slate-400 uppercase font-sans font-bold block">1ª Mão (Stop Diário)</span>
+          <div className="text-xl font-black text-white">{formatCurrency(mgmt.firstEntryAmount)}</div>
+          <span className="text-[11px] text-emerald-400 block">+ {formatCurrency(step1Profit)} no WIN ({step1Payout}%)</span>
         </div>
 
-        {/* Quick Summary KPIs Strip */}
-        <div className="p-4 bg-[#0A0A0B] border border-[#1E2028] rounded-xl grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
-          <div>
-            <span className="text-[10px] text-slate-400 block font-sans">Meta Diária (2x0)</span>
-            <strong className="text-emerald-400 text-sm">+{formatCurrency(totalDynamicTargetProfit)}</strong>
-            <span className="text-[10px] text-slate-500 block">+{((totalDynamicTargetProfit / mgmt.bankroll) * 100).toFixed(1)}% banca</span>
-          </div>
-          <div>
-            <span className="text-[10px] text-slate-400 block font-sans">Stop Loss Diário</span>
-            <strong className="text-rose-400 text-sm">-{formatCurrency(mgmt.dailyStopLoss)}</strong>
-            <span className="text-[10px] text-slate-500 block">-{mgmt.firstEntryPercent}% banca</span>
-          </div>
-          <div>
-            <span className="text-[10px] text-slate-400 block font-sans">Relação Risco x Retorno</span>
-            <strong className="text-cyan-300 text-sm">1 : {(totalDynamicTargetProfit / (mgmt.dailyStopLoss || 1)).toFixed(2)}</strong>
-            <span className="text-[10px] text-slate-500 block">Lucro &gt; Risco</span>
-          </div>
-          <div>
-            <span className="text-[10px] text-slate-400 block font-sans">Banca com Meta Batida</span>
-            <strong className="text-white text-sm">{formatCurrency(mgmt.bankroll + totalDynamicTargetProfit)}</strong>
-            <span className="text-[10px] text-slate-500 block">Após 1 dia 2x0</span>
-          </div>
+        {/* 2ª Mão Soros */}
+        <div className="p-3.5 bg-[#0D111A] border border-cyan-500/30 rounded-xl space-y-1">
+          <span className="text-[10px] text-cyan-400 uppercase font-sans font-bold block">2ª Mão (Soros Nível 1)</span>
+          <div className="text-xl font-black text-cyan-300">{formatCurrency(step2EntryAmount)}</div>
+          <span className="text-[11px] text-emerald-400 block">+ {formatCurrency(step2Profit)} no WIN ({step2Payout}%)</span>
         </div>
 
-        {/* Interactive Live Cycle Console with Per-Step Payout and Strategy */}
-        <div className="p-5 bg-[#0F0F12] border border-orange-500/30 rounded-xl space-y-4 shadow-lg shadow-black/40">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center space-x-2">
-              <Zap className="w-4 h-4 text-orange-400" />
-              <h4 className="text-sm font-bold text-white uppercase tracking-wider">
-                Execução Ao Vivo do Ciclo 2x1
-              </h4>
-            </div>
+        {/* Meta Líquida 2x0 */}
+        <div className="p-3.5 bg-[#0D111A] border border-emerald-500/30 rounded-xl space-y-1">
+          <span className="text-[10px] text-emerald-400 uppercase font-sans font-bold block">Meta Diária (2x0)</span>
+          <div className="text-xl font-black text-emerald-400">+{formatCurrency(totalDynamicTargetProfit)}</div>
+          <span className="text-[11px] text-slate-400 block">+{((totalDynamicTargetProfit / (mgmt.bankroll || 1)) * 100).toFixed(1)}% da banca</span>
+        </div>
 
-            <span className="text-xs font-mono text-slate-400">
-              Fase Atual:{' '}
-              <strong className="text-orange-400">
-                {currentStep === 'STEP_1'
-                  ? 'Passo 1: 1ª Mão (Stop Diário)'
-                  : currentStep === 'STEP_2'
-                  ? 'Passo 2: 2ª Mão (Soros)'
-                  : 'Ciclo Encerrado'}
-              </strong>
-            </span>
-          </div>
+        {/* Stop Loss */}
+        <div className="p-3.5 bg-[#0D111A] border border-rose-500/30 rounded-xl space-y-1">
+          <span className="text-[10px] text-rose-400 uppercase font-sans font-bold block">Stop Diário</span>
+          <div className="text-xl font-black text-rose-400">-{formatCurrency(mgmt.dailyStopLoss)}</div>
+          <span className="text-[11px] text-slate-400 block">Risco 1 : {(totalDynamicTargetProfit / (mgmt.dailyStopLoss || 1)).toFixed(2)} Retorno</span>
+        </div>
+      </div>
 
-          {/* STEP 1 CONSOLE */}
-          {currentStep === 'STEP_1' && (
-            <div className="p-4 bg-[#0A0A0B] border border-[#1E2028] rounded-xl space-y-4">
-              {/* Step 1 Settings Bar */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pb-3 border-b border-[#1E2028]">
-                {/* Strategy */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-[11px] font-bold text-slate-200 flex items-center gap-1">
-                      <Layers className="w-3.5 h-3.5 text-orange-400" />
-                      Estratégia Entrada 1:
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setShowAddStrategyInput(!showAddStrategyInput)}
-                      className="text-[10px] text-orange-400 hover:text-orange-300 font-medium flex items-center gap-0.5"
-                    >
-                      <Plus className="w-3 h-3" />
-                      {showAddStrategyInput ? 'Fechar' : 'Nova'}
-                    </button>
-                  </div>
+      {/* Console de Execução do Ciclo */}
+      <div className="p-4 bg-[#0D111A] border border-orange-500/30 rounded-xl space-y-3.5">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+            <Zap className="w-3.5 h-3.5 text-orange-400" />
+            Execução ao Vivo
+          </span>
+          <span className="text-xs font-mono text-orange-400 font-bold">
+            {currentStep === 'STEP_1' ? 'Passo 1 de 2: 1ª Mão' : currentStep === 'STEP_2' ? 'Passo 2 de 2: Soros' : 'Ciclo Finalizado'}
+          </span>
+        </div>
 
-                  {showAddStrategyInput ? (
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="text"
-                        value={newStrategyName}
-                        onChange={(e) => setNewStrategyName(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleAddNewStrategy('STEP_1')}
-                        placeholder="Nome da estratégia..."
-                        className="w-full bg-[#15161A] border border-orange-500/60 rounded px-2 py-1.5 text-xs text-white focus:outline-none"
-                        autoFocus
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleAddNewStrategy('STEP_1')}
-                        className="px-2 py-1.5 bg-orange-600 hover:bg-orange-500 text-white rounded text-xs font-bold shrink-0"
-                      >
-                        Add
-                      </button>
-                    </div>
-                  ) : (
-                    <select
-                      id="select-2x1-step1-strategy"
-                      value={step1Strategy}
-                      onChange={(e) => setStep1Strategy(e.target.value)}
-                      className="w-full bg-[#15161A] border border-[#272935] rounded-lg px-2.5 py-1.5 text-xs text-white font-medium focus:outline-none focus:border-orange-500"
-                    >
-                      {allStrategies.map((st) => (
-                        <option key={st} value={st}>
-                          {st}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-
-                {/* Asset */}
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-200 mb-1">
-                    Ativo Entrada 1:
-                  </label>
-                  <select
-                    id="select-2x1-step1-asset"
-                    value={step1Asset}
-                    onChange={(e) => setStep1Asset(e.target.value)}
-                    className="w-full bg-[#15161A] border border-[#272935] rounded-lg px-2.5 py-1.5 text-xs text-white font-medium focus:outline-none focus:border-orange-500"
-                  >
-                    {allAssets.map((ast) => (
-                      <option key={ast} value={ast}>
-                        {ast}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Payout */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-[11px] font-bold text-slate-200 flex items-center gap-1">
-                      <Percent className="w-3.5 h-3.5 text-orange-400" />
-                      Payout Entrada 1 (%):
-                    </label>
-                    <span className="text-[11px] font-mono text-orange-300 font-bold">
-                      {step1Payout}%
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      id="input-2x1-step1-payout"
-                      type="number"
-                      min="50"
-                      max="100"
-                      value={step1Payout}
-                      onChange={(e) => setStep1Payout(parseFloat(e.target.value) || 80)}
-                      className="w-20 bg-[#15161A] border border-[#272935] rounded-lg px-2 py-1.5 text-xs text-white font-mono text-center focus:outline-none focus:border-orange-500"
-                    />
-                    <div className="flex items-center gap-1 flex-1 overflow-x-auto pb-0.5">
-                      {payoutPresets.map((pct) => (
-                        <button
-                          key={pct}
-                          type="button"
-                          onClick={() => setStep1Payout(pct)}
-                          className={`px-1.5 py-1 rounded text-[10px] font-mono font-bold transition-colors shrink-0 ${
-                            step1Payout === pct
-                              ? 'bg-orange-500 text-black font-black'
-                              : 'bg-[#15161A] border border-[#272935] text-slate-400 hover:text-white'
-                          }`}
-                        >
-                          {pct}%
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Execution Row */}
-              <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-4">
-                <div className="space-y-1 text-center xl:text-left flex-1 min-w-0">
-                  <div className="flex items-center gap-2 justify-center xl:justify-start">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-orange-500/20 text-orange-400 border border-orange-500/40 shrink-0">
-                      Entrada 01
-                    </span>
-                    <span className="text-xs text-slate-400 font-mono truncate">
-                      {step1Asset} • {step1Strategy} • Payout {step1Payout}%
-                    </span>
-                  </div>
-                  <div className="text-xl font-black font-mono text-white">
-                    Valor da Entrada: {formatCurrency(mgmt.firstEntryAmount)}
-                  </div>
-                  <p className="text-xs text-slate-400">
-                    Se vencer, lucra <strong className="text-emerald-400">+{formatCurrency(step1Profit)}</strong> e avança para a 2ª Mão de <strong className="text-cyan-300">{formatCurrency(step2EntryAmount)}</strong>.
-                  </p>
-                </div>
-
-                <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full xl:w-auto shrink-0">
-                  <button
-                    id="btn-2x1-step1-win"
-                    onClick={() => handleExecuteStep1('WIN')}
-                    className="w-full sm:w-auto px-4 py-2.5 rounded-lg text-xs font-black bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-950/40 transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
-                  >
-                    <CheckCircle className="w-4 h-4 shrink-0" />
-                    DEU WIN! (Ir p/ Soros)
-                  </button>
-                  <button
-                    id="btn-2x1-step1-loss"
-                    onClick={() => handleExecuteStep1('LOSS')}
-                    className="w-full sm:w-auto px-4 py-2.5 rounded-lg text-xs font-black bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-950/40 transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
-                  >
-                    <XCircle className="w-4 h-4 shrink-0" />
-                    DEU LOSS (Stop do Dia)
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 2 CONSOLE (SOROS) */}
-          {currentStep === 'STEP_2' && (
-            <div className="p-4 bg-cyan-950/15 border border-cyan-500/40 rounded-xl space-y-4 animate-in fade-in">
-              {/* Step 2 Settings Bar */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pb-3 border-b border-cyan-500/20">
-                {/* Strategy for Step 2 */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-[11px] font-bold text-cyan-200 flex items-center gap-1">
-                      <Layers className="w-3.5 h-3.5 text-cyan-400" />
-                      Estratégia Entrada 2 (Soros):
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setShowAddStrategyInput(!showAddStrategyInput)}
-                      className="text-[10px] text-cyan-400 hover:text-cyan-300 font-medium flex items-center gap-0.5"
-                    >
-                      <Plus className="w-3 h-3" />
-                      {showAddStrategyInput ? 'Fechar' : 'Nova'}
-                    </button>
-                  </div>
-
-                  {showAddStrategyInput ? (
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="text"
-                        value={newStrategyName}
-                        onChange={(e) => setNewStrategyName(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleAddNewStrategy('STEP_2')}
-                        placeholder="Nome da estratégia..."
-                        className="w-full bg-[#15161A] border border-cyan-500/60 rounded px-2 py-1.5 text-xs text-white focus:outline-none"
-                        autoFocus
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleAddNewStrategy('STEP_2')}
-                        className="px-2 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded text-xs font-bold shrink-0"
-                      >
-                        Add
-                      </button>
-                    </div>
-                  ) : (
-                    <select
-                      id="select-2x1-step2-strategy"
-                      value={step2Strategy}
-                      onChange={(e) => setStep2Strategy(e.target.value)}
-                      className="w-full bg-[#15161A] border border-[#272935] rounded-lg px-2.5 py-1.5 text-xs text-white font-medium focus:outline-none focus:border-cyan-500"
-                    >
-                      {allStrategies.map((st) => (
-                        <option key={st} value={st}>
-                          {st}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-
-                {/* Asset for Step 2 */}
-                <div>
-                  <label className="block text-[11px] font-bold text-cyan-200 mb-1">
-                    Ativo Entrada 2:
-                  </label>
-                  <select
-                    id="select-2x1-step2-asset"
-                    value={step2Asset}
-                    onChange={(e) => setStep2Asset(e.target.value)}
-                    className="w-full bg-[#15161A] border border-[#272935] rounded-lg px-2.5 py-1.5 text-xs text-white font-medium focus:outline-none focus:border-cyan-500"
-                  >
-                    {allAssets.map((ast) => (
-                      <option key={ast} value={ast}>
-                        {ast}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Payout for Step 2 */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-[11px] font-bold text-cyan-200 flex items-center gap-1">
-                      <Percent className="w-3.5 h-3.5 text-cyan-400" />
-                      Payout Entrada 2 (%):
-                    </label>
-                    <span className="text-[11px] font-mono text-cyan-300 font-bold">
-                      {step2Payout}%
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      id="input-2x1-step2-payout"
-                      type="number"
-                      min="50"
-                      max="100"
-                      value={step2Payout}
-                      onChange={(e) => setStep2Payout(parseFloat(e.target.value) || 80)}
-                      className="w-20 bg-[#15161A] border border-[#272935] rounded-lg px-2 py-1.5 text-xs text-white font-mono text-center focus:outline-none focus:border-cyan-500"
-                    />
-                    <div className="flex items-center gap-1 flex-1 overflow-x-auto pb-0.5">
-                      {payoutPresets.map((pct) => (
-                        <button
-                          key={pct}
-                          type="button"
-                          onClick={() => setStep2Payout(pct)}
-                          className={`px-1.5 py-1 rounded text-[10px] font-mono font-bold transition-colors shrink-0 ${
-                            step2Payout === pct
-                              ? 'bg-cyan-500 text-black font-black'
-                              : 'bg-[#15161A] border border-[#272935] text-slate-400 hover:text-white'
-                          }`}
-                        >
-                          {pct}%
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Execution Row */}
-              <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-4">
-                <div className="space-y-1 text-center xl:text-left flex-1 min-w-0">
-                  <div className="flex items-center gap-2 justify-center xl:justify-start">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 shrink-0">
-                      Entrada 02 (Soros)
-                    </span>
-                    <span className="text-xs text-emerald-400 font-mono font-bold truncate">
-                      1ª Mão WIN (+{formatCurrency(step1Profit)})
-                    </span>
-                  </div>
-                  <div className="text-xl font-black font-mono text-cyan-300">
-                    Valor da Entrada: {formatCurrency(step2EntryAmount)}
-                  </div>
-                  <p className="text-xs text-slate-300">
-                    Mão 1 ({formatCurrency(mgmt.firstEntryAmount)}) + Lucro ({formatCurrency(step1Profit)}). Meta final: <strong className="text-emerald-400">+{formatCurrency(totalDynamicTargetProfit)}</strong>.
-                  </p>
-                </div>
-
-                <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full xl:w-auto shrink-0">
-                  <button
-                    id="btn-2x1-step2-win"
-                    onClick={() => handleExecuteStep2('WIN')}
-                    className="w-full sm:w-auto px-4 py-2.5 rounded-lg text-xs font-black bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-950/40 transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
-                  >
-                    <Sparkles className="w-4 h-4 shrink-0" />
-                    DEU WIN! (2x0 Meta Batida)
-                  </button>
-                  <button
-                    id="btn-2x1-step2-loss"
-                    onClick={() => handleExecuteStep2('LOSS')}
-                    className="w-full sm:w-auto px-4 py-2.5 rounded-lg text-xs font-black bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-950/40 transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
-                  >
-                    <XCircle className="w-4 h-4 shrink-0" />
-                    DEU LOSS (Stop Diário)
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* FINISHED CONSOLE */}
-          {currentStep === 'CYCLE_FINISHED' && (
-            <div className="space-y-4 animate-in fade-in">
-              <div
-                className={`p-5 rounded-xl border flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${
-                  cycleResult === '2x0_WIN'
-                    ? 'bg-emerald-950/25 border-emerald-500/40 shadow-lg shadow-emerald-950/20'
-                    : 'bg-rose-950/25 border-rose-500/40 shadow-lg shadow-rose-950/20'
-                }`}
-              >
-                <div className="space-y-1.5 text-left">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {cycleResult === '2x0_WIN' ? (
-                      <span className="px-3 py-1 rounded-lg text-xs font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center gap-1.5">
-                        <CheckCircle className="w-4 h-4" />
-                        META BATIDA 2x0 COM SUCESSO!
-                      </span>
-                    ) : (
-                      <span className="px-3 py-1 rounded-lg text-xs font-black bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center gap-1.5">
-                        <ShieldAlert className="w-4 h-4" />
-                        STOP LOSS DIÁRIO ATINGIDO
-                      </span>
-                    )}
-                  </div>
-                  <div
-                    className={`text-2xl font-black font-mono tracking-tight ${
-                      cycleResult === '2x0_WIN' ? 'text-emerald-400' : 'text-rose-400'
-                    }`}
-                  >
-                    Resultado do Ciclo: {profitGenerated >= 0 ? `+${formatCurrency(profitGenerated)}` : formatCurrency(profitGenerated)}
-                  </div>
-                  <p className="text-xs text-slate-300 font-medium flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                    As operações já foram computadas. Agora informe o seu tempo de tela para registrar o dia.
-                  </p>
-                </div>
-
-                <button
-                  id="btn-2x1-new-cycle"
-                  onClick={handleResetCycle}
-                  className="px-4 py-2.5 rounded-lg text-xs font-bold bg-[#15161A] text-slate-300 border border-[#272935] hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-2 shrink-0"
+        {/* PASSO 1 */}
+        {currentStep === 'STEP_1' && (
+          <div className="p-3.5 bg-[#080B11] border border-[#1E2536] rounded-xl space-y-3">
+            {/* Parâmetros compactos da entrada */}
+            <div className="grid grid-cols-3 gap-2 text-xs">
+              <div>
+                <label className="text-[10px] text-slate-400 font-bold block mb-1">Estratégia</label>
+                <select
+                  value={step1Strategy}
+                  onChange={(e) => setStep1Strategy(e.target.value)}
+                  className="w-full bg-[#121620] border border-[#222B3D] rounded-lg px-2 py-1.5 text-xs text-white"
                 >
-                  <RotateCcw className="w-4 h-4 text-orange-400" />
-                  Iniciar Outro Ciclo
+                  {allStrategies.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[10px] text-slate-400 font-bold block mb-1">Ativo</label>
+                <select
+                  value={step1Asset}
+                  onChange={(e) => setStep1Asset(e.target.value)}
+                  className="w-full bg-[#121620] border border-[#222B3D] rounded-lg px-2 py-1.5 text-xs text-white"
+                >
+                  {allAssets.map((a) => (
+                    <option key={a} value={a}>{a}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[10px] text-slate-400 font-bold block mb-1">Payout (%)</label>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    min="50"
+                    max="100"
+                    value={step1Payout}
+                    onChange={(e) => setStep1Payout(parseFloat(e.target.value) || 85)}
+                    className="w-full bg-[#121620] border border-[#222B3D] rounded-lg px-2 py-1.5 text-xs text-white font-mono text-center"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Ação */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 border-t border-[#1E2536]">
+              <div className="font-mono text-xs">
+                <span>Entrada: <strong className="text-white text-sm">{formatCurrency(mgmt.firstEntryAmount)}</strong></span>
+                <span className="text-slate-400 ml-2">(Lucro se WIN: <strong className="text-emerald-400">+{formatCurrency(step1Profit)}</strong>)</span>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => handleExecuteStep1('WIN')}
+                  className="flex-1 sm:flex-initial px-4 py-2 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                >
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  WIN (Ir p/ Soros)
+                </button>
+                <button
+                  onClick={() => handleExecuteStep1('LOSS')}
+                  className="flex-1 sm:flex-initial px-4 py-2 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                >
+                  <XCircle className="w-3.5 h-3.5" />
+                  LOSS (Stop do Dia)
                 </button>
               </div>
+            </div>
+          </div>
+        )}
 
-              {/* Screen Time & Day Registration Card */}
-              <div className="p-5 bg-[#0F0F12] border border-cyan-500/30 rounded-xl space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
-                      <Clock className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-white">Tempo de Tela da Sessão</h4>
-                      <p className="text-xs text-slate-400">
-                        Informe o tempo que levou para bater a meta e registre o dia
-                      </p>
-                    </div>
-                  </div>
+        {/* PASSO 2 (SOROS) */}
+        {currentStep === 'STEP_2' && (
+          <div className="p-3.5 bg-cyan-950/20 border border-cyan-500/40 rounded-xl space-y-3 animate-in fade-in">
+            {/* Parâmetros compactos */}
+            <div className="grid grid-cols-3 gap-2 text-xs">
+              <div>
+                <label className="text-[10px] text-cyan-300 font-bold block mb-1">Estratégia Soros</label>
+                <select
+                  value={step2Strategy}
+                  onChange={(e) => setStep2Strategy(e.target.value)}
+                  className="w-full bg-[#121620] border border-cyan-500/40 rounded-lg px-2 py-1.5 text-xs text-white"
+                >
+                  {allStrategies.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
 
-                  <span className="px-2.5 py-1 rounded bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 font-mono font-bold text-xs">
-                    {formatSecondsToTime(screenTimeSeconds)}
-                  </span>
-                </div>
+              <div>
+                <label className="text-[10px] text-cyan-300 font-bold block mb-1">Ativo</label>
+                <select
+                  value={step2Asset}
+                  onChange={(e) => setStep2Asset(e.target.value)}
+                  className="w-full bg-[#121620] border border-cyan-500/40 rounded-lg px-2 py-1.5 text-xs text-white"
+                >
+                  {allAssets.map((a) => (
+                    <option key={a} value={a}>{a}</option>
+                  ))}
+                </select>
+              </div>
 
-                <ScreenTimePicker
-                  initialSeconds={screenTimeSeconds}
-                  onTimeChange={(sec) => setScreenTimeSeconds(sec)}
+              <div>
+                <label className="text-[10px] text-cyan-300 font-bold block mb-1">Payout (%)</label>
+                <input
+                  type="number"
+                  min="50"
+                  max="100"
+                  value={step2Payout}
+                  onChange={(e) => setStep2Payout(parseFloat(e.target.value) || 85)}
+                  className="w-full bg-[#121620] border border-cyan-500/40 rounded-lg px-2 py-1.5 text-xs text-white font-mono text-center"
                 />
-
-                <div className="flex flex-col sm:flex-row items-center gap-3 pt-1">
-                  <button
-                    id="btn-2x1-save-screentime"
-                    type="button"
-                    onClick={() => {
-                      setDayOperationalTime(getTodayDateString(), screenTimeSeconds);
-                      setDayRegisteredSuccess(true);
-                    }}
-                    className={`w-full sm:flex-1 py-3 px-4 rounded-xl font-black text-xs uppercase tracking-wider text-white shadow-lg transition-all flex items-center justify-center gap-2 ${
-                      dayRegisteredSuccess
-                        ? 'bg-emerald-600 shadow-emerald-950/60'
-                        : 'bg-orange-500 hover:bg-orange-600 shadow-orange-950/50'
-                    }`}
-                  >
-                    {dayRegisteredSuccess ? (
-                      <>
-                        <CheckCircle className="w-4 h-4" />
-                        Dia e Tempo de Tela Registrados com Sucesso!
-                      </>
-                    ) : (
-                      <>
-                        <Save className="w-4 h-4" />
-                        Registrar Tempo de Tela e Salvar Dia
-                      </>
-                    )}
-                  </button>
-                </div>
               </div>
             </div>
-          )}
-        </div>
+
+            {/* Ação */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 border-t border-cyan-500/30">
+              <div className="font-mono text-xs">
+                <span>Entrada Soros: <strong className="text-cyan-300 text-sm">{formatCurrency(step2EntryAmount)}</strong></span>
+                <span className="text-slate-400 ml-2">(Meta se WIN: <strong className="text-emerald-400">+{formatCurrency(totalDynamicTargetProfit)}</strong>)</span>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => handleExecuteStep2('WIN')}
+                  className="flex-1 sm:flex-initial px-4 py-2 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  WIN (Meta 2x0 Batida!)
+                </button>
+                <button
+                  onClick={() => handleExecuteStep2('LOSS')}
+                  className="flex-1 sm:flex-initial px-4 py-2 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                >
+                  <XCircle className="w-3.5 h-3.5" />
+                  LOSS (Stop Diário)
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* CICLO FINALIZADO */}
+        {currentStep === 'CYCLE_FINISHED' && (
+          <div className="space-y-3 animate-in fade-in">
+            <div
+              className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 ${
+                cycleResult === '2x0_WIN'
+                  ? 'bg-emerald-950/20 border-emerald-500/40'
+                  : 'bg-rose-950/20 border-rose-500/40'
+              }`}
+            >
+              <div>
+                <span className={`text-xs font-bold uppercase block ${cycleResult === '2x0_WIN' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {cycleResult === '2x0_WIN' ? '🏆 Meta 2x0 Batida com Sucesso!' : '⚠️ Stop Loss Diário Atingido'}
+                </span>
+                <div className={`text-lg font-black font-mono ${cycleResult === '2x0_WIN' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {profitGenerated >= 0 ? `+${formatCurrency(profitGenerated)}` : formatCurrency(profitGenerated)}
+                </div>
+              </div>
+
+              <button
+                onClick={handleResetCycle}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#151922] text-slate-300 border border-[#222B3D] hover:text-white flex items-center gap-1.5"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-orange-400" />
+                Novo Ciclo
+              </button>
+            </div>
+
+            {/* Tempo de Tela e Salvar Dia */}
+            <div className="p-3.5 bg-[#080B11] border border-[#1E2536] rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-cyan-400" />
+                <span className="text-xs text-slate-300">Tempo de Tela: <strong className="text-cyan-300 font-mono">{formatSecondsToTime(screenTimeSeconds)}</strong></span>
+              </div>
+
+              <button
+                onClick={() => {
+                  setDayOperationalTime(getTodayDateString(), screenTimeSeconds);
+                  setDayRegisteredSuccess(true);
+                }}
+                className={`w-full sm:w-auto px-4 py-2 rounded-lg text-xs font-bold text-white transition-all flex items-center justify-center gap-1.5 ${
+                  dayRegisteredSuccess ? 'bg-emerald-600' : 'bg-orange-500 hover:bg-orange-600'
+                }`}
+              >
+                <Save className="w-3.5 h-3.5" />
+                {dayRegisteredSuccess ? 'Dia Registrado!' : 'Salvar Dia no Diário'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
