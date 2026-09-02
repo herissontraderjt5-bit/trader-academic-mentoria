@@ -596,8 +596,13 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
     { name: "Fluxo de Ordens", icon: Zap, valid: true },
   ];
 
-  const validConfluencesCount = signalStatus === "REJECTED" ? 3 : confluences.length;
-  const confidenceScore = signalStatus === "REJECTED" ? 64 : (analysis.confidenceScore || 90);
+  const isRejected = decision === "REJECTED" || analysis.direction === "NEUTRAL";
+  const isConfirmed = decision === "CONFIRMED" && !isRejected;
+  const isAuditing = decision === "PENDING" && secondsRemaining <= decisionThreshold && secondsRemaining > 0 && !isRejected;
+  const isPreWaiting = decision === "PENDING" && secondsRemaining > decisionThreshold && !isRejected;
+
+  const validConfluencesCount = isRejected ? (analysis.detectedPatterns?.length || 3) : confluences.length;
+  const confidenceScore = isRejected ? (analysis.confidenceScore || 50) : (analysis.confidenceScore || 90);
 
   const getExpirationLabel = () => {
     const tf = timeframe.toLowerCase();
@@ -608,11 +613,6 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
     if (tf.includes("1h") || tf === "60" || tf === "1h") return "H1 (1 Hora)";
     return analysis.timeframeExpiry || `${timeframe.toUpperCase()}`;
   };
-
-  const isPreWaiting = signalStatus === "PRE_WAITING";
-  const isAuditing = signalStatus === "AUDITING_10S";
-  const isConfirmed = signalStatus === "CONFIRMED";
-  const isRejected = signalStatus === "REJECTED";
 
   return (
     <div
