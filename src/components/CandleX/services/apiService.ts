@@ -50,9 +50,9 @@ function aggregateCandles(candles: Candle[], multiplier: number): Candle[] {
   return aggregated;
 }
 
-// Direct public Binance / Bybit fetches in frontend (CORS-friendly)
 async function fetchPublicCandles(ticker: string, interval: string, limit: number): Promise<Candle[] | null> {
-  const isCustomTimeframe = interval === "2m";
+  const lowerTf = (interval || "1m").toLowerCase();
+  const isCustomTimeframe = lowerTf.includes("2m") || lowerTf === "2" || lowerTf === "2min";
   const fetchInterval = isCustomTimeframe ? "1m" : interval;
   const fetchLimit = isCustomTimeframe ? limit * 2 + 10 : limit;
 

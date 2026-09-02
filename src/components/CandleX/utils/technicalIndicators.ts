@@ -84,21 +84,36 @@ export function getCandleTimeRemaining(customDate?: Date, timeframe: string = "1
   let elapsedSeconds = totalSecondsOfCurrentMinute;
   let totalRemaining = 60 - totalSecondsOfCurrentMinute;
 
-  if (tf.includes("5m") || tf === "5" || tf === "m5") {
-    candleLengthMs = 300 * 1000;
+  if (tf.includes("1h") || tf === "60" || tf === "m60" || tf === "60m") {
+    candleLengthMs = 3600 * 1000;
     const minutes = now.getMinutes();
-    elapsedSeconds = (minutes % 5) * 60 + totalSecondsOfCurrentMinute;
-    totalRemaining = 300 - elapsedSeconds;
-  } else if (tf.includes("2m") || tf === "2" || tf === "m2") {
-    candleLengthMs = 120 * 1000;
+    elapsedSeconds = minutes * 60 + totalSecondsOfCurrentMinute;
+    totalRemaining = 3600 - elapsedSeconds;
+  } else if (tf.includes("30m") || tf === "30" || tf === "m30") {
+    candleLengthMs = 1800 * 1000;
     const minutes = now.getMinutes();
-    elapsedSeconds = (minutes % 2) * 60 + totalSecondsOfCurrentMinute;
-    totalRemaining = 120 - elapsedSeconds;
+    elapsedSeconds = (minutes % 30) * 60 + totalSecondsOfCurrentMinute;
+    totalRemaining = 1800 - elapsedSeconds;
   } else if (tf.includes("15m") || tf === "15" || tf === "m15") {
     candleLengthMs = 900 * 1000;
     const minutes = now.getMinutes();
     elapsedSeconds = (minutes % 15) * 60 + totalSecondsOfCurrentMinute;
     totalRemaining = 900 - elapsedSeconds;
+  } else if (tf.includes("5m") || tf === "5" || tf === "m5") {
+    candleLengthMs = 300 * 1000;
+    const minutes = now.getMinutes();
+    elapsedSeconds = (minutes % 5) * 60 + totalSecondsOfCurrentMinute;
+    totalRemaining = 300 - elapsedSeconds;
+  } else if (tf.includes("3m") || tf === "3" || tf === "m3") {
+    candleLengthMs = 180 * 1000;
+    const minutes = now.getMinutes();
+    elapsedSeconds = (minutes % 3) * 60 + totalSecondsOfCurrentMinute;
+    totalRemaining = 180 - elapsedSeconds;
+  } else if (tf.includes("2m") || tf === "2" || tf === "m2") {
+    candleLengthMs = 120 * 1000;
+    const minutes = now.getMinutes();
+    elapsedSeconds = (minutes % 2) * 60 + totalSecondsOfCurrentMinute;
+    totalRemaining = 120 - elapsedSeconds;
   }
 
   const remainingSeconds = Math.max(0, Math.ceil(totalRemaining));

@@ -847,9 +847,7 @@ export default function CandleXWorkstation({
     const nextTrades = trades.map((t) => {
       if (t.result !== "PENDING") return t;
 
-      const isM5 = t.expiryMinutes === 5;
-      const isM2 = t.expiryMinutes === 2;
-      const stepMs = isM5 ? 300000 : (isM2 ? 120000 : 60000);
+      const stepMs = Math.max(1, t.expiryMinutes || 1) * 60000;
 
       // FIX: Only resolve AFTER the trade duration has finished
       const expiryTimestamp = t.timestamp + (t.expiryMinutes * 60 * 1000);
@@ -860,29 +858,32 @@ export default function CandleXWorkstation({
       // Calculate start time of entry candle
       const entryCandleStartMs = Math.floor(t.timestamp / stepMs) * stepMs;
       const entryCandleTimeSecs = entryCandleStartMs / 1000;
+      const stepSecs = stepMs / 1000;
 
-      // Find if this candle exists in loaded candles
+      // Find if this operational candle exists in loaded candles
       let candle = candles.find((c) => c.time === entryCandleTimeSecs);
       if (!candle) {
-        candle = candles.find((c) => Math.abs(c.time - entryCandleTimeSecs) < (stepMs / 1000));
+        candle = candles.find((c) => Math.abs(c.time - entryCandleTimeSecs) < (stepSecs / 2));
       }
       if (!candle && candles.length > 0) {
-        candle = candles[candles.length - 1];
+        const pastCandles = candles.filter((c) => c.time <= entryCandleTimeSecs);
+        candle = pastCandles.length > 0 ? pastCandles[pastCandles.length - 1] : candles[candles.length - 1];
       }
 
       if (candle) {
         const entryPrice = t.entryPrice || candle.open;
         const expiryPrice = candle.close;
+        const priceDiff = +(expiryPrice - entryPrice).toFixed(6);
 
         let outcome: "WIN" | "LOSS" | "DRAW" = "DRAW";
-        if (t.direction === "CALL") {
-          if (expiryPrice > entryPrice) outcome = "WIN";
-          else if (expiryPrice < entryPrice) outcome = "LOSS";
-          else outcome = "DRAW";
+        if (Math.abs(priceDiff) <= 0.000001) {
+          outcome = "DRAW";
+        } else if (t.direction === "CALL") {
+          // COMPRA (CALL): Win se preço final for maior que a entrada (subiu / verde)
+          outcome = expiryPrice > entryPrice ? "WIN" : "LOSS";
         } else { // PUT
-          if (expiryPrice < entryPrice) outcome = "WIN";
-          else if (expiryPrice > entryPrice) outcome = "LOSS";
-          else outcome = "DRAW";
+          // VENDA (PUT): Win se preço final for menor que a entrada (caiu / vermelha)
+          outcome = expiryPrice < entryPrice ? "WIN" : "LOSS";
         }
 
         let pnl = 0;

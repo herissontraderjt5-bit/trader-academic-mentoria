@@ -172,11 +172,11 @@ ${confluencesList}
           <label className="text-xs uppercase font-extrabold tracking-wider text-slate-300">
             TIMEFRAME
           </label>
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-4 gap-1">
             <button
               type="button"
               onClick={() => onChangeTimeframe("1m")}
-              className={`py-2 px-1 rounded-xl text-xs font-bold font-mono transition-all duration-200 cursor-pointer ${
+              className={`py-2 px-0.5 rounded-xl text-[11px] font-bold font-mono transition-all duration-200 cursor-pointer ${
                 timeframe === "1m" || timeframe === "1MIN"
                   ? "bg-[#181D26] text-[#FF7A00] border-2 border-[#FF7A00] shadow-[0_0_15px_rgba(255,122,0,0.3)] font-black"
                   : "bg-[#12161F] text-slate-300 border border-[#1E2638] hover:border-slate-500 hover:text-white"
@@ -187,7 +187,7 @@ ${confluencesList}
             <button
               type="button"
               onClick={() => onChangeTimeframe("2m")}
-              className={`py-2 px-1 rounded-xl text-xs font-bold font-mono transition-all duration-200 cursor-pointer ${
+              className={`py-2 px-0.5 rounded-xl text-[11px] font-bold font-mono transition-all duration-200 cursor-pointer ${
                 timeframe === "2m" || timeframe === "2MIN"
                   ? "bg-[#181D26] text-[#FF7A00] border-2 border-[#FF7A00] shadow-[0_0_15px_rgba(255,122,0,0.3)] font-black"
                   : "bg-[#12161F] text-slate-300 border border-[#1E2638] hover:border-slate-500 hover:text-white"
@@ -197,8 +197,19 @@ ${confluencesList}
             </button>
             <button
               type="button"
+              onClick={() => onChangeTimeframe("3m")}
+              className={`py-2 px-0.5 rounded-xl text-[11px] font-bold font-mono transition-all duration-200 cursor-pointer ${
+                timeframe === "3m" || timeframe === "3MIN"
+                  ? "bg-[#181D26] text-[#FF7A00] border-2 border-[#FF7A00] shadow-[0_0_15px_rgba(255,122,0,0.3)] font-black"
+                  : "bg-[#12161F] text-slate-300 border border-[#1E2638] hover:border-slate-500 hover:text-white"
+              }`}
+            >
+              3 MIN
+            </button>
+            <button
+              type="button"
               onClick={() => onChangeTimeframe("5m")}
-              className={`py-2 px-1 rounded-xl text-xs font-bold font-mono transition-all duration-200 cursor-pointer ${
+              className={`py-2 px-0.5 rounded-xl text-[11px] font-bold font-mono transition-all duration-200 cursor-pointer ${
                 timeframe === "5m" || timeframe === "5MIN"
                   ? "bg-[#181D26] text-[#FF7A00] border-2 border-[#FF7A00] shadow-[0_0_15px_rgba(255,122,0,0.3)] font-black"
                   : "bg-[#12161F] text-slate-300 border border-[#1E2638] hover:border-slate-500 hover:text-white"
