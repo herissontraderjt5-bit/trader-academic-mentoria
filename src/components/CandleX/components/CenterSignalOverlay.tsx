@@ -267,148 +267,157 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
     }
 
     if (secondsRemaining <= decisionThreshold && secondsRemaining > 0) {
-      hasAnnouncedDecisionRef.current = true;
-      lastDecisionCandleStartRef.current = currentCandleStart;
+      try {
+        hasAnnouncedDecisionRef.current = true;
+        lastDecisionCandleStartRef.current = currentCandleStart;
 
-      // 1. QUADRANT COLOR ALTERNATION CHECK (Filtro Choppy / Xadrez)
-      const recentLast5 = candles.slice(-5);
-      let colorFlips = 0;
-      const colorsArray = recentLast5.map((c) => (c.close >= c.open ? "G" : "R"));
-      for (let i = 1; i < colorsArray.length; i++) {
-        if (colorsArray[i] !== colorsArray[i - 1]) colorFlips++;
-      }
-      const isCandleQuadrant = recentLast5.length >= 4 && colorFlips >= 3;
-      const hasQuadrantWarning = patterns.some((p) =>
-        p.toLowerCase().includes("quadrante") ||
-        p.toLowerCase().includes("anti-loss") ||
-        p.toLowerCase().includes("sem fluxo") ||
-        p.toLowerCase().includes("choppy")
-      );
+        const rsi = indicators?.rsi ?? 50;
+        const trend = indicators?.trend ?? "ALTA";
+        const patterns = analysis.detectedPatterns || [];
+        const confluenceCount = patterns.length;
 
-      if (indicators?.isAlternatingQuadrant || isCandleQuadrant || hasQuadrantWarning) {
-        setDecision("REJECTED");
-        setResolvedDir("NEUTRAL");
-        setRejectionReason("Filtro Anti-Loss Ativado: Quadrante de cores alternadas (mercado xadrez sem fluxo direcional). Entrada cancelada para proteger seu capital contra falso rompimento.");
-        soundManager.playRejectAlert();
-        soundManager.speakAlert("Sinal cancelado: Quadrante de cores alternadas detectado");
-        return;
-      }
+        // 1. QUADRANT COLOR ALTERNATION CHECK (Filtro Choppy / Xadrez)
+        const recentLast5 = candles.slice(-5);
+        let colorFlips = 0;
+        const colorsArray = recentLast5.map((c) => (c.close >= c.open ? "G" : "R"));
+        for (let i = 1; i < colorsArray.length; i++) {
+          if (colorsArray[i] !== colorsArray[i - 1]) colorFlips++;
+        }
+        const isCandleQuadrant = recentLast5.length >= 4 && colorFlips >= 3;
+        const hasQuadrantWarning = patterns.some((p) =>
+          p.toLowerCase().includes("quadrante") ||
+          p.toLowerCase().includes("anti-loss") ||
+          p.toLowerCase().includes("sem fluxo") ||
+          p.toLowerCase().includes("choppy")
+        );
 
-      // 2. NEUTRAL DIRECTION / NO DEFINED FLOW CHECK
-      if (analysis.direction === "NEUTRAL") {
-        setDecision("REJECTED");
-        setResolvedDir("NEUTRAL");
-        setRejectionReason(analysis.rationale || "Mercado sem fluxo institucional definido (Aguardar Fluxo). Entrada cancelada pela IA.");
-        soundManager.playRejectAlert();
-        soundManager.speakAlert("Sinal cancelado: Aguardar fluxo direcional");
-        return;
-      }
-
-      const dir = analysis.direction;
-      const confidence = analysis.confidenceScore || 0;
-
-      // 3. STRICT ACCURACY CHECK (Exigência >= 80%)
-      if (confidence < 80) {
-        setDecision("REJECTED");
-        setResolvedDir(dir);
-        setRejectionReason(`Assertividade insuficiente (${confidence}% < 80%). O CandleX exige no mínimo 80% de assertividade institucional para validar a entrada com segurança.`);
-        soundManager.playRejectAlert();
-        soundManager.speakAlert("Sinal cancelado: Assertividade abaixo de 80%");
-        return;
-      }
-
-      // 4. DIVERGENCE CHECKS (Zero Divergência Permitida)
-      const isCall = dir === "CALL";
-      const isPut = dir === "PUT";
-
-      // 4.1. Trend Divergence
-      if ((isCall && trend === "BAIXA") || (isPut && trend === "ALTA")) {
-        setDecision("REJECTED");
-        setResolvedDir(dir);
-        setRejectionReason(`Divergência de Tendência: Tentativa de ${isCall ? "COMPRA" : "VENDA"} contra a tendência principal de ${trend}. Sinal cancelado.`);
-        soundManager.playRejectAlert();
-        soundManager.speakAlert("Sinal cancelado por divergência contra a tendência");
-        return;
-      }
-
-      // 4.2. RSI Extreme Divergence
-      if (isCall && rsi > 75) {
-        setDecision("REJECTED");
-        setResolvedDir(dir);
-        setRejectionReason(`Divergência RSI: Sobrecarga compradora extrema (RSI: ${rsi.toFixed(1)} > 75). Risco de exaustão e retração contrária.`);
-        soundManager.playRejectAlert();
-        soundManager.speakAlert("Entrada rejeitada: RSI em sobrecompra extrema");
-        return;
-      }
-
-      if (isPut && rsi < 25) {
-        setDecision("REJECTED");
-        setResolvedDir(dir);
-        setRejectionReason(`Divergência RSI: Sobrecarga vendedora extrema (RSI: ${rsi.toFixed(1)} < 25). Risco de repique e retração contrária.`);
-        soundManager.playRejectAlert();
-        soundManager.speakAlert("Entrada rejeitada: RSI em sobrevenda extrema");
-        return;
-      }
-
-      // 4.3. EMA Moving Average Cross Divergence
-      if (indicators?.ema9 !== undefined && indicators?.ema20 !== undefined) {
-        if (isCall && indicators.ema9 < indicators.ema20) {
+        if (indicators?.isAlternatingQuadrant || isCandleQuadrant || hasQuadrantWarning) {
           setDecision("REJECTED");
-          setResolvedDir(dir);
-          setRejectionReason(`Divergência de Médias: EMA 9 ($${indicators.ema9.toFixed(2)}) abaixo da EMA 20 ($${indicators.ema20.toFixed(2)}) em sinal de compra.`);
+          setResolvedDir("NEUTRAL");
+          setRejectionReason("Filtro Anti-Loss Ativado: Quadrante de cores alternadas (mercado xadrez sem fluxo direcional). Entrada cancelada para proteger seu capital contra falso rompimento.");
           soundManager.playRejectAlert();
-          soundManager.speakAlert("Sinal cancelado por divergência de médias móveis");
+          soundManager.speakAlert("Sinal cancelado: Quadrante de cores alternadas detectado");
           return;
         }
-        if (isPut && indicators.ema9 > indicators.ema20) {
-          setDecision("REJECTED");
-          setResolvedDir(dir);
-          setRejectionReason(`Divergência de Médias: EMA 9 ($${indicators.ema9.toFixed(2)}) acima da EMA 20 ($${indicators.ema20.toFixed(2)}) em sinal de venda.`);
-          soundManager.playRejectAlert();
-          soundManager.speakAlert("Sinal cancelado por divergência de médias móveis");
-          return;
-        }
-      }
 
-      // 4.4. MACD Momentum Divergence
-      if (indicators?.macdHist !== undefined) {
-        if (isCall && indicators.macdHist < -0.0001) {
+        // 2. NEUTRAL DIRECTION / NO DEFINED FLOW CHECK
+        if (analysis.direction === "NEUTRAL") {
           setDecision("REJECTED");
-          setResolvedDir(dir);
-          setRejectionReason(`Divergência MACD: Histograma com pressão vendedora em tentativa de compra.`);
+          setResolvedDir("NEUTRAL");
+          setRejectionReason(analysis.rationale || "Mercado sem fluxo institucional definido (Aguardar Fluxo). Entrada cancelada pela IA.");
           soundManager.playRejectAlert();
-          soundManager.speakAlert("Sinal cancelado por divergência no MACD");
+          soundManager.speakAlert("Sinal cancelado: Aguardar fluxo direcional");
           return;
         }
-        if (isPut && indicators.macdHist > 0.0001) {
-          setDecision("REJECTED");
-          setResolvedDir(dir);
-          setRejectionReason(`Divergência MACD: Histograma com pressão compradora em tentativa de venda.`);
-          soundManager.playRejectAlert();
-          soundManager.speakAlert("Sinal cancelado por divergência no MACD");
-          return;
-        }
-      }
 
-      // 5. STRICT 4-CONFLUENCE MINIMUM RULE
-      if (confluenceCount < 4) {
-        setDecision("REJECTED");
+        const dir = analysis.direction;
+        const confidence = analysis.confidenceScore || 0;
+
+        // 3. STRICT ACCURACY CHECK (Exigência >= 80%)
+        if (confidence < 80) {
+          setDecision("REJECTED");
+          setResolvedDir(dir);
+          setRejectionReason(`Assertividade insuficiente (${confidence}% < 80%). O CandleX exige no mínimo 80% de assertividade institucional para validar a entrada com segurança.`);
+          soundManager.playRejectAlert();
+          soundManager.speakAlert("Sinal cancelado: Assertividade abaixo de 80%");
+          return;
+        }
+
+        // 4. DIVERGENCE CHECKS (Zero Divergência Permitida)
+        const isCall = dir === "CALL";
+        const isPut = dir === "PUT";
+
+        // 4.1. Trend Divergence
+        if ((isCall && trend === "BAIXA") || (isPut && trend === "ALTA")) {
+          setDecision("REJECTED");
+          setResolvedDir(dir);
+          setRejectionReason(`Divergência de Tendência: Tentativa de ${isCall ? "COMPRA" : "VENDA"} contra a tendência principal de ${trend}. Sinal cancelado.`);
+          soundManager.playRejectAlert();
+          soundManager.speakAlert("Sinal cancelado por divergência contra a tendência");
+          return;
+        }
+
+        // 4.2. RSI Extreme Divergence
+        if (isCall && rsi > 75) {
+          setDecision("REJECTED");
+          setResolvedDir(dir);
+          setRejectionReason(`Divergência RSI: Sobrecarga compradora extrema (RSI: ${rsi.toFixed(1)} > 75). Risco de exaustão e retração contrária.`);
+          soundManager.playRejectAlert();
+          soundManager.speakAlert("Entrada rejeitada: RSI em sobrecompra extrema");
+          return;
+        }
+
+        if (isPut && rsi < 25) {
+          setDecision("REJECTED");
+          setResolvedDir(dir);
+          setRejectionReason(`Divergência RSI: Sobrecarga vendedora extrema (RSI: ${rsi.toFixed(1)} < 25). Risco de repique e retração contrária.`);
+          soundManager.playRejectAlert();
+          soundManager.speakAlert("Entrada rejeitada: RSI em sobrevenda extrema");
+          return;
+        }
+
+        // 4.3. EMA Moving Average Cross Divergence
+        if (indicators?.ema9 !== undefined && indicators?.ema20 !== undefined) {
+          if (isCall && indicators.ema9 < indicators.ema20) {
+            setDecision("REJECTED");
+            setResolvedDir(dir);
+            setRejectionReason(`Divergência de Médias: EMA 9 ($${indicators.ema9.toFixed(2)}) abaixo da EMA 20 ($${indicators.ema20.toFixed(2)}) em sinal de compra.`);
+            soundManager.playRejectAlert();
+            soundManager.speakAlert("Sinal cancelado por divergência de médias móveis");
+            return;
+          }
+          if (isPut && indicators.ema9 > indicators.ema20) {
+            setDecision("REJECTED");
+            setResolvedDir(dir);
+            setRejectionReason(`Divergência de Médias: EMA 9 ($${indicators.ema9.toFixed(2)}) acima da EMA 20 ($${indicators.ema20.toFixed(2)}) em sinal de venda.`);
+            soundManager.playRejectAlert();
+            soundManager.speakAlert("Sinal cancelado por divergência de médias móveis");
+            return;
+          }
+        }
+
+        // 4.4. MACD Momentum Divergence
+        if (indicators?.macdHist !== undefined) {
+          if (isCall && indicators.macdHist < -0.0001) {
+            setDecision("REJECTED");
+            setResolvedDir(dir);
+            setRejectionReason(`Divergência MACD: Histograma com pressão vendedora em tentativa de compra.`);
+            soundManager.playRejectAlert();
+            soundManager.speakAlert("Sinal cancelado por divergência no MACD");
+            return;
+          }
+          if (isPut && indicators.macdHist > 0.0001) {
+            setDecision("REJECTED");
+            setResolvedDir(dir);
+            setRejectionReason(`Divergência MACD: Histograma com pressão compradora em tentativa de venda.`);
+            soundManager.playRejectAlert();
+            soundManager.speakAlert("Sinal cancelado por divergência no MACD");
+            return;
+          }
+        }
+
+        // 5. STRICT 4-CONFLUENCE MINIMUM RULE
+        if (confluenceCount < 4) {
+          setDecision("REJECTED");
+          setResolvedDir(dir);
+          setRejectionReason(`Filtro Anti-Loss Ativado: Apenas ${confluenceCount} confluência(s) institucional(is) detectada(s). O CandleX exige no mínimo 4 confluências sem divergências.`);
+          soundManager.playRejectAlert();
+          soundManager.speakAlert("Sinal cancelado por confluências insuficientes");
+          return;
+        }
+
+        // All filters passed -> CONFIRM SIGNAL!
+        setDecision("CONFIRMED");
         setResolvedDir(dir);
-        setRejectionReason(`Filtro Anti-Loss Ativado: Apenas ${confluenceCount} confluência(s) institucional(is) detectada(s). O CandleX exige no mínimo 4 confluências sem divergências.`);
-        soundManager.playRejectAlert();
-        soundManager.speakAlert("Sinal cancelado por confluências insuficientes");
-        return;
-      }
-
-      // All filters passed -> CONFIRM SIGNAL!
-      setDecision("CONFIRMED");
-      setResolvedDir(dir);
-      if (dir === "CALL") {
-        soundManager.playCallAlert();
-        soundManager.speakAlert(`Sinal confirmado: COMPRA em ${activeTicker}`);
-      } else {
-        soundManager.playPutAlert();
-        soundManager.speakAlert(`Sinal confirmado: VENDA em ${activeTicker}`);
+        if (dir === "CALL") {
+          soundManager.playCallAlert();
+          soundManager.speakAlert(`Sinal confirmado: COMPRA em ${activeTicker}`);
+        } else {
+          soundManager.playPutAlert();
+          soundManager.speakAlert(`Sinal confirmado: VENDA em ${activeTicker}`);
+        }
+      } catch (err) {
+        console.error("Erro na auditoria de decisão do sinal:", err);
       }
     }
   }, [
