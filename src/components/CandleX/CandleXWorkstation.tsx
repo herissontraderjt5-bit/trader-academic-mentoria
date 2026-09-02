@@ -636,7 +636,6 @@ export default function CandleXWorkstation({
     if (prevSelectionRef.current !== currentKey) {
       prevSelectionRef.current = currentKey;
       setAiAnalysis(null);
-      setCenterSignal(null);
       lastAnalysisTimeRef.current = 0;
 
       candlexApiService.getCandles(activeTicker, timeframe, 60).then((data) => {
