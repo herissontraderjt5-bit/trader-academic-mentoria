@@ -460,6 +460,10 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
     decision,
   ]);
 
+  const signalTradeId = useMemo(() => {
+    return `candlex_sig_${analysis?.timestamp || signalCandleStart}`;
+  }, [analysis?.timestamp, signalCandleStart]);
+
   // Lock entry price and register pending trade when entry candle starts
   useEffect(() => {
     if (!analysis || isAnalyzing || !isVisible || decision !== "CONFIRMED") return;
@@ -477,7 +481,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         const stakeAmount = bankrollConfig?.initialBalance ? +(bankrollConfig.initialBalance * 0.01).toFixed(2) : 10;
         
         const pendingTrade: TradeRecord = {
-          id: `candlex_sig_${Date.now()}`,
+          id: signalTradeId,
           timestamp: entryDate.getTime(),
           ticker: activeTicker,
           direction: resolvedDirection === "CALL" ? "CALL" : "PUT",
@@ -494,7 +498,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         onSaveSignalTrade(pendingTrade);
       }
     }
-  }, [currentTime, entryDate, decision, analysis, isAnalyzing, isVisible, candles, activeTicker, resolvedDirection, timeframe, bankrollConfig, onSaveSignalTrade, entryTimeStr]);
+  }, [currentTime, entryDate, decision, analysis, isAnalyzing, isVisible, candles, activeTicker, resolvedDirection, timeframe, bankrollConfig, onSaveSignalTrade, entryTimeStr, signalTradeId]);
 
   // AUTOMATIC OUTCOME RESOLUTION (WIN / LOSS / DOJI) WHEN EXPIRY TIME IS REACHED
   useEffect(() => {
@@ -551,7 +555,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         const pnl = outcome === "WIN" ? +((stakeAmount * payout) / 100).toFixed(2) : outcome === "LOSS" ? -stakeAmount : 0;
 
         const finalizedTrade: TradeRecord = {
-          id: `candlex_sig_${analysis.timestamp || Date.now()}`,
+          id: signalTradeId,
           timestamp: entryDate.getTime(),
           ticker: activeTicker,
           direction: resolvedDirection === "CALL" ? "CALL" : "PUT",
@@ -584,6 +588,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
     bankrollConfig,
     entryDate,
     onSaveSignalTrade,
+    signalTradeId,
   ]);
 
   // Keep rejected modal visible so the trader can read the reason and decide next action (no auto-blackout)

@@ -676,18 +676,22 @@ export default function CandleXWorkstation({
     tradeData: TradeRecord
   ) => {
     const tradeId = tradeData.id;
-    const existingIndex = trades.findIndex((t) => t.id === tradeId);
+    const existingIndex = trades.findIndex(
+      (t) => t.id === tradeId || (t.ticker === tradeData.ticker && Math.abs(t.timestamp - tradeData.timestamp) < 15000 && t.direction === tradeData.direction)
+    );
+    const existingTrade = existingIndex !== -1 ? trades[existingIndex] : null;
     let updatedTrades: TradeRecord[];
 
     if (existingIndex !== -1) {
-      updatedTrades = trades.map((t) => (t.id === tradeId ? tradeData : t));
+      updatedTrades = trades.map((t, idx) => (idx === existingIndex ? { ...t, ...tradeData } : t));
     } else {
       updatedTrades = [tradeData, ...trades];
     }
     setTrades(updatedTrades);
 
-    // Only modify bankroll balance if result is finalized (WIN or LOSS)
-    if (tradeData.result === "WIN" || tradeData.result === "LOSS") {
+    // Only modify bankroll balance if result is finalized (WIN or LOSS) and was NOT already finalized
+    const wasAlreadyFinalized = existingTrade && (existingTrade.result === "WIN" || existingTrade.result === "LOSS" || existingTrade.result === "DRAW");
+    if (!wasAlreadyFinalized && (tradeData.result === "WIN" || tradeData.result === "LOSS")) {
       let nextBalance = bankrollConfig.currentBalance;
       if (tradeData.result === "WIN") {
         nextBalance = +(nextBalance + tradeData.pnl).toFixed(2);
