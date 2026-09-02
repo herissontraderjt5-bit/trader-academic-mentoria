@@ -1433,6 +1433,8 @@ export default function CandleXWorkstation({
             currentPrice={currentPrice}
             onOpenOperations={() => setIsOperationsOpen(true)}
             tradesCount={trades.length}
+            winsCount={trades.filter((t) => t.result === "WIN").length}
+            lossesCount={trades.filter((t) => t.result === "LOSS").length}
           />
         </div>
 
