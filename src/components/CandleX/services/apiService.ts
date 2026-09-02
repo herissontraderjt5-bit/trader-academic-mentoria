@@ -243,17 +243,24 @@ export function generateAlgorithmicAnalysis(
   }
 
   // 1. STRICT INSTITUTIONAL TREND IDENTIFICATION
-  let trend = fullIndicators.trend || "LATERAL";
-  const isBullishTrend = (ema9 > ema20 && currentPrice >= ema20) || (currentPrice >= sma50 && ema9 >= ema20);
-  const isBearishTrend = (ema9 < ema20 && currentPrice <= ema20) || (currentPrice <= sma50 && ema9 <= ema20);
+  const recent6 = candles.slice(-6);
+  const greenCount = recent6.filter((c) => c.close >= c.open).length;
+  const redCount = recent6.filter((c) => c.close < c.open).length;
+  const isLastCandleGreen = lastCandle.close >= lastCandle.open;
+  const isLastCandleRed = lastCandle.close < lastCandle.open;
 
-  if (isBullishTrend) {
+  let trend: "ALTA" | "BAIXA" | "LATERAL" = "LATERAL";
+  if (ema9 > ema20 && (currentPrice >= ema20 || isLastCandleGreen)) {
     trend = "ALTA";
-  } else if (isBearishTrend) {
+  } else if (ema9 < ema20 && (currentPrice <= ema20 || isLastCandleRed)) {
     trend = "BAIXA";
-  } else if (currentPrice > sma50) {
+  } else if (greenCount >= 4) {
     trend = "ALTA";
-  } else if (currentPrice < sma50) {
+  } else if (redCount >= 4) {
+    trend = "BAIXA";
+  } else if (currentPrice >= sma50) {
+    trend = "ALTA";
+  } else {
     trend = "BAIXA";
   }
 
@@ -409,47 +416,11 @@ export function generateAlgorithmicAnalysis(
   }
 
   // 3. DETERMINISTIC DIRECTION & CONFLUENCE SELECTION
-  let direction: "CALL" | "PUT" = "CALL";
-  let detectedPatterns: string[] = [];
-
-  const callCount = callConfluences.length;
-  const putCount = putConfluences.length;
-
-  if (trend === "ALTA") {
-    if (callCount >= 2 && callCount >= putCount) {
-      direction = "CALL";
-      detectedPatterns = Array.from(new Set(callConfluences));
-    } else if (putCount >= 4 && putCount > callCount) {
-      direction = "PUT";
-      detectedPatterns = Array.from(new Set(putConfluences));
-    } else {
-      direction = "CALL";
-      detectedPatterns = Array.from(new Set(callConfluences));
-    }
-  } else if (trend === "BAIXA") {
-    if (putCount >= 2 && putCount >= callCount) {
-      direction = "PUT";
-      detectedPatterns = Array.from(new Set(putConfluences));
-    } else if (callCount >= 4 && callCount > putCount) {
-      direction = "CALL";
-      detectedPatterns = Array.from(new Set(callConfluences));
-    } else {
-      direction = "PUT";
-      detectedPatterns = Array.from(new Set(putConfluences));
-    }
-  } else {
-    // Lateral
-    if (callCount > putCount) {
-      direction = "CALL";
-      detectedPatterns = Array.from(new Set(callConfluences));
-    } else {
-      direction = "PUT";
-      detectedPatterns = Array.from(new Set(putConfluences));
-    }
-  }
-
-  const isLastCandleGreen = lastCandle.close >= lastCandle.open;
-  const isLastCandleRed = lastCandle.close < lastCandle.open;
+  // The direction corresponds directly to current candle color and flow
+  let direction: "CALL" | "PUT" = isLastCandleGreen ? "CALL" : "PUT";
+  let detectedPatterns: string[] = isLastCandleGreen
+    ? Array.from(new Set(callConfluences))
+    : Array.from(new Set(putConfluences));
 
   const timeframeLabel = tf.includes("5m") || tf === "5"
     ? "M5 (5 Minutos)"

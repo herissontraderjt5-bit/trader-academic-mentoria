@@ -149,17 +149,24 @@ function generateAlgorithmicAnalysis(ticker, timeframe, candles, indicators = {}
   }
 
   // 1. STRICT INSTITUTIONAL TREND IDENTIFICATION
-  let trend = indicators?.trend || "LATERAL";
-  const isBullishTrend = (ema9 > ema20 && currentPrice >= ema20) || (currentPrice >= sma50 && ema9 >= ema20);
-  const isBearishTrend = (ema9 < ema20 && currentPrice <= ema20) || (currentPrice <= sma50 && ema9 <= ema20);
+  const recent6 = candles.slice(-6);
+  const greenCount = recent6.filter((c) => c.close >= c.open).length;
+  const redCount = recent6.filter((c) => c.close < c.open).length;
+  const isLastCandleGreen = lastCandle.close >= lastCandle.open;
+  const isLastCandleRed = lastCandle.close < lastCandle.open;
 
-  if (isBullishTrend) {
+  let trend = "LATERAL";
+  if (ema9 > ema20 && (currentPrice >= ema20 || isLastCandleGreen)) {
     trend = "ALTA";
-  } else if (isBearishTrend) {
+  } else if (ema9 < ema20 && (currentPrice <= ema20 || isLastCandleRed)) {
     trend = "BAIXA";
-  } else if (currentPrice > sma50) {
+  } else if (greenCount >= 4) {
     trend = "ALTA";
-  } else if (currentPrice < sma50) {
+  } else if (redCount >= 4) {
+    trend = "BAIXA";
+  } else if (currentPrice >= sma50) {
+    trend = "ALTA";
+  } else {
     trend = "BAIXA";
   }
 
@@ -315,46 +322,10 @@ function generateAlgorithmicAnalysis(ticker, timeframe, candles, indicators = {}
   }
 
   // 3. DETERMINISTIC DIRECTION & CONFLUENCE SELECTION
-  let direction = "CALL";
-  let detectedPatterns = [];
-
-  const callCount = callConfluences.length;
-  const putCount = putConfluences.length;
-  const isLastCandleGreen = lastCandle.close >= lastCandle.open;
-  const isLastCandleRed = lastCandle.close < lastCandle.open;
-
-  if (trend === "ALTA") {
-    if (callCount >= 2 && callCount >= putCount) {
-      direction = "CALL";
-      detectedPatterns = Array.from(new Set(callConfluences));
-    } else if (putCount >= 4 && putCount > callCount) {
-      direction = "PUT";
-      detectedPatterns = Array.from(new Set(putConfluences));
-    } else {
-      direction = "CALL";
-      detectedPatterns = Array.from(new Set(callConfluences));
-    }
-  } else if (trend === "BAIXA") {
-    if (putCount >= 2 && putCount >= callCount) {
-      direction = "PUT";
-      detectedPatterns = Array.from(new Set(putConfluences));
-    } else if (callCount >= 4 && callCount > putCount) {
-      direction = "CALL";
-      detectedPatterns = Array.from(new Set(callConfluences));
-    } else {
-      direction = "PUT";
-      detectedPatterns = Array.from(new Set(putConfluences));
-    }
-  } else {
-    // Lateral
-    if (callCount > putCount) {
-      direction = "CALL";
-      detectedPatterns = Array.from(new Set(callConfluences));
-    } else {
-      direction = "PUT";
-      detectedPatterns = Array.from(new Set(putConfluences));
-    }
-  }
+  let direction = isLastCandleGreen ? "CALL" : "PUT";
+  let detectedPatterns = isLastCandleGreen
+    ? Array.from(new Set(callConfluences))
+    : Array.from(new Set(putConfluences));
 
   const timeframeExpiryLabel = timeframe === "5M" || timeframe === "5m" ? "Expiração 5 min" : timeframe === "2M" || timeframe === "2m" ? "Expiração 2 min" : "Próxima Vela (1 min)";
 
