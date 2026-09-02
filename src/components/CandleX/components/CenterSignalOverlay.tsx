@@ -131,9 +131,20 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
     }
   };
 
+  const handleCloseModal = () => {
+    setIsVisible(false);
+    if (onClearAnalysis) {
+      onClearAnalysis();
+    }
+    if (onClose) {
+      onClose();
+    }
+  };
+
   const handleCancelAnalysis = () => {
-    // 1. Remove trade from operations if one was registered for this signal
-    if (hasRegisteredPendingRef.current && onDeleteSignalTrade) {
+    // 1. ONLY remove trade from operations if the operation was NOT already finalized (e.g. while still pending/in-progress)
+    const isAlreadyFinalized = predictionResult !== null || hasResolvedOutcome;
+    if (!isAlreadyFinalized && hasRegisteredPendingRef.current && onDeleteSignalTrade) {
       onDeleteSignalTrade(signalTradeId);
     }
     
@@ -755,9 +766,9 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
               )}
               <button
                 type="button"
-                onClick={handleCancelAnalysis}
+                onClick={predictionResult !== null || isRejected ? handleCloseModal : handleCancelAnalysis}
                 className="p-1 rounded bg-[#141A26] hover:bg-rose-900/60 text-slate-300 hover:text-rose-300 transition-colors cursor-pointer border border-[#222E44]"
-                title="Fechar e Cancelar Sinal"
+                title="Fechar Janela"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -820,16 +831,16 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
               Operação registrada com sucesso no Diário de Trades!
             </p>
 
-            {/* Action Buttons: Diário de Trades & Nova Análise */}
-            <div className="flex items-center gap-2.5 max-w-sm mx-auto pt-1">
+            {/* Action Buttons: Diário de Trades, Nova Análise & Fechar */}
+            <div className="flex flex-col sm:flex-row items-center gap-2 max-w-sm mx-auto pt-1">
               {onOpenOperations && (
                 <button
                   type="button"
                   onClick={onOpenOperations}
-                  className="flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-[#FF7A00]/20 via-amber-500/20 to-orange-600/20 hover:from-[#FF7A00]/30 hover:to-orange-600/30 border border-[#FF7A00]/50 text-amber-200 hover:text-white font-black text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-lg font-mono"
+                  className="w-full sm:flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-[#FF7A00]/20 via-amber-500/20 to-orange-600/20 hover:from-[#FF7A00]/30 hover:to-orange-600/30 border border-[#FF7A00]/50 text-amber-200 hover:text-white font-black text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-lg font-mono"
                 >
                   <BookOpen className="w-4 h-4 text-[#FF7A00]" />
-                  <span>Diário de Trades ({trades.length})</span>
+                  <span>Diário ({trades.length})</span>
                 </button>
               )}
 
@@ -837,12 +848,21 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
                 <button
                   type="button"
                   onClick={onReScan}
-                  className="flex-1 py-2.5 px-3 rounded-xl bg-[#1A2234] hover:bg-[#26324D] text-slate-200 hover:text-white border border-[#2D3A54] font-black text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer font-mono"
+                  className="w-full sm:flex-1 py-2.5 px-3 rounded-xl bg-[#1A2234] hover:bg-[#26324D] text-slate-200 hover:text-white border border-[#2D3A54] font-black text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer font-mono"
                 >
                   <RefreshCw className="w-3.5 h-3.5 text-cyan-400" />
                   <span>Nova Análise</span>
                 </button>
               )}
+
+              <button
+                type="button"
+                onClick={handleCloseModal}
+                className="w-full sm:flex-1 py-2.5 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-white/10 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer font-mono"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>Fechar</span>
+              </button>
             </div>
           </div>
         ) : isRejected ? (
