@@ -1297,6 +1297,7 @@ export default function CandleXWorkstation({
             tradesCount={trades.length}
             winsCount={trades.filter((t) => t.result === "WIN").length}
             lossesCount={trades.filter((t) => t.result === "LOSS").length}
+            drawsCount={trades.filter((t) => t.result === "DRAW").length}
           />
         </div>
 

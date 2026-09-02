@@ -83,6 +83,54 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
   const [predictionResult, setPredictionResult] = useState<"WIN" | "LOSS" | "DRAW" | null>(null);
   const [hasResolvedOutcome, setHasResolvedOutcome] = useState<boolean>(false);
 
+  const handleRecordOutcomeDirectly = (outcome: "WIN" | "LOSS" | "DRAW") => {
+    isResolvingRef.current = true;
+    setHasResolvedOutcome(true);
+    setPredictionResult(outcome);
+
+    const entryPrice = lockedEntryPriceRef.current || analysis?.priceAtAnalysis || (candles.length > 0 ? candles[0].open : 100);
+    const lastCandle = candles.length > 0 ? candles[candles.length - 1] : null;
+    const expiryPrice = lastCandle ? lastCandle.close : entryPrice;
+
+    if (outcome === "WIN") {
+      soundManager.playWin();
+      soundManager.speakAlert(`Vitória confirmada em ${activeTicker}!`);
+      try {
+        confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
+      } catch {}
+    } else if (outcome === "LOSS") {
+      soundManager.playLoss();
+      soundManager.speakAlert(`Derrota registrada em ${activeTicker}.`);
+    } else {
+      soundManager.speakAlert(`Empate registrado em ${activeTicker}.`);
+    }
+
+    if (onSaveSignalTrade && analysis) {
+      const expiryMins = timeframe.toLowerCase().includes("5m") || timeframe === "5" ? 5 : timeframe.toLowerCase().includes("2m") || timeframe === "2" ? 2 : 1;
+      const stakeAmount = bankrollConfig?.initialBalance ? +(bankrollConfig.initialBalance * 0.01).toFixed(2) : 10;
+      const payout = 89;
+      const pnl = outcome === "WIN" ? +((stakeAmount * payout) / 100).toFixed(2) : outcome === "LOSS" ? -stakeAmount : 0;
+
+      const finalizedTrade: TradeRecord = {
+        id: signalTradeId,
+        timestamp: entryDate.getTime(),
+        ticker: activeTicker,
+        direction: resolvedDirection === "CALL" ? "CALL" : "PUT",
+        entryPrice,
+        expiryPrice,
+        stake: stakeAmount,
+        payoutPercent: payout,
+        expiryMinutes: expiryMins,
+        result: outcome,
+        pnl,
+        strategyUsed: analysis.strategyName || "CandleX Confluence Core",
+        confidenceAtEntry: analysis.confidenceScore || 90,
+        notes: `Resultado: ${outcome}`,
+      };
+      onSaveSignalTrade(finalizedTrade);
+    }
+  };
+
   const handleCancelAnalysis = () => {
     // 1. Remove trade from operations if one was registered for this signal
     if (hasRegisteredPendingRef.current && onDeleteSignalTrade) {
@@ -865,6 +913,42 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
             
             <div className="bg-[#090D15] p-2.5 rounded-lg border border-[#1E293B] text-[11px] font-mono text-slate-400 max-w-sm mx-auto">
               <span>Ativo: <strong className="text-white">{activeTicker}</strong> | Direção: <strong className={isCall ? "text-emerald-400" : "text-rose-400"}>{isCall ? "CALL" : "PUT"}</strong></span>
+            </div>
+
+            {/* Quick outcome registration buttons */}
+            <div className="bg-[#090D15] p-3 rounded-xl border border-[#1E293B] space-y-2 max-w-sm mx-auto w-full">
+              <span className="text-[10px] uppercase font-bold text-slate-300 font-mono block text-center">
+                Registrar / Finalizar Resultado:
+              </span>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleRecordOutcomeDirectly("WIN")}
+                  className="py-2 rounded-xl bg-emerald-600/25 hover:bg-emerald-600/40 border border-emerald-500/50 text-emerald-300 font-black text-xs font-mono flex items-center justify-center gap-1 cursor-pointer transition-all shadow-sm active:scale-95"
+                  title="Contabilizar como WIN"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>WIN</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleRecordOutcomeDirectly("LOSS")}
+                  className="py-2 rounded-xl bg-rose-600/25 hover:bg-rose-600/40 border border-rose-500/50 text-rose-300 font-black text-xs font-mono flex items-center justify-center gap-1 cursor-pointer transition-all shadow-sm active:scale-95"
+                  title="Contabilizar como LOSS"
+                >
+                  <X className="w-3.5 h-3.5 text-rose-400" />
+                  <span>LOSS</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleRecordOutcomeDirectly("DRAW")}
+                  className="py-2 rounded-xl bg-slate-700/35 hover:bg-slate-700/50 border border-slate-600/50 text-slate-300 font-black text-xs font-mono flex items-center justify-center gap-1 cursor-pointer transition-all shadow-sm active:scale-95"
+                  title="Contabilizar como EMPATE"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-slate-400" />
+                  <span>EMPATE</span>
+                </button>
+              </div>
             </div>
 
             {/* Action buttons during operation */}
