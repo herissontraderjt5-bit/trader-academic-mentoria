@@ -683,6 +683,58 @@ export default function CandleXWorkstation({
     }
   };
 
+  const handleSaveSignalTrade = async (tradeData: TradeRecord) => {
+    const tradeId = tradeData.id;
+    const existingIndex = trades.findIndex(
+      (t) => t.id === tradeId || (t.ticker === tradeData.ticker && Math.abs(t.timestamp - tradeData.timestamp) < 15000 && t.direction === tradeData.direction)
+    );
+    const existingTrade = existingIndex !== -1 ? trades[existingIndex] : null;
+    let updatedTrades: TradeRecord[];
+
+    if (existingIndex !== -1) {
+      updatedTrades = trades.map((t, idx) => (idx === existingIndex ? { ...t, ...tradeData } : t));
+    } else {
+      updatedTrades = [tradeData, ...trades];
+    }
+    setTrades(updatedTrades);
+
+    // Only modify bankroll balance if result is finalized (WIN or LOSS) and was NOT already finalized
+    const wasAlreadyFinalized = existingTrade && (existingTrade.result === "WIN" || existingTrade.result === "LOSS" || existingTrade.result === "DRAW");
+    if (!wasAlreadyFinalized && (tradeData.result === "WIN" || tradeData.result === "LOSS")) {
+      let nextBalance = bankrollConfig.currentBalance;
+      if (tradeData.result === "WIN") {
+        nextBalance = +(nextBalance + tradeData.pnl).toFixed(2);
+      } else if (tradeData.result === "LOSS") {
+        nextBalance = Math.max(0, +(nextBalance - tradeData.stake).toFixed(2));
+      }
+      const nextBankroll = {
+        ...bankrollConfig,
+        currentBalance: nextBalance,
+      };
+      setBankrollConfig(nextBankroll);
+      setRecentResultNotification(tradeData);
+
+      if (currentUser && currentUser.id !== 'usr-guest') {
+        localStorage.setItem(`candlex_bankroll_${currentUser.id}`, JSON.stringify(nextBankroll));
+        await supabaseService.saveCandleXBankroll(currentUser.id, nextBankroll);
+      }
+    }
+
+    if (currentUser && currentUser.id !== 'usr-guest') {
+      localStorage.setItem(`candlex_trades_${currentUser.id}`, JSON.stringify(updatedTrades));
+      await supabaseService.saveCandleXTrade(currentUser.id, tradeData);
+    }
+  };
+
+  const handleDeleteSignalTrade = async (tradeId: string) => {
+    const updatedTrades = trades.filter((t) => t.id !== tradeId);
+    setTrades(updatedTrades);
+    if (currentUser && currentUser.id !== 'usr-guest') {
+      localStorage.setItem(`candlex_trades_${currentUser.id}`, JSON.stringify(updatedTrades));
+      await supabaseService.saveCandleXTrades(currentUser.id, updatedTrades);
+    }
+  };
+
   const handleClearTrades = async () => {
     if (window.confirm("Deseja realmente limpar o histórico de ordens do diário?")) {
       setTrades([]);
@@ -1264,6 +1316,7 @@ export default function CandleXWorkstation({
               onClearAnalysis={() => setAiAnalysis(null)}
               trades={trades}
               onSaveSignalTrade={handleSaveSignalTrade}
+              onDeleteSignalTrade={handleDeleteSignalTrade}
               onOpenOperations={() => setIsOperationsOpen(true)}
               bankrollConfig={bankrollConfig}
             />

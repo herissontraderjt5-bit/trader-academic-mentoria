@@ -42,6 +42,7 @@ interface CenterSignalOverlayProps {
   onClearAnalysis?: () => void;
   trades?: TradeRecord[];
   onSaveSignalTrade?: (trade: TradeRecord) => void;
+  onDeleteSignalTrade?: (id: string) => void;
   onOpenOperations?: () => void;
   bankrollConfig?: BankrollConfig;
 }
@@ -60,6 +61,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
   onClearAnalysis,
   trades = [],
   onSaveSignalTrade,
+  onDeleteSignalTrade,
   onOpenOperations,
   bankrollConfig,
 }) => {
@@ -80,6 +82,29 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
 
   const [predictionResult, setPredictionResult] = useState<"WIN" | "LOSS" | "DRAW" | null>(null);
   const [hasResolvedOutcome, setHasResolvedOutcome] = useState<boolean>(false);
+
+  const handleCancelAnalysis = () => {
+    // 1. Remove trade from operations if one was registered for this signal
+    if (hasRegisteredPendingRef.current && onDeleteSignalTrade) {
+      onDeleteSignalTrade(signalTradeId);
+    }
+    
+    // 2. Reset internal state
+    setIsVisible(false);
+    setPredictionResult(null);
+    setHasResolvedOutcome(false);
+    isResolvingRef.current = false;
+    hasRegisteredPendingRef.current = false;
+    lockedEntryPriceRef.current = null;
+    
+    // 3. Clear analysis on parent workstation (deactivating AI until next click on Analisar Mercado)
+    if (onClearAnalysis) {
+      onClearAnalysis();
+    }
+    if (onClose) {
+      onClose();
+    }
+  };
 
   // Dragging state for overlay
   const [position, setPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -634,7 +659,17 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
               <span>{currentTimeStr}</span>
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={handleCancelAnalysis}
+                className="px-2.5 py-1 rounded bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 text-rose-300 hover:text-white transition-all cursor-pointer text-[11px] font-mono font-bold flex items-center gap-1 shadow-sm"
+                title="Cancelar esta análise e desativar sem contabilizar no histórico"
+              >
+                <Ban className="w-3.5 h-3.5 text-rose-400" />
+                <span>Cancelar Análise</span>
+              </button>
+
               {predictionResult === null && !isRejected && currentTime.getTime() < entryDate.getTime() && (
                 <button
                   type="button"
@@ -647,13 +682,9 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
               )}
               <button
                 type="button"
-                onClick={() => {
-                  setIsVisible(false);
-                  if (onClearAnalysis) onClearAnalysis();
-                  if (onClose) onClose();
-                }}
+                onClick={handleCancelAnalysis}
                 className="p-1 rounded bg-[#141A26] hover:bg-rose-900/60 text-slate-300 hover:text-rose-300 transition-colors cursor-pointer border border-[#222E44]"
-                title="Fechar Sinal"
+                title="Fechar e Cancelar Sinal"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -836,17 +867,28 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
               <span>Ativo: <strong className="text-white">{activeTicker}</strong> | Direção: <strong className={isCall ? "text-emerald-400" : "text-rose-400"}>{isCall ? "CALL" : "PUT"}</strong></span>
             </div>
 
-            {/* Quick button to view in Diário */}
-            {onOpenOperations && (
+            {/* Action buttons during operation */}
+            <div className="flex flex-col gap-2 max-w-sm mx-auto w-full">
+              {onOpenOperations && (
+                <button
+                  type="button"
+                  onClick={onOpenOperations}
+                  className="w-full py-2 px-3.5 rounded-xl bg-[#141A26] hover:bg-[#1E2638] text-amber-300 hover:text-white border border-amber-500/30 flex items-center justify-center gap-2 text-xs font-bold font-mono transition-all cursor-pointer shadow-md"
+                >
+                  <BookOpen className="w-4 h-4 text-[#FF7A00]" />
+                  <span>Ver no Diário de Trades / Operações ({trades.length})</span>
+                </button>
+              )}
+
               <button
                 type="button"
-                onClick={onOpenOperations}
-                className="w-full max-w-sm mx-auto py-2 px-3.5 rounded-xl bg-[#141A26] hover:bg-[#1E2638] text-amber-300 hover:text-white border border-amber-500/30 flex items-center justify-center gap-2 text-xs font-bold font-mono transition-all cursor-pointer shadow-md"
+                onClick={handleCancelAnalysis}
+                className="w-full py-2.5 px-3.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 text-rose-200 hover:text-white border border-rose-500/50 flex items-center justify-center gap-2 text-xs font-black font-mono uppercase tracking-wider transition-all cursor-pointer shadow-md"
               >
-                <BookOpen className="w-4 h-4 text-[#FF7A00]" />
-                <span>Ver no Diário de Trades / Operações ({trades.length})</span>
+                <Ban className="w-4 h-4 text-rose-400" />
+                <span>Cancelar Análise (Sem Contabilizar)</span>
               </button>
-            )}
+            </div>
           </div>
         ) : isMinimized ? (
           /* Minimized View */
@@ -1104,6 +1146,18 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
                   {isRejected ? "Loss Evitado" : analysis.defenseZone?.label || analysis.invalidationLevel || "Microestrutura Imediata"}
                 </span>
               </div>
+            </div>
+
+            {/* Prominent Cancel Button in Full View */}
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={handleCancelAnalysis}
+                className="w-full py-2.5 px-4 rounded-xl bg-[#141A26] hover:bg-rose-950/40 border border-[#222E44] hover:border-rose-500/50 text-slate-300 hover:text-rose-300 font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md"
+              >
+                <Ban className="w-4 h-4 text-rose-400" />
+                <span>Cancelar Análise e Desativar IA</span>
+              </button>
             </div>
           </div>
         )}
