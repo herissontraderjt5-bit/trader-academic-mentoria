@@ -396,6 +396,31 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
           }
         }
 
+        // 4.5. Prior Candle Color Confirmation Rule (Confluência de Cor de Vela)
+        const lastClosedCandle = candles.length > 0 ? candles[candles.length - 1] : null;
+        if (lastClosedCandle) {
+          const isGreen = lastClosedCandle.close >= lastClosedCandle.open;
+          const isRed = lastClosedCandle.close < lastClosedCandle.open;
+
+          if (isCall && !isGreen) {
+            setDecision("REJECTED");
+            setResolvedDir(dir);
+            setRejectionReason("Filtro de Cor Anti-Loss: Entrada em COMPRA (CALL) exige confirmação com vela anterior verde (positiva).");
+            soundManager.playRejectAlert();
+            soundManager.speakAlert("Entrada rejeitada: Vela anterior fechou vermelha");
+            return;
+          }
+
+          if (isPut && !isRed) {
+            setDecision("REJECTED");
+            setResolvedDir(dir);
+            setRejectionReason("Filtro de Cor Anti-Loss: Entrada em VENDA (PUT) exige confirmação com vela anterior vermelha (negativa).");
+            soundManager.playRejectAlert();
+            soundManager.speakAlert("Entrada rejeitada: Vela anterior fechou verde");
+            return;
+          }
+        }
+
         // 5. STRICT 4-CONFLUENCE MINIMUM RULE
         if (confluenceCount < 4) {
           setDecision("REJECTED");

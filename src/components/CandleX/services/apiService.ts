@@ -811,6 +811,12 @@ export const candlexApiService = {
 
   // 3. AI analyze
   async analyze(ticker: string, timeframe: string, candles: Candle[], indicators: TechnicalIndicators | null): Promise<AiAnalysisResult> {
+    // First run strict algorithmic audit (quadrant colors, prior candle color, divergences)
+    const algorithmicCheck = generateAlgorithmicAnalysis(ticker, timeframe, candles, indicators);
+    if (algorithmicCheck.direction === "NEUTRAL") {
+      return algorithmicCheck;
+    }
+
     try {
       const res = await fetch('/api/ai/analyze', {
         method: 'POST',
@@ -820,6 +826,9 @@ export const candlexApiService = {
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.result) {
+          if (data.result.direction === "NEUTRAL" || (data.result.confidenceScore || 0) < 80) {
+            return algorithmicCheck;
+          }
           return {
             ...data.result,
             timestamp: Date.now(),
