@@ -350,6 +350,31 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         const confidence = analysis.confidenceScore || 0;
         const dir = analysis.direction;
 
+        // RULE 0: PREVIOUS / PREPARATION CANDLE COLOR ALIGNMENT
+        const lastClosedCandle = candles.length > 0 ? candles[candles.length - 1] : null;
+        if (lastClosedCandle) {
+          const isCandleGreen = lastClosedCandle.close > lastClosedCandle.open;
+          const isCandleRed = lastClosedCandle.close < lastClosedCandle.open;
+
+          if (dir === "CALL" && isCandleRed) {
+            setDecision("REJECTED");
+            setResolvedDir("NEUTRAL");
+            setRejectionReason("Filtro Anti-Loss Ativado: A vela anterior fechou negativa (Vermelha), contrariando o gatilho de Compra (CALL). O CandleX exige vela a favor do fluxo para confirmação.");
+            soundManager.playRejectAlert();
+            soundManager.speakAlert("Sinal cancelado: Vela anterior fechou negativa");
+            return;
+          }
+
+          if (dir === "PUT" && isCandleGreen) {
+            setDecision("REJECTED");
+            setResolvedDir("NEUTRAL");
+            setRejectionReason("Filtro Anti-Loss Ativado: A vela anterior fechou positiva (Verde), contrariando o gatilho de Venda (PUT). O CandleX exige vela a favor do fluxo para confirmação.");
+            soundManager.playRejectAlert();
+            soundManager.speakAlert("Sinal cancelado: Vela anterior fechou positiva");
+            return;
+          }
+        }
+
         // RULE 1: QUADRANT COLOR ALTERNATION CHECK
         const hasQuadrantWarning = patterns.some((p) =>
           p.toLowerCase().includes("quadrante") ||

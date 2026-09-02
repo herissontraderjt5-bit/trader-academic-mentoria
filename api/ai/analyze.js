@@ -565,24 +565,33 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido:
         if (parsedResult && parsedResult.direction && parsedResult.direction !== "NEUTRAL") {
           const fallbackAlg = generateAlgorithmicAnalysis(ticker, timeframe, candles, indicators);
           
-          // Use verified algorithmic confluences if AI hallucinated or returned fewer than 2
-          if (!parsedResult.detectedPatterns || parsedResult.detectedPatterns.length < 2) {
-            parsedResult.detectedPatterns = fallbackAlg.detectedPatterns;
+          const lastCandle = candles.length > 0 ? candles[candles.length - 1] : { open: 100, close: 100 };
+          const isLastCandleGreen = lastCandle.close >= lastCandle.open;
+          const isLastCandleRed = lastCandle.close < lastCandle.open;
+          const isColorMismatch = (parsedResult.direction === "CALL" && isLastCandleRed) || (parsedResult.direction === "PUT" && isLastCandleGreen);
+
+          if (isColorMismatch) {
+            parsedResult = fallbackAlg;
+          } else {
+            // Use verified algorithmic confluences if AI hallucinated or returned fewer than 2
+            if (!parsedResult.detectedPatterns || parsedResult.detectedPatterns.length < 2) {
+              parsedResult.detectedPatterns = fallbackAlg.detectedPatterns;
+            }
+
+            const N = parsedResult.detectedPatterns.length;
+            let rawConfidence = 78.0;
+            if (N <= 2) rawConfidence = 72.0 + N * 3.0;
+            else if (N === 3) rawConfidence = 80.5;
+            else if (N === 4) rawConfidence = 84.5;
+            else if (N === 5) rawConfidence = 88.0;
+            else if (N === 6) rawConfidence = 91.5;
+            else if (N === 7) rawConfidence = 94.0;
+            else if (N === 8) rawConfidence = 96.0;
+            else rawConfidence = Math.min(98.5, 96.0 + (N - 8) * 0.4);
+
+            parsedResult.confidenceScore = parseFloat(rawConfidence.toFixed(1));
+            parsedResult.confluenceCount = N;
           }
-
-          const N = parsedResult.detectedPatterns.length;
-          let rawConfidence = 78.0;
-          if (N <= 2) rawConfidence = 72.0 + N * 3.0;
-          else if (N === 3) rawConfidence = 80.5;
-          else if (N === 4) rawConfidence = 84.5;
-          else if (N === 5) rawConfidence = 88.0;
-          else if (N === 6) rawConfidence = 91.5;
-          else if (N === 7) rawConfidence = 94.0;
-          else if (N === 8) rawConfidence = 96.0;
-          else rawConfidence = Math.min(98.5, 96.0 + (N - 8) * 0.4);
-
-          parsedResult.confidenceScore = parseFloat(rawConfidence.toFixed(1));
-          parsedResult.confluenceCount = N;
         }
       } catch {
         parsedResult = null;

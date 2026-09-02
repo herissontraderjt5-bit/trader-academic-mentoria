@@ -706,6 +706,10 @@ export const candlexApiService = {
       return algorithmicCheck;
     }
 
+    const lastCandle = candles.length > 0 ? candles[candles.length - 1] : null;
+    const isLastCandleGreen = lastCandle ? lastCandle.close >= lastCandle.open : true;
+    const isLastCandleRed = lastCandle ? lastCandle.close < lastCandle.open : false;
+
     try {
       const res = await fetch('/api/ai/analyze', {
         method: 'POST',
@@ -715,7 +719,9 @@ export const candlexApiService = {
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.result) {
-          if (data.result.direction === "NEUTRAL" || (data.result.confidenceScore || 0) < 80) {
+          const resDir = data.result.direction;
+          const isColorMismatch = (resDir === "CALL" && isLastCandleRed) || (resDir === "PUT" && isLastCandleGreen);
+          if (resDir === "NEUTRAL" || (data.result.confidenceScore || 0) < 80 || isColorMismatch) {
             return algorithmicCheck;
           }
           return {
