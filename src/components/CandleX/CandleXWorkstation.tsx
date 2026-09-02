@@ -428,13 +428,11 @@ export default function CandleXWorkstation({
         }
       };
 
-      ws.onclose = () => {
-        console.log("Hiove WebSocket disconnected, reconnecting in 10s...");
-        setTimeout(() => connectToHiove(false), 10000);
-      };
+      return true;
     } catch (e) {
       console.error("Failed to connect to Hiove:", e);
       setHioveAccountInfo((prev) => ({ ...prev, token: null, userId: null }));
+      return false;
     }
   }, [autoTraderConfig.hioveEmail, autoTraderConfig.hiovePassword, autoTraderConfig.accountType, autoTraderConfig.enabled, currentUser]);
 
@@ -689,93 +687,108 @@ export default function CandleXWorkstation({
 
   // Background Auto Trader execution callback (evaluates signals and executes silently)
   const runAutoTraderAnalysis = useCallback(async () => {
-    if (candles.length === 0) return;
-
     try {
-      const latestIndicators = indicators || calculateAllIndicators(candles);
-      
-      const result = await candlexApiService.analyze(
-        activeTicker,
-        timeframe.toUpperCase(),
-        candles.slice(-20),
-        latestIndicators
-      );
+      const selectedList = autoTraderConfig.selectedAssets || ["CURRENT"];
+      const targetTickers = selectedList.includes("CURRENT")
+        ? [activeTicker]
+        : (selectedList.length > 0 ? selectedList : [activeTicker]);
 
-      if (result && result.direction !== "NEUTRAL" && result.confidenceScore >= autoTraderConfig.minAiConfidence) {
-        // Perform anti-loss check logic directly
-        const rsi = latestIndicators?.rsi || 50;
-        const trend = latestIndicators?.trend || "ALTA";
-        const dir = result.direction;
-
-        const isExtremeOverbought = rsi > 80 && dir === "CALL";
-        const isExtremeOversold = rsi < 20 && dir === "PUT";
-        const isAgainstTrend = (trend === "ALTA" && dir === "PUT") || (trend === "BAIXA" && dir === "CALL");
-
-        if (isExtremeOverbought || isExtremeOversold || (isAgainstTrend && result.confidenceScore < 85)) {
-          console.log("Auto Trader: Trade rejected by anti-loss filters", { rsi, trend, dir });
-          return;
+      for (const ticker of targetTickers) {
+        let tickerCandles = ticker === activeTicker ? candles : [];
+        if (tickerCandles.length === 0) {
+          tickerCandles = await candlexApiService.getCandles(ticker, timeframe, 60);
         }
+        if (!tickerCandles || tickerCandles.length === 0) continue;
 
-        const now = new Date();
-        const tf = timeframe.toLowerCase();
-        const isM5 = tf.includes("5m") || tf === "5" || tf === "m5";
-        const isM2 = tf.includes("2m") || tf === "2" || tf === "m2";
-        const candleLengthMs = isM5 ? 300000 : (isM2 ? 120000 : 60000);
-        
-        // Start of the entry candle (the next candle)
-        // Start of the entry candle (the next candle boundary)
-        const entryCandleStartMs = Math.ceil((now.getTime() + 1000) / candleLengthMs) * candleLengthMs;
+        const latestIndicators = ticker === activeTicker && indicators
+          ? indicators
+          : calculateAllIndicators(tickerCandles);
 
-        // Avoid double entry on the same candle
-        if (lastAutoTraderCandleStartRef.current === entryCandleStartMs) return;
-        lastAutoTraderCandleStartRef.current = entryCandleStartMs;
+        const result = await candlexApiService.analyze(
+          ticker,
+          timeframe.toUpperCase(),
+          tickerCandles.slice(-20),
+          latestIndicators
+        );
 
-        const payoutPercent = 89;
-        const stake = autoTraderConfig.stakeAmount || autoTraderConfig.fixedStake || 10;
-        const direction = dir as "CALL" | "PUT";
-        const entryPrice = candles[candles.length - 1]?.close || 0;
+        if (result && result.direction !== "NEUTRAL" && result.confidenceScore >= autoTraderConfig.minAiConfidence) {
+          // Perform anti-loss check logic directly
+          const rsi = latestIndicators?.rsi || 50;
+          const trend = latestIndicators?.trend || "ALTA";
+          const dir = result.direction;
 
-        const logId = "auto_" + Date.now();
-        const pendingItem: AutoTradeLogItem = {
-          id: logId,
-          timestamp: entryCandleStartMs,
-          ticker: activeTicker,
-          direction,
-          stake,
-          payoutPercent,
-          confidenceScore: result.confidenceScore,
-          result: "PENDING",
-          pnl: 0,
-          timeframe: timeframe,
-          managementCycle: autoTraderConfig.managementMode || "FIXED",
-        };
+          const isExtremeOverbought = rsi > 80 && dir === "CALL";
+          const isExtremeOversold = rsi < 20 && dir === "PUT";
+          const isAgainstTrend = (trend === "ALTA" && dir === "PUT") || (trend === "BAIXA" && dir === "CALL");
 
-        // Add to session history
-        setAutoTraderSession((prev) => ({
-          ...prev,
-          status: "RUNNING",
-          tradesExecuted: prev.tradesExecuted + 1,
-          history: [pendingItem, ...prev.history],
-        }));
+          if (isExtremeOverbought || isExtremeOversold || (isAgainstTrend && result.confidenceScore < 85)) {
+            console.log("Auto Trader: Trade rejected by anti-loss filters on " + ticker, { rsi, trend, dir });
+            continue;
+          }
 
-        // Record trade on general history (this handles bankroll stake deduction and DB save)
-        handleRecordTrade({
-          ticker: activeTicker,
-          direction,
-          entryPrice,
-          stake,
-          payoutPercent,
-          expiryMinutes: isM5 ? 5 : (isM2 ? 2 : 1),
-          strategyUsed: `IA Automática (${result.strategyName})`,
-          confidenceAtEntry: result.confidenceScore,
-        });
+          const now = new Date();
+          const tf = timeframe.toLowerCase();
+          const isM5 = tf.includes("5m") || tf === "5" || tf === "m5";
+          const isM2 = tf.includes("2m") || tf === "2" || tf === "m2";
+          const candleLengthMs = isM5 ? 300000 : (isM2 ? 120000 : 60000);
+          
+          const entryCandleStartMs = Math.ceil((now.getTime() + 1000) / candleLengthMs) * candleLengthMs;
 
-        soundManager.speakAlert(`Robô executou entrada de ${direction === "CALL" ? "Compra" : "Venda"} em ${activeTicker}`);
+          // Avoid double entry on the same candle
+          if (lastAutoTraderCandleStartRef.current === entryCandleStartMs) continue;
+          lastAutoTraderCandleStartRef.current = entryCandleStartMs;
+
+          const payoutPercent = 89;
+          const stake = autoTraderConfig.stakeAmount || 1;
+          const direction = dir as "CALL" | "PUT";
+          const entryPrice = tickerCandles[tickerCandles.length - 1]?.close || 0;
+
+          const logId = "auto_" + Date.now();
+          const pendingItem: AutoTradeLogItem = {
+            id: logId,
+            timestamp: entryCandleStartMs,
+            ticker,
+            direction,
+            stake,
+            payoutPercent,
+            confidenceScore: result.confidenceScore,
+            result: "PENDING",
+            pnl: 0,
+            timeframe: timeframe,
+            managementCycle: autoTraderConfig.managementMode || "FIXED",
+          };
+
+          // Add to session history
+          setAutoTraderSession((prev) => ({
+            ...prev,
+            status: "RUNNING",
+            tradesExecuted: prev.tradesExecuted + 1,
+            history: [pendingItem, ...prev.history],
+          }));
+
+          // Forward to Hiove broker
+          placeRealHioveTrade(direction, stake);
+
+          // Record trade on general history (this handles bankroll stake deduction and DB save)
+          handleRecordTrade({
+            ticker,
+            direction,
+            entryPrice,
+            stake,
+            payoutPercent,
+            expiryMinutes: isM5 ? 5 : (isM2 ? 2 : 1),
+            strategyUsed: `IA Automática (${result.strategyName})`,
+            confidenceAtEntry: result.confidenceScore,
+          });
+
+          soundManager.speakAlert(`Robô executou entrada de ${direction === "CALL" ? "Compra" : "Venda"} em ${ticker}`);
+          break; // Avoid opening multi-trades in the same tick
+        }
       }
     } catch (e) {
       console.error("Auto Trader analysis error:", e);
     }
-  }, [candles, indicators, activeTicker, timeframe, autoTraderConfig, handleRecordTrade]);
+  }, [candles, indicators, activeTicker, timeframe, autoTraderConfig, handleRecordTrade, placeRealHioveTrade]);
 
   // Active clock synchronization for Auto Trader automatic scanning at the exact boundary
   useEffect(() => {
@@ -1445,6 +1458,11 @@ export default function CandleXWorkstation({
         onResetSession={handleResetAutoTraderSession}
         onToggleEnabled={handleToggleAutoTrader}
         hioveToken={hioveAccountInfo.token}
+        activeTicker={activeTicker}
+        onConnectHiove={async () => {
+          const success = await connectToHiove(true);
+          return !!success;
+        }}
       />
 
       <FinancialModal

@@ -319,13 +319,14 @@ export interface AutoTraderConfig {
   dailyStopLoss: number;
   stakeAmount: number;
   minPayout: number;
-  timeframe: "1m" | "5m";
+  timeframe: "1m" | "2m" | "5m";
   managementMode: "2x1" | "5x2";
   minAiConfidence: number;
   soundAlerts: boolean;
   accountType?: "DEMO" | "REAL";
   hioveEmail?: string;
   hiovePassword?: string;
+  selectedAssets?: string[];
 }
 
 export interface AutoTradeLogItem {

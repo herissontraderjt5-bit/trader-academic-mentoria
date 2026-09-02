@@ -33,6 +33,9 @@ interface AutoTraderModalProps {
   onResetSession: () => void;
   currencySymbol?: string;
   hioveToken?: string | null;
+  activeTicker?: string;
+  onConnectHiove?: () => Promise<boolean>;
+  isConnectingHiove?: boolean;
 }
 
 export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
@@ -45,8 +48,78 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
   onResetSession,
   currencySymbol = "$",
   hioveToken,
+  activeTicker = "BTCUSDT",
+  onConnectHiove,
+  isConnectingHiove = false,
 }) => {
+  const [isTestingLogin, setIsTestingLogin] = React.useState(false);
+  const [loginFeedback, setLoginFeedback] = React.useState<{ type: "success" | "error"; msg: string } | null>(null);
+
   if (!isOpen) return null;
+
+  const handleTestConnect = async () => {
+    if (!config.hioveEmail || !config.hiovePassword) {
+      setLoginFeedback({ type: "error", msg: "Preencha e-mail e senha da Hiove antes de conectar." });
+      return;
+    }
+    setIsTestingLogin(true);
+    setLoginFeedback(null);
+    try {
+      if (onConnectHiove) {
+        const ok = await onConnectHiove();
+        if (ok) {
+          setLoginFeedback({ type: "success", msg: "Conectado com sucesso à Hiove!" });
+        } else {
+          setLoginFeedback({ type: "error", msg: "Falha ao autenticar na Hiove. Verifique e-mail e senha." });
+        }
+      }
+    } catch (e: any) {
+      setLoginFeedback({ type: "error", msg: e?.message || "Erro ao conectar." });
+    } finally {
+      setIsTestingLogin(false);
+    }
+  };
+
+  const AVAILABLE_PAIRS = [
+    { id: "CURRENT", label: `📌 Ativo Atual (${activeTicker})`, sub: "Segue o gráfico aberto" },
+    { id: "EURUSD_OTC", label: "EUR/USD (OTC)", sub: "Paridade Forex" },
+    { id: "GBPUSD_OTC", label: "GBP/USD (OTC)", sub: "Paridade Forex" },
+    { id: "USDJPY_OTC", label: "USD/JPY (OTC)", sub: "Paridade Forex" },
+    { id: "EURJPY_OTC", label: "EUR/JPY (OTC)", sub: "Paridade Forex" },
+    { id: "AUDCAD_OTC", label: "AUD/CAD (OTC)", sub: "Paridade Forex" },
+    { id: "BTCUSDT", label: "BTC/USDT", sub: "Criptoativo" },
+    { id: "ETHUSDT", label: "ETH/USDT", sub: "Criptoativo" },
+    { id: "SOLUSDT", label: "SOL/USDT", sub: "Criptoativo" },
+  ];
+
+  const selectedAssets = config.selectedAssets && config.selectedAssets.length > 0 
+    ? config.selectedAssets 
+    : ["CURRENT"];
+
+  const handleToggleAsset = (assetId: string) => {
+    let next: string[];
+    if (assetId === "CURRENT") {
+      next = ["CURRENT"];
+    } else {
+      const filtered = selectedAssets.filter((a) => a !== "CURRENT");
+      if (filtered.includes(assetId)) {
+        next = filtered.filter((a) => a !== assetId);
+        if (next.length === 0) next = ["CURRENT"];
+      } else {
+        next = [...filtered, assetId];
+      }
+    }
+    onChangeConfig({ ...config, selectedAssets: next });
+  };
+
+  const handleSelectAllAssets = () => {
+    const all = AVAILABLE_PAIRS.filter((p) => p.id !== "CURRENT").map((p) => p.id);
+    onChangeConfig({ ...config, selectedAssets: all });
+  };
+
+  const handleResetToCurrent = () => {
+    onChangeConfig({ ...config, selectedAssets: ["CURRENT"] });
+  };
 
   const targetWins = config.managementMode === "2x1" ? 2 : 5;
   const maxLosses = config.managementMode === "2x1" ? 1 : 2;
@@ -474,6 +547,122 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
                   placeholder="********"
                   className="w-full bg-[#0B0E14] border border-[#1E2638] focus:border-[#FF7A00] rounded-lg px-3 py-2 text-white font-mono text-sm outline-none"
                 />
+              </div>
+            </div>
+
+            {/* BOTÃO DE CONECTAR NA CORRETORA & FEEDBACK */}
+            <div className="bg-[#121724] border border-[#1E2638] p-3 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold ${
+                  hioveToken ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"
+                }`}>
+                  <Zap className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <span>STATUS DA CONEXÃO HIOVE:</span>
+                    {hioveToken ? (
+                      <span className="text-emerald-400 font-mono font-black">AUTENTICADO 🟢</span>
+                    ) : (
+                      <span className="text-amber-400 font-mono font-bold">DESCONECTADO ⚪</span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-slate-400">
+                    {loginFeedback ? loginFeedback.msg : "Clique abaixo para testar suas credenciais e validar login na Hiove."}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleTestConnect}
+                disabled={isTestingLogin || isConnectingHiove}
+                className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-gradient-to-r from-[#FF7A00] to-amber-500 hover:from-orange-600 hover:to-amber-600 text-slate-950 shadow-md hover:shadow-orange-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+              >
+                {isTestingLogin || isConnectingHiove ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                    CONECTANDO...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-3.5 h-3.5" />
+                    {hioveToken ? "RECONECTAR CORRETORA" : "CONECTAR NA CORRETORA"}
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* SELEÇÃO DE ATIVOS PARA O ROBÔ OPERAR */}
+            <div className="space-y-2 pt-1 border-t border-[#1E2638]">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <label className="text-[11px] font-bold text-[#FF7A00] flex items-center gap-1.5 uppercase">
+                    <Activity className="w-3.5 h-3.5" />
+                    <span>ATIVOS QUE O AUTO TRADER DEVE MONITORAR & OPERAR:</span>
+                  </label>
+                  <p className="text-[10px] text-slate-400">
+                    {selectedAssets.includes("CURRENT")
+                      ? `Operando exclusivamente no ativo aberto na tela: ${activeTicker}`
+                      : `Operando em ${selectedAssets.length} ativo(s) selecionados`}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleResetToCurrent}
+                    className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+                      selectedAssets.includes("CURRENT")
+                        ? "bg-[#FF7A00] text-slate-950 border-[#FF7A00] font-black"
+                        : "bg-[#0B0E14] border-[#1E2638] text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    Ativo Atual
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSelectAllAssets}
+                    className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+                      !selectedAssets.includes("CURRENT") && selectedAssets.length === AVAILABLE_PAIRS.length - 1
+                        ? "bg-cyan-500 text-slate-950 border-cyan-500 font-black"
+                        : "bg-[#0B0E14] border-[#1E2638] text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    Todos os Pares
+                  </button>
+                </div>
+              </div>
+
+              {/* Grid de Ativos */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {AVAILABLE_PAIRS.map((pair) => {
+                  const isSelected = selectedAssets.includes(pair.id);
+                  return (
+                    <button
+                      key={pair.id}
+                      type="button"
+                      onClick={() => handleToggleAsset(pair.id)}
+                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                        isSelected
+                          ? "bg-[#182030] border-amber-500/80 text-white shadow-[0_0_12px_rgba(255,122,0,0.15)]"
+                          : "bg-[#0B0E14] border-[#1E2638] text-slate-400 hover:border-slate-600 hover:text-slate-200"
+                      }`}
+                    >
+                      <div>
+                        <div className={`text-xs font-black font-mono ${isSelected ? "text-amber-400" : "text-slate-300"}`}>
+                          {pair.label}
+                        </div>
+                        <div className="text-[9px] text-slate-500">{pair.sub}</div>
+                      </div>
+                      <div className={`w-4 h-4 rounded-md border flex items-center justify-center text-[10px] font-black ${
+                        isSelected ? "bg-amber-500 border-amber-500 text-slate-950" : "border-slate-700 bg-black/40 text-transparent"
+                      }`}>
+                        ✓
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

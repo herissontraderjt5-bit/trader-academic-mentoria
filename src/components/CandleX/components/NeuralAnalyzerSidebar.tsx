@@ -345,6 +345,16 @@ ${confluencesList}
               </div>
             </div>
 
+            {/* Active Assets Info Badge */}
+            <div className="text-[10px] text-slate-400 font-mono bg-[#090D14] px-2.5 py-1.5 rounded-lg border border-[#161D2B] flex items-center justify-between">
+              <span className="text-slate-400">Ativos Monitorados:</span>
+              <span className="text-amber-400 font-bold truncate max-w-[150px]">
+                {autoTraderConfig.selectedAssets && !autoTraderConfig.selectedAssets.includes("CURRENT") && autoTraderConfig.selectedAssets.length > 0
+                  ? `${autoTraderConfig.selectedAssets.length} Pares Ativos`
+                  : `Ativo da Tela (${activeTicker})`}
+              </span>
+            </div>
+
             {/* Quick Config Badges & Config Button */}
             <div className="flex items-center justify-between gap-1.5 pt-0.5">
               <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-300 overflow-x-auto no-scrollbar">
