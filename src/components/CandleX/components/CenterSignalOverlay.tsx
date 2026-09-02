@@ -223,27 +223,28 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
       setHasResolvedOutcome(false);
       setPosition({ x: 0, y: 0 }); // Reset drag position to center
 
-      // Check if this analysis is already cancelled / rejected at generation time
+      // Check if this analysis is cancelled at generation time (Quadrant, < 5 confluences, < 80% assertiveness)
       const patterns = analysis.detectedPatterns || [];
       const hasQuadrantWarning = patterns.some((p) =>
         p.toLowerCase().includes("quadrante") ||
-        p.toLowerCase().includes("anti-loss") ||
-        p.toLowerCase().includes("sem fluxo") ||
-        p.toLowerCase().includes("choppy") ||
-        p.toLowerCase().includes("divergência") ||
-        p.toLowerCase().includes("divergencia")
+        p.toLowerCase().includes("mercado xadrez") ||
+        p.toLowerCase().includes("sem fluxo direcional")
       );
 
       const isNeutral = analysis.direction === "NEUTRAL";
       const isLowConfidence = (analysis.confidenceScore || 0) < 80;
+      const isLowConfluence = patterns.length < 5;
 
-      if (isNeutral || isLowConfidence || hasQuadrantWarning) {
+      if (isNeutral || isLowConfidence || isLowConfluence || hasQuadrantWarning) {
         setDecision("REJECTED");
         setResolvedDir("NEUTRAL");
         hasAnnouncedDecisionRef.current = true;
         const rejectTxt = analysis.rationale ||
-          patterns.find(p => p.includes("Anti-Loss") || p.includes("Divergência") || p.includes("Quadrante") || p.includes("Insuficientes")) ||
-          (isLowConfidence ? `Assertividade insuficiente (${analysis.confidenceScore}% < 80%). Entrada cancelada.` : "Sinal cancelado pelo Filtro Anti-Loss.");
+          (hasQuadrantWarning
+            ? "Filtro Anti-Loss Ativado: Quadrante de cores alternadas (mercado xadrez sem fluxo direcional)."
+            : isLowConfluence
+            ? `Filtro Anti-Loss Ativado: Apenas ${patterns.length} confluência(s) detectada(s). O CandleX exige no mínimo 5 confluências.`
+            : `Assertividade insuficiente (${analysis.confidenceScore}% < 80%).`);
         setRejectionReason(rejectTxt);
         soundManager.playRejectAlert();
         soundManager.speakAlert("Sinal cancelado pelo Filtro Anti-Loss");
@@ -271,12 +272,12 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         hasAnnouncedDecisionRef.current = true;
         lastDecisionCandleStartRef.current = currentCandleStart;
 
-        const rsi = indicators?.rsi ?? 50;
-        const trend = indicators?.trend ?? "ALTA";
         const patterns = analysis.detectedPatterns || [];
         const confluenceCount = patterns.length;
+        const confidence = analysis.confidenceScore || 0;
+        const dir = analysis.direction;
 
-        // 1. QUADRANT COLOR ALTERNATION CHECK (Filtro Choppy / Xadrez)
+        // RULE 1: QUADRANT COLOR ALTERNATION CHECK
         const hasQuadrantWarning = patterns.some((p) =>
           p.toLowerCase().includes("quadrante") ||
           p.toLowerCase().includes("mercado xadrez") ||
@@ -292,21 +293,18 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
           return;
         }
 
-        // 2. NEUTRAL DIRECTION / NO DEFINED FLOW CHECK
-        if (analysis.direction === "NEUTRAL") {
+        // RULE 2: LOW CONFLUENCES CHECK (< 5 CONFLUENCES)
+        if (confluenceCount < 5) {
           setDecision("REJECTED");
-          setResolvedDir("NEUTRAL");
-          setRejectionReason(analysis.rationale || "Mercado sem fluxo institucional definido (Aguardar Fluxo). Entrada cancelada pela IA.");
+          setResolvedDir(dir);
+          setRejectionReason(`Filtro Anti-Loss Ativado: Confluências insuficientes (${confluenceCount} < 5 confluências). O CandleX exige no mínimo 5 confluências institucionais para validar a entrada com segurança.`);
           soundManager.playRejectAlert();
-          soundManager.speakAlert("Sinal cancelado: Aguardar fluxo direcional");
+          soundManager.speakAlert("Sinal cancelado por confluências insuficientes");
           return;
         }
 
-        const dir = analysis.direction;
-        const confidence = analysis.confidenceScore || 0;
-
-        // 3. STRICT ACCURACY CHECK (Exigência >= 80%)
-        if (confidence < 80) {
+        // RULE 3: LOW ACCURACY CHECK (< 80%)
+        if (confidence < 80 || dir === "NEUTRAL") {
           setDecision("REJECTED");
           setResolvedDir(dir);
           setRejectionReason(`Assertividade insuficiente (${confidence}% < 80%). O CandleX exige no mínimo 80% de assertividade institucional para validar a entrada com segurança.`);
@@ -315,115 +313,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
           return;
         }
 
-        // 4. DIVERGENCE CHECKS (Zero Divergência Permitida)
-        const isCall = dir === "CALL";
-        const isPut = dir === "PUT";
-
-        // 4.1. Trend Divergence
-        if ((isCall && trend === "BAIXA") || (isPut && trend === "ALTA")) {
-          setDecision("REJECTED");
-          setResolvedDir(dir);
-          setRejectionReason(`Divergência de Tendência: Tentativa de ${isCall ? "COMPRA" : "VENDA"} contra a tendência principal de ${trend}. Sinal cancelado.`);
-          soundManager.playRejectAlert();
-          soundManager.speakAlert("Sinal cancelado por divergência contra a tendência");
-          return;
-        }
-
-        // 4.2. RSI Extreme Divergence
-        if (isCall && rsi > 75) {
-          setDecision("REJECTED");
-          setResolvedDir(dir);
-          setRejectionReason(`Divergência RSI: Sobrecarga compradora extrema (RSI: ${rsi.toFixed(1)} > 75). Risco de exaustão e retração contrária.`);
-          soundManager.playRejectAlert();
-          soundManager.speakAlert("Entrada rejeitada: RSI em sobrecompra extrema");
-          return;
-        }
-
-        if (isPut && rsi < 25) {
-          setDecision("REJECTED");
-          setResolvedDir(dir);
-          setRejectionReason(`Divergência RSI: Sobrecarga vendedora extrema (RSI: ${rsi.toFixed(1)} < 25). Risco de repique e retração contrária.`);
-          soundManager.playRejectAlert();
-          soundManager.speakAlert("Entrada rejeitada: RSI em sobrevenda extrema");
-          return;
-        }
-
-        // 4.3. EMA Moving Average Cross Divergence
-        if (indicators?.ema9 !== undefined && indicators?.ema20 !== undefined) {
-          if (isCall && indicators.ema9 < indicators.ema20) {
-            setDecision("REJECTED");
-            setResolvedDir(dir);
-            setRejectionReason(`Divergência de Médias: EMA 9 ($${indicators.ema9.toFixed(2)}) abaixo da EMA 20 ($${indicators.ema20.toFixed(2)}) em sinal de compra.`);
-            soundManager.playRejectAlert();
-            soundManager.speakAlert("Sinal cancelado por divergência de médias móveis");
-            return;
-          }
-          if (isPut && indicators.ema9 > indicators.ema20) {
-            setDecision("REJECTED");
-            setResolvedDir(dir);
-            setRejectionReason(`Divergência de Médias: EMA 9 ($${indicators.ema9.toFixed(2)}) acima da EMA 20 ($${indicators.ema20.toFixed(2)}) em sinal de venda.`);
-            soundManager.playRejectAlert();
-            soundManager.speakAlert("Sinal cancelado por divergência de médias móveis");
-            return;
-          }
-        }
-
-        // 4.4. MACD Momentum Divergence
-        if (indicators?.macdHist !== undefined) {
-          if (isCall && indicators.macdHist < -0.0001) {
-            setDecision("REJECTED");
-            setResolvedDir(dir);
-            setRejectionReason(`Divergência MACD: Histograma com pressão vendedora em tentativa de compra.`);
-            soundManager.playRejectAlert();
-            soundManager.speakAlert("Sinal cancelado por divergência no MACD");
-            return;
-          }
-          if (isPut && indicators.macdHist > 0.0001) {
-            setDecision("REJECTED");
-            setResolvedDir(dir);
-            setRejectionReason(`Divergência MACD: Histograma com pressão compradora em tentativa de venda.`);
-            soundManager.playRejectAlert();
-            soundManager.speakAlert("Sinal cancelado por divergência no MACD");
-            return;
-          }
-        }
-
-        // 4.5. Prior Candle Color Confirmation Rule (Confluência de Cor de Vela)
-        const lastClosedCandle = candles.length > 0 ? candles[candles.length - 1] : null;
-        if (lastClosedCandle) {
-          const isGreen = lastClosedCandle.close >= lastClosedCandle.open;
-          const isRed = lastClosedCandle.close < lastClosedCandle.open;
-
-          if (isCall && !isGreen) {
-            setDecision("REJECTED");
-            setResolvedDir(dir);
-            setRejectionReason("Filtro de Cor Anti-Loss: Entrada em COMPRA (CALL) exige confirmação com vela anterior verde (positiva).");
-            soundManager.playRejectAlert();
-            soundManager.speakAlert("Entrada rejeitada: Vela anterior fechou vermelha");
-            return;
-          }
-
-          if (isPut && !isRed) {
-            setDecision("REJECTED");
-            setResolvedDir(dir);
-            setRejectionReason("Filtro de Cor Anti-Loss: Entrada em VENDA (PUT) exige confirmação com vela anterior vermelha (negativa).");
-            soundManager.playRejectAlert();
-            soundManager.speakAlert("Entrada rejeitada: Vela anterior fechou verde");
-            return;
-          }
-        }
-
-        // 5. STRICT 4-CONFLUENCE MINIMUM RULE
-        if (confluenceCount < 4) {
-          setDecision("REJECTED");
-          setResolvedDir(dir);
-          setRejectionReason(`Filtro Anti-Loss Ativado: Apenas ${confluenceCount} confluência(s) institucional(is) detectada(s). O CandleX exige no mínimo 4 confluências sem divergências.`);
-          soundManager.playRejectAlert();
-          soundManager.speakAlert("Sinal cancelado por confluências insuficientes");
-          return;
-        }
-
-        // All filters passed -> CONFIRM SIGNAL!
+        // ALL RULES PASSED -> CONFIRM SIGNAL!
         setDecision("CONFIRMED");
         setResolvedDir(dir);
         if (dir === "CALL") {

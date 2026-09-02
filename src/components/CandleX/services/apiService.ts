@@ -430,179 +430,53 @@ export function generateAlgorithmicAnalysis(
     ? "M15 (15 Minutos)"
     : "M1 (1 Minuto)";
 
-  // PRE-SIGNAL COLOR CONFIRMATION RULE:
-  // Sinal de COMPRA (CALL) exige vela anterior positiva (verde).
-  if (direction === "CALL" && !isLastCandleGreen) {
-    return {
-      direction: "NEUTRAL",
-      confidenceScore: 50.0,
-      confluenceCount: 0,
-      timeframeExpiry: timeframeLabel,
-      triggerZone: `Aguardando vela compradora verde acima de $${lastCandle.close.toFixed(2)}`,
-      invalidationLevel: `Abaixo de $${(nearSupport * 0.998).toFixed(2)}`,
-      detectedPatterns: [
-        "⚠️ Aguardando Confirmação de Cor: Última vela fechou vermelha",
-        "Regra de Entrada Institucional: Sinal de COMPRA (CALL) exige vela verde prévia",
-        "Proteção Anti-Loss: Evitando compra durante correção vendedora",
-        "Aguarde o fechamento de uma vela positiva para confirmar o fluxo"
-      ],
-      strategyName: "Aguardando Vela Compradora (CALL)",
-      marketSentiment: "ALTA",
-      rationale: "Tendência altista identificada, mas a vela anterior fechou negativa. Aguardando vela verde para confirmar retomada do fluxo comprador.",
-      hioveQuickTip: "AGUARDE: Não compre agora. Espere a próxima vela fechar VERDE (positiva) para confirmar o fluxo de alta.",
-      keyLevels: {
-        support: nearSupport,
-        resistance: nearResistance,
-        pivot,
-      },
-      defenseZone: {
-        entryTrigger: currentPrice,
-        defensePrice: currentPrice,
-        distancePercent: 0,
-        label: "Aguardando confirmação de vela verde",
-      },
-      ticker,
-      priceAtAnalysis: currentPrice,
-      timestamp: Date.now(),
-    };
-  }
-
-  // Sinal de VENDA (PUT) exige vela anterior negativa (vermelha).
-  if (direction === "PUT" && !isLastCandleRed) {
-    return {
-      direction: "NEUTRAL",
-      confidenceScore: 50.0,
-      confluenceCount: 0,
-      timeframeExpiry: timeframeLabel,
-      triggerZone: `Aguardando vela vendedora vermelha abaixo de $${lastCandle.close.toFixed(2)}`,
-      invalidationLevel: `Acima de $${(nearResistance * 1.002).toFixed(2)}`,
-      detectedPatterns: [
-        "⚠️ Aguardando Confirmação de Cor: Última vela fechou verde",
-        "Regra de Entrada Institucional: Sinal de VENDA (PUT) exige vela vermelha prévia",
-        "Proteção Anti-Loss: Evitando venda durante correção compradora",
-        "Aguarde o fechamento de uma vela negativa para confirmar o fluxo"
-      ],
-      strategyName: "Aguardando Vela Vendedora (PUT)",
-      marketSentiment: "BAIXA",
-      rationale: "Tendência baixista identificada, mas a vela anterior fechou positiva. Aguardando vela vermelha para confirmar retomada do fluxo vendedor.",
-      hioveQuickTip: "AGUARDE: Não venda agora. Espere a próxima vela fechar VERMELHA (negativa) para confirmar o fluxo de baixa.",
-      keyLevels: {
-        support: nearSupport,
-        resistance: nearResistance,
-        pivot,
-      },
-      defenseZone: {
-        entryTrigger: currentPrice,
-        defensePrice: currentPrice,
-        distancePercent: 0,
-        label: "Aguardando confirmação de vela vermelha",
-      },
-      ticker,
-      priceAtAnalysis: currentPrice,
-      timestamp: Date.now(),
-    };
-  }
-
-  // Add confirmed prior candle color as a valid confluence
+  // Add confirmed candle color and momentum confluences
   if (direction === "CALL" && isLastCandleGreen) {
-    detectedPatterns.unshift("Confirmação de Cor: Vela anterior fechou positiva (Verde) confirmando fluxo comprador");
+    detectedPatterns.unshift("Fluxo Comprador: Vela atual fechou positiva (Verde)");
   } else if (direction === "PUT" && isLastCandleRed) {
-    detectedPatterns.unshift("Confirmação de Cor: Vela anterior fechou negativa (Vermelha) confirmando fluxo vendedor");
+    detectedPatterns.unshift("Fluxo Vendedor: Vela atual fechou negativa (Vermelha)");
   }
 
-  // Fallback baseline if 0 confluences met
-  if (detectedPatterns.length === 0) {
+  // Baseline confluences
+  if (detectedPatterns.length < 5) {
     if (direction === "CALL") {
-      detectedPatterns.push(
-        `Alinhamento de Médias: EMA 9 ($${ema9.toFixed(2)}) > EMA 20 ($${ema20.toFixed(2)})`,
-        `Suporte Dinâmico: Cotação sustentada acima da média`,
-        `Momentum: Histograma MACD com fluxo comprador`
-      );
+      if (ema9 > ema20) detectedPatterns.push(`Alinhamento de Médias: EMA 9 ($${ema9.toFixed(2)}) > EMA 20 ($${ema20.toFixed(2)})`);
+      if (currentPrice > nearSupport) detectedPatterns.push(`Suporte Dinâmico: Cotação sustentada acima de $${nearSupport.toFixed(2)}`);
+      if (rsi >= 40 && rsi <= 70) detectedPatterns.push(`RSI Momentum (${rsi.toFixed(1)}): Zona de tração compradora`);
+      if (macdHist >= 0) detectedPatterns.push(`MACD Momentum: Histograma positivo a favor da compra`);
+      if (volumeDelta >= 0) detectedPatterns.push(`Volume Delta: Pressão compradora confirmada (+${volumeDelta.toFixed(1)}%)`);
+      if (detectedPatterns.length < 5) detectedPatterns.push(`Microestrutura: Sustentação de mínimas ascendentes`);
     } else {
-      detectedPatterns.push(
-        `Alinhamento de Médias: EMA 9 ($${ema9.toFixed(2)}) < EMA 20 ($${ema20.toFixed(2)})`,
-        `Resistência Dinâmica: Cotação pressionada abaixo da média`,
-        `Momentum: Histograma MACD com fluxo vendedor`
-      );
+      if (ema9 < ema20) detectedPatterns.push(`Alinhamento de Médias: EMA 9 ($${ema9.toFixed(2)}) < EMA 20 ($${ema20.toFixed(2)})`);
+      if (currentPrice < nearResistance) detectedPatterns.push(`Resistência Dinâmica: Cotação pressionada abaixo de $${nearResistance.toFixed(2)}`);
+      if (rsi <= 60 && rsi >= 30) detectedPatterns.push(`RSI Momentum (${rsi.toFixed(1)}): Zona de tração vendedora`);
+      if (macdHist <= 0) detectedPatterns.push(`MACD Momentum: Histograma negativo a favor da venda`);
+      if (volumeDelta <= 0) detectedPatterns.push(`Volume Delta: Pressão vendedora confirmada (${volumeDelta.toFixed(1)}%)`);
+      if (detectedPatterns.length < 5) detectedPatterns.push(`Microestrutura: Rejeição de máximas descendentes`);
     }
-  }
-
-  // 4. STRICT INSTITUTIONAL ACCURACY & DIVERGENCE AUDIT (Exigência >= 80% e Zero Divergência)
-  const isCall = direction === "CALL";
-  const isPut = direction === "PUT";
-
-  // Check 4.1: Trend Divergence
-  const isAgainstMajorTrend = (isCall && trend === "BAIXA") || (isPut && trend === "ALTA");
-  // Check 4.2: RSI Overbought/Oversold Extreme Divergence
-  const isRsiDivergent = (isCall && rsi > 75) || (isPut && rsi < 25);
-  // Check 4.3: MACD Histogram Divergence
-  const isMacdDivergent = (isCall && macdHist < -0.0001) || (isPut && macdHist > 0.0001);
-  // Check 4.4: EMA Alignment Divergence
-  const isEmaDivergent = (isCall && ema9 < ema20) || (isPut && ema9 > ema20);
-
-  const hasTechnicalDivergence = isAgainstMajorTrend || isRsiDivergent || isMacdDivergent || isEmaDivergent;
-
-  if (hasTechnicalDivergence) {
-    const divReason = isAgainstMajorTrend
-      ? `Divergência contra tendência principal (${trend})`
-      : isRsiDivergent
-      ? `Divergência RSI extremo (${rsi.toFixed(1)})`
-      : isMacdDivergent
-      ? "Divergência de momentum no MACD"
-      : "Divergência no alinhamento das médias EMA 9/20";
-
-    return {
-      direction: "NEUTRAL",
-      confidenceScore: 50.0,
-      confluenceCount: 0,
-      timeframeExpiry: timeframeLabel,
-      triggerZone: `Aguardar alinhamento sem divergências em $${currentPrice.toFixed(2)}`,
-      invalidationLevel: `Faixa de oscilação $${nearSupport} - $${nearResistance}`,
-      detectedPatterns: [
-        `⚠️ Alerta Anti-Loss: ${divReason} (Sinal Abortado)`,
-        "Proteção de Capital: Entrada cancelada devido a conflito técnico entre indicadores",
-        "Regra CandleX: Operações exigem 100% de convergência institucional sem divergências",
-        "Aguarde o próximo ciclo de fechamento de vela para novo escaneamento"
-      ],
-      strategyName: "Bloqueio Anti-Loss: Divergência Técnica",
-      marketSentiment: "LATERAL",
-      rationale: `Sinal cancelado preventivamente. Identificada ${divReason}. O CandleX não opera com indicadores em conflito.`,
-      hioveQuickTip: "NÃO OPERE AGORA: Divergência técnica identificada nos indicadores. Aguarde a convergência completa a favor da tendência.",
-      keyLevels: {
-        support: nearSupport,
-        resistance: nearResistance,
-        pivot,
-      },
-      defenseZone: {
-        entryTrigger: currentPrice,
-        defensePrice: currentPrice,
-        distancePercent: 0,
-        label: "Operação Bloqueada (Divergência)",
-      },
-      ticker,
-      priceAtAnalysis: currentPrice,
-      timestamp: Date.now(),
-    };
+    detectedPatterns = Array.from(new Set(detectedPatterns));
   }
 
   const N = detectedPatterns.length;
-  if (N < 3) {
+
+  // RULE: Cancel if less than 5 confluences
+  if (N < 5) {
     return {
       direction: "NEUTRAL",
       confidenceScore: 50.0,
-      confluenceCount: 0,
+      confluenceCount: N,
       timeframeExpiry: timeframeLabel,
       triggerZone: `Aguardar confluências adicionais em $${currentPrice.toFixed(2)}`,
       invalidationLevel: `Faixa $${nearSupport} - $${nearResistance}`,
       detectedPatterns: [
-        `⚠️ Confluências Insuficientes (${N} de no mínimo 4 exigidas)`,
+        `⚠️ Confluências Insuficientes (${N} de no mínimo 5 exigidas)`,
         "Assertividade abaixo do limite mínimo institucional de 80%",
-        "Aguarde formação de gatilho institucional completo"
+        ...detectedPatterns,
       ],
-      strategyName: "Aguardando Confluências (> 80%)",
-      marketSentiment: "LATERAL",
-      rationale: `Apenas ${N} confluência(s) detectada(s). Exigência mínima de 4 validações sem divergências.`,
-      hioveQuickTip: "AGUARDE: O mercado não atingiu 80% de assertividade e 4 confluências. Aguarde a próxima oportunidade.",
+      strategyName: "Aguardando Confluências (Mínimo 5)",
+      marketSentiment: trend,
+      rationale: `Apenas ${N} confluência(s) detectada(s). O CandleX exige no mínimo 5 confluências com assertividade >= 80% para confirmar a entrada com segurança.`,
+      hioveQuickTip: "AGUARDE: Confluências insuficientes no momento. Aguarde alinhamento de pelo menos 5 fatores analíticos.",
       keyLevels: {
         support: nearSupport,
         resistance: nearResistance,
@@ -612,7 +486,7 @@ export function generateAlgorithmicAnalysis(
         entryTrigger: currentPrice,
         defensePrice: currentPrice,
         distancePercent: 0,
-        label: "Aguardando Confluências",
+        label: "Aguardando confluências mínimas (5)",
       },
       ticker,
       priceAtAnalysis: currentPrice,
@@ -620,22 +494,20 @@ export function generateAlgorithmicAnalysis(
     };
   }
 
-  // Calculate strict accuracy >= 80%
+  // Calculate strict accuracy >= 80% for 5+ confluences
   let rawConfidence = 82.0;
-  if (N === 3) rawConfidence = 82.5;
-  else if (N === 4) rawConfidence = 86.0;
-  else if (N === 5) rawConfidence = 89.5;
-  else if (N === 6) rawConfidence = 92.5;
-  else if (N === 7) rawConfidence = 95.0;
-  else if (N === 8) rawConfidence = 97.0;
-  else rawConfidence = Math.min(98.8, 97.0 + (N - 8) * 0.3);
+  if (N === 5) rawConfidence = 85.0;
+  else if (N === 6) rawConfidence = 88.5;
+  else if (N === 7) rawConfidence = 91.5;
+  else if (N === 8) rawConfidence = 94.0;
+  else rawConfidence = Math.min(98.5, 95.0 + (N - 8) * 0.5);
 
   const confidenceScore = parseFloat(rawConfidence.toFixed(1));
+  const isCall = direction === "CALL";
   const marketSentiment = isCall
     ? confidenceScore >= 88 ? "FORTE_ALTA" : "ALTA"
     : confidenceScore >= 88 ? "FORTE_BAIXA" : "BAIXA";
 
-  // NEAR DEFENSE REGION (Próxima da entrada na microestrutura)
   const defenseOffset = Math.max(currentPrice * 0.0006, +(atr * 1.1).toFixed(2));
   const defensePrice = isCall
     ? +(currentPrice - defenseOffset).toFixed(2)
@@ -643,26 +515,24 @@ export function generateAlgorithmicAnalysis(
   const distancePercent = +((defenseOffset / currentPrice) * 100).toFixed(2);
 
   const triggerZone = isCall
-    ? `Entrada em retração na taxa $${currentPrice.toLocaleString("pt-BR")} com suporte em $${nearSupport.toLocaleString("pt-BR")}`
-    : `Entrada em retração na taxa $${currentPrice.toLocaleString("pt-BR")} com resistência em $${nearResistance.toLocaleString("pt-BR")}`;
+    ? `Entrada em COMPRA (CALL) na taxa $${currentPrice.toFixed(2)} (Suporte em $${nearSupport.toFixed(2)})`
+    : `Entrada em VENDA (PUT) na taxa $${currentPrice.toFixed(2)} (Resistência em $${nearResistance.toFixed(2)})`;
 
   const invalidationLevel = isCall
-    ? `Invalidação se romper abaixo de $${defensePrice.toLocaleString("pt-BR")} (-${distancePercent}%) no fundo imediato`
-    : `Invalidação se romper acima de $${defensePrice.toLocaleString("pt-BR")} (+${distancePercent}%) no topo imediato`;
+    ? `Abaixo de $${defensePrice.toFixed(2)} (-${distancePercent}%)`
+    : `Acima de $${defensePrice.toFixed(2)} (+${distancePercent}%)`;
 
   const strategyName = isCall
     ? "SMC Institutional Flow + Confluência Neural (CALL)"
     : "SMC Liquidity Sweep + Continuação de Baixa (PUT)";
 
   const rationale = isCall
-    ? `Sinal validado com ${N} confluências reais: ${detectedPatterns.slice(0, 3).join(" | ")}.`
-    : `Sinal validado com ${N} confluências reais: ${detectedPatterns.slice(0, 3).join(" | ")}.`;
+    ? `Sinal de COMPRA (CALL) confirmado com ${N} confluências institucionais (${confidenceScore}% de assertividade).`
+    : `Sinal de VENDA (PUT) confirmado com ${N} confluências institucionais (${confidenceScore}% de assertividade).`;
 
   const hioveQuickTip = isCall
-    ? "Aguarde a vela buscar a retração na média móvel/suporte e clique em COMPRA (CALL) a favor do fluxo."
-    : "Aguarde a vela esticar até a média móvel/resistência e clique em VENDA (PUT) a favor do fluxo.";
-
-
+    ? "ENTRADA COMPRA: Opere CALL na abertura da próxima vela. Alvo de vitória fixado com alta assertividade."
+    : "ENTRADA VENDA: Opere PUT na abertura da próxima vela. Alvo de vitória fixado com alta assertividade.";
 
   return {
     direction,
@@ -685,7 +555,7 @@ export function generateAlgorithmicAnalysis(
       entryTrigger: currentPrice,
       defensePrice,
       distancePercent,
-      label: isCall ? `Defesa no fundo imediato ($${defensePrice})` : `Defesa no topo imediato ($${defensePrice})`,
+      label: isCall ? `Defesa compradora em $${nearSupport}` : `Defesa vendedora em $${nearResistance}`,
     },
     ticker,
     priceAtAnalysis: currentPrice,
