@@ -442,9 +442,9 @@ export const Management2x1View: React.FC = () => {
 
         {/* CICLO FINALIZADO */}
         {currentStep === 'CYCLE_FINISHED' && (
-          <div className="space-y-3 animate-in fade-in">
+          <div className="space-y-4 animate-in fade-in">
             <div
-              className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 ${
+              className={`p-4 rounded-xl border flex items-center justify-between gap-3 ${
                 cycleResult === '2x0_WIN'
                   ? 'bg-emerald-950/20 border-emerald-500/40'
                   : 'bg-rose-950/20 border-rose-500/40'
@@ -454,38 +454,47 @@ export const Management2x1View: React.FC = () => {
                 <span className={`text-xs font-bold uppercase block ${cycleResult === '2x0_WIN' ? 'text-emerald-400' : 'text-rose-400'}`}>
                   {cycleResult === '2x0_WIN' ? '🏆 Meta 2x0 Batida com Sucesso!' : '⚠️ Stop Loss Diário Atingido'}
                 </span>
-                <div className={`text-lg font-black font-mono ${cycleResult === '2x0_WIN' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                  {profitGenerated >= 0 ? `+${formatCurrency(profitGenerated)}` : formatCurrency(profitGenerated)}
+                <div className={`text-xl font-black font-mono mt-0.5 ${cycleResult === '2x0_WIN' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  Resultado: {profitGenerated >= 0 ? `+${formatCurrency(profitGenerated)}` : formatCurrency(profitGenerated)}
                 </div>
               </div>
 
               <button
                 onClick={handleResetCycle}
-                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#151922] text-slate-300 border border-[#222B3D] hover:text-white flex items-center gap-1.5"
+                className="px-3.5 py-2 rounded-lg text-xs font-bold bg-[#151922] text-slate-300 border border-[#222B3D] hover:text-white flex items-center gap-1.5"
               >
                 <RotateCcw className="w-3.5 h-3.5 text-orange-400" />
                 Novo Ciclo
               </button>
             </div>
 
-            {/* Tempo de Tela e Salvar Dia */}
-            <div className="p-3.5 bg-[#080B11] border border-[#1E2536] rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-cyan-400" />
-                <span className="text-xs text-slate-300">Tempo de Tela: <strong className="text-cyan-300 font-mono">{formatSecondsToTime(screenTimeSeconds)}</strong></span>
-              </div>
+            {/* Seletor de Tempo de Tela e Salvar Dia */}
+            <div className="space-y-3">
+              <ScreenTimePicker
+                initialSeconds={screenTimeSeconds}
+                onTimeChange={(sec) => setScreenTimeSeconds(sec)}
+              />
 
               <button
                 onClick={() => {
                   setDayOperationalTime(getTodayDateString(), screenTimeSeconds);
                   setDayRegisteredSuccess(true);
                 }}
-                className={`w-full sm:w-auto px-4 py-2 rounded-lg text-xs font-bold text-white transition-all flex items-center justify-center gap-1.5 ${
-                  dayRegisteredSuccess ? 'bg-emerald-600' : 'bg-orange-500 hover:bg-orange-600'
+                className={`w-full py-3 px-4 rounded-xl text-xs font-black uppercase tracking-wider text-white shadow-lg transition-all flex items-center justify-center gap-2 ${
+                  dayRegisteredSuccess ? 'bg-emerald-600 shadow-emerald-950/50' : 'bg-orange-500 hover:bg-orange-600 shadow-orange-950/50'
                 }`}
               >
-                <Save className="w-3.5 h-3.5" />
-                {dayRegisteredSuccess ? 'Dia Registrado!' : 'Salvar Dia no Diário'}
+                {dayRegisteredSuccess ? (
+                  <>
+                    <CheckCircle className="w-4 h-4" />
+                    Dia e Tempo de Tela Registrados com Sucesso!
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    Salvar Dia e Tempo de Tela no Diário
+                  </>
+                )}
               </button>
             </div>
           </div>

@@ -16,6 +16,7 @@ import { useTrading } from '../../context/TradingContext';
 import { OperationResult } from '../../types';
 import { calculate5x2Management, calculateOperationProfit } from '../../utils/calculations';
 import { getTodayDateString, formatSecondsToTime } from '../../utils/formatters';
+import { ScreenTimePicker } from '../common/ScreenTimePicker';
 
 export const Management5x2View: React.FC = () => {
   const {
@@ -362,9 +363,9 @@ export const Management5x2View: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div className="space-y-3 animate-in fade-in">
+          <div className="space-y-4 animate-in fade-in">
             <div
-              className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 ${
+              className={`p-4 rounded-xl border flex items-center justify-between gap-3 ${
                 lossCount < 2 && winCount > 0
                   ? 'bg-emerald-950/20 border-emerald-500/40'
                   : 'bg-rose-950/20 border-rose-500/40'
@@ -374,38 +375,47 @@ export const Management5x2View: React.FC = () => {
                 <span className={`text-xs font-bold uppercase block ${lossCount < 2 && winCount > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                   {lossCount < 2 && winCount > 0 ? '🏆 Sessão Finalizada com Lucro!' : '⚠️ Limite de 2 LOSS Atingido'}
                 </span>
-                <div className={`text-lg font-black font-mono ${currentSessionProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                <div className={`text-xl font-black font-mono mt-0.5 ${currentSessionProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                   Resultado: {currentSessionProfit >= 0 ? `+${formatCurrency(currentSessionProfit)}` : formatCurrency(currentSessionProfit)} ({winCount}W - {lossCount}L)
                 </div>
               </div>
 
               <button
                 onClick={reset5x2Session}
-                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#151922] text-slate-300 border border-[#222B3D] hover:text-white flex items-center gap-1.5"
+                className="px-3.5 py-2 rounded-lg text-xs font-bold bg-[#151922] text-slate-300 border border-[#222B3D] hover:text-white flex items-center gap-1.5"
               >
                 <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
                 Nova Sessão
               </button>
             </div>
 
-            {/* Tempo de Tela e Salvar Dia */}
-            <div className="p-3.5 bg-[#080B11] border border-[#1E2536] rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-cyan-400" />
-                <span className="text-xs text-slate-300">Tempo de Tela: <strong className="text-cyan-300 font-mono">{formatSecondsToTime(screenTimeSeconds)}</strong></span>
-              </div>
+            {/* Seletor de Tempo de Tela e Salvar Dia */}
+            <div className="space-y-3">
+              <ScreenTimePicker
+                initialSeconds={screenTimeSeconds}
+                onTimeChange={(sec) => setScreenTimeSeconds(sec)}
+              />
 
               <button
                 onClick={() => {
                   setDayOperationalTime(getTodayDateString(), screenTimeSeconds);
                   setDayRegisteredSuccess(true);
                 }}
-                className={`w-full sm:w-auto px-4 py-2 rounded-lg text-xs font-bold text-white transition-all flex items-center justify-center gap-1.5 ${
-                  dayRegisteredSuccess ? 'bg-emerald-600' : 'bg-cyan-600 hover:bg-cyan-500'
+                className={`w-full py-3 px-4 rounded-xl text-xs font-black uppercase tracking-wider text-white shadow-lg transition-all flex items-center justify-center gap-2 ${
+                  dayRegisteredSuccess ? 'bg-emerald-600 shadow-emerald-950/50' : 'bg-cyan-600 hover:bg-cyan-500 shadow-cyan-950/50'
                 }`}
               >
-                <Save className="w-3.5 h-3.5" />
-                {dayRegisteredSuccess ? 'Dia Registrado!' : 'Salvar Dia no Diário'}
+                {dayRegisteredSuccess ? (
+                  <>
+                    <CheckCircle className="w-4 h-4" />
+                    Dia e Tempo de Tela Registrados com Sucesso!
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    Salvar Dia e Tempo de Tela no Diário
+                  </>
+                )}
               </button>
             </div>
           </div>
