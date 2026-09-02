@@ -34,7 +34,6 @@ interface HioveUnifiedTopBarProps {
   onOpenJournal: () => void;
   onOpenCalendar: () => void;
   onOpenIndicators: () => void;
-  onOpenAutoTrader: () => void;
   onOpenVision: () => void;
   onOpenChat: () => void;
   soundEnabled: boolean;
@@ -58,7 +57,6 @@ export const HioveUnifiedTopBar: React.FC<HioveUnifiedTopBarProps> = ({
   onOpenJournal,
   onOpenCalendar,
   onOpenIndicators,
-  onOpenAutoTrader,
   onOpenVision,
   onOpenChat,
   soundEnabled,
@@ -140,16 +138,6 @@ export const HioveUnifiedTopBar: React.FC<HioveUnifiedTopBarProps> = ({
 
         {/* Sleek Tool Actions Bar */}
         <div className="flex items-center gap-1 bg-[#121622]/60 border border-[#1E2638] rounded-lg p-0.5 max-w-[190px] sm:max-w-none overflow-x-auto no-scrollbar">
-          {/* Auto Trader Button */}
-          <button
-            type="button"
-            onClick={onOpenAutoTrader}
-            className="p-1.5 rounded hover:bg-[#1E2638] text-slate-400 hover:text-[#FF7A00] transition-colors cursor-pointer"
-            title="IA Auto Trader"
-          >
-            <Bot className="w-4 h-4" />
-          </button>
-
           {/* AI Vision Scanner */}
           <button
             type="button"

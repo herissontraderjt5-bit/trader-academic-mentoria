@@ -33,8 +33,6 @@ import {
 import {
   AiAnalysisResult,
   TechnicalIndicators,
-  AutoTraderConfig,
-  AutoTraderSession,
 } from "../../../types";
 
 interface NeuralAnalyzerSidebarProps {
@@ -49,10 +47,6 @@ interface NeuralAnalyzerSidebarProps {
   analysis: AiAnalysisResult | null;
   indicators: TechnicalIndicators | null;
   currentPrice: number;
-  autoTraderConfig?: AutoTraderConfig;
-  autoTraderSession?: AutoTraderSession;
-  onToggleAutoTrader?: () => void;
-  onOpenAutoTraderModal?: () => void;
   onOpenOperations?: () => void;
   tradesCount?: number;
 }
@@ -86,10 +80,6 @@ export const NeuralAnalyzerSidebar: React.FC<NeuralAnalyzerSidebarProps> = ({
   analysis,
   indicators,
   currentPrice,
-  autoTraderConfig,
-  autoTraderSession,
-  onToggleAutoTrader,
-  onOpenAutoTraderModal,
   onOpenOperations,
   tradesCount,
 }) => {
@@ -266,120 +256,6 @@ ${confluencesList}
             </div>
           )}
         </div>
-
-        {/* TRADER AUTO IA - OPERAÇÕES AUTOMÁTICAS */}
-        {autoTraderConfig && (
-          <div className="bg-[#10141E] border border-[#1E2638] hover:border-[#FF7A00]/40 rounded-xl p-3.5 space-y-3 transition-all shadow-lg">
-            {/* Header with Switch */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-[#FF7A00]/20 border border-[#FF7A00]/40 flex items-center justify-center">
-                  <Bot className="w-4 h-4 text-[#FF7A00]" />
-                </div>
-                <div>
-                  <span className="text-xs font-black uppercase text-white tracking-wide flex items-center gap-1.5">
-                    TRADER AUTO
-                    <span
-                      className={`w-2 h-2 rounded-full ${
-                        autoTraderConfig.enabled
-                          ? "bg-emerald-400 animate-ping"
-                          : "bg-slate-600"
-                      }`}
-                    />
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-mono block -mt-0.5">
-                    Gestão {autoTraderConfig.managementMode} &bull; {autoTraderConfig.timeframe.toUpperCase()}
-                  </span>
-                </div>
-              </div>
-
-              {/* Quick Power Toggle */}
-              <button
-                type="button"
-                onClick={onToggleAutoTrader}
-                className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase transition-all flex items-center gap-1.5 cursor-pointer border ${
-                  autoTraderConfig.enabled
-                    ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.3)]"
-                    : "bg-slate-800 text-slate-300 border-slate-700 hover:text-white"
-                }`}
-              >
-                {autoTraderConfig.enabled ? (
-                  <>
-                    <Pause className="w-3.5 h-3.5" />
-                    <span>LIGADO</span>
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-3.5 h-3.5 fill-slate-300" />
-                    <span>DESLIGADO</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Live Session Score & Mini Stats */}
-            <div className="bg-[#0B0E14] p-2.5 rounded-lg border border-[#182032] flex items-center justify-between text-xs">
-              <div className="flex items-center gap-1.5">
-                <span className="text-slate-400 text-xs">Placar:</span>
-                <span className="font-mono font-black text-emerald-400 text-sm">
-                  {autoTraderSession?.wins || 0}W
-                </span>
-                <span className="text-slate-600">/</span>
-                <span className="font-mono font-black text-rose-400 text-sm">
-                  {autoTraderSession?.losses || 0}L
-                </span>
-              </div>
-
-              <div className="flex items-center gap-1.5 font-mono text-xs">
-                <span className="text-slate-400">PnL:</span>
-                <span
-                  className={`font-bold text-sm ${
-                    (autoTraderSession?.totalPnl || 0) >= 0
-                      ? "text-emerald-400"
-                      : "text-rose-400"
-                  }`}
-                >
-                  {(autoTraderSession?.totalPnl || 0) >= 0 ? "+" : ""}
-                  $ {(autoTraderSession?.totalPnl || 0).toFixed(2)}
-                </span>
-              </div>
-            </div>
-
-            {/* Active Assets Info Badge */}
-            <div className="text-[10px] text-slate-400 font-mono bg-[#090D14] px-2.5 py-1.5 rounded-lg border border-[#161D2B] flex items-center justify-between">
-              <span className="text-slate-400">Ativos Monitorados:</span>
-              <span className="text-amber-400 font-bold truncate max-w-[150px]">
-                {autoTraderConfig.selectedAssets && !autoTraderConfig.selectedAssets.includes("CURRENT") && autoTraderConfig.selectedAssets.length > 0
-                  ? `${autoTraderConfig.selectedAssets.length} Pares Ativos`
-                  : `Ativo da Tela (${activeTicker})`}
-              </span>
-            </div>
-
-            {/* Quick Config Badges & Config Button */}
-            <div className="flex items-center justify-between gap-1.5 pt-0.5">
-              <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-300 overflow-x-auto no-scrollbar">
-                <span className="px-2 py-0.5 rounded bg-[#182030] text-emerald-400 border border-emerald-500/20 font-bold">
-                  Meta: ${autoTraderConfig.dailyStopWin}
-                </span>
-                <span className="px-2 py-0.5 rounded bg-[#182030] text-rose-400 border border-rose-500/20 font-bold">
-                  Stop: ${autoTraderConfig.dailyStopLoss}
-                </span>
-                <span className="px-2 py-0.5 rounded bg-[#182030] text-amber-400 border border-amber-500/20 font-bold">
-                  Entrada: ${autoTraderConfig.stakeAmount}
-                </span>
-              </div>
-
-              <button
-                type="button"
-                onClick={onOpenAutoTraderModal}
-                className="p-1.5 rounded bg-[#1A2234] hover:bg-[#26324D] text-[#FF7A00] border border-[#FF7A00]/30 transition-colors cursor-pointer flex-shrink-0"
-                title="Abrir Configurações do Trader Auto"
-              >
-                <Settings className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* PRIMARY BUTTON: ROUND FUTURISTIC CYBER REACTOR CORE */}
         <div className="py-2 flex flex-col items-center justify-center relative">

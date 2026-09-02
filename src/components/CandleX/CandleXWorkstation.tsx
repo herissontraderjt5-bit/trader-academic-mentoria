@@ -31,7 +31,6 @@ import { IndicatorsModal } from "./components/IndicatorsModal";
 import { DepositModal } from "./components/DepositModal";
 import { AiChartVisionModal } from "./components/AiChartVisionModal";
 import { AiChatDrawer } from "./components/AiChatDrawer";
-import { AutoTraderModal } from "./components/AutoTraderModal";
 import { AiNeuralScannerOverlay } from "./components/AiNeuralScannerOverlay";
 import { CenterSignalOverlay } from "./components/CenterSignalOverlay";
 import { HioveUnifiedTopBar } from "./components/HioveUnifiedTopBar";
@@ -1378,7 +1377,6 @@ export default function CandleXWorkstation({
         onOpenJournal={() => setIsOperationsOpen(true)}
         onOpenCalendar={() => setIsEconomicCalendarOpen(true)}
         onOpenIndicators={() => setIsIndicatorsOpen(true)}
-        onOpenAutoTrader={() => setIsAutoTraderOpen(true)}
         onOpenVision={() => setIsVisionOpen(true)}
         onOpenChat={() => setIsChatOpen(true)}
         soundEnabled={soundEnabled}
@@ -1433,10 +1431,6 @@ export default function CandleXWorkstation({
             analysis={aiAnalysis}
             indicators={indicators}
             currentPrice={currentPrice}
-            autoTraderConfig={autoTraderConfig}
-            autoTraderSession={autoTraderSession}
-            onToggleAutoTrader={handleToggleAutoTrader}
-            onOpenAutoTraderModal={() => setIsAutoTraderOpen(true)}
             onOpenOperations={() => setIsOperationsOpen(true)}
             tradesCount={trades.length}
           />
@@ -1447,8 +1441,6 @@ export default function CandleXWorkstation({
           mobileTab === "chart" ? "flex" : "hidden md:flex"
         }`}>
           
-
-
           <div className="flex-1 w-full h-full min-h-0 relative">
             {chartEngine === "HIOVE_REAL" && (
               <HioveBrokerFrame
@@ -1501,22 +1493,6 @@ export default function CandleXWorkstation({
         trades={trades}
         onUpdateTradeResult={handleUpdateTradeResult}
         onClearTrades={handleClearTrades}
-      />
-
-      <AutoTraderModal
-        isOpen={isAutoTraderOpen}
-        onClose={() => setIsAutoTraderOpen(false)}
-        config={autoTraderConfig}
-        onChangeConfig={handleUpdateAutoTraderConfig}
-        session={autoTraderSession}
-        onResetSession={handleResetAutoTraderSession}
-        onToggleEnabled={handleToggleAutoTrader}
-        hioveToken={hioveAccountInfo.token}
-        activeTicker={activeTicker}
-        onConnectHiove={async () => {
-          const success = await connectToHiove(true);
-          return !!success;
-        }}
       />
 
       <FinancialModal
