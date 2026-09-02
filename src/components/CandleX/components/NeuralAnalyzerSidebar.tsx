@@ -645,9 +645,19 @@ ${confluencesList}
             {/* Header with Title & Copy Button */}
             <div className="flex items-center justify-between pb-2.5 border-b border-[#1A2234]">
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-xs uppercase font-black text-white tracking-wider">
-                  SINAL GERADO
+                <span
+                  className={`w-2.5 h-2.5 rounded-full ${
+                    analysis.direction === "NEUTRAL"
+                      ? "bg-rose-500 animate-pulse"
+                      : "bg-emerald-400 animate-pulse"
+                  }`}
+                />
+                <span
+                  className={`text-xs uppercase font-black tracking-wider ${
+                    analysis.direction === "NEUTRAL" ? "text-rose-400" : "text-white"
+                  }`}
+                >
+                  {analysis.direction === "NEUTRAL" ? "SINAL CANCELADO (ANTI-LOSS)" : "SINAL GERADO"}
                 </span>
               </div>
               <button
@@ -683,14 +693,14 @@ ${confluencesList}
                         ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.2)]"
                         : analysis.direction === "PUT"
                         ? "bg-rose-500/20 text-rose-400 border border-rose-500/50 shadow-[0_0_10px_rgba(244,63,94,0.2)]"
-                        : "bg-amber-500/20 text-amber-400 border border-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.2)] animate-pulse"
+                        : "bg-rose-500/20 text-rose-300 border border-rose-500/50 shadow-[0_0_10px_rgba(244,63,94,0.2)]"
                     }`}
                   >
                     {analysis.direction === "CALL"
                       ? "COMPRA (CALL) ↗"
                       : analysis.direction === "PUT"
                       ? "VENDA (PUT) ↘"
-                      : "AGUARDAR FLUXO ⏸"}
+                      : "AGUARDAR FLUXO 🛑"}
                   </span>
                 </div>
               </div>

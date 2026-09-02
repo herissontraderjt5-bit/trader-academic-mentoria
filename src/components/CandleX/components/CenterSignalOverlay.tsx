@@ -243,57 +243,145 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
       hasAnnouncedDecisionRef.current = true;
       lastDecisionCandleStartRef.current = currentCandleStart;
 
-      // Perform actual Technical Indicator check (RSI, Trend confluences)
-      const rsi = indicators?.rsi || 50;
-      const trend = indicators?.trend || "ALTA";
+      // 1. QUADRANT COLOR ALTERNATION CHECK (Filtro Choppy / Xadrez)
+      const recentLast5 = candles.slice(-5);
+      let colorFlips = 0;
+      const colorsArray = recentLast5.map((c) => (c.close >= c.open ? "G" : "R"));
+      for (let i = 1; i < colorsArray.length; i++) {
+        if (colorsArray[i] !== colorsArray[i - 1]) colorFlips++;
+      }
+      const isCandleQuadrant = recentLast5.length >= 4 && colorFlips >= 3;
+      const hasQuadrantWarning = patterns.some((p) =>
+        p.toLowerCase().includes("quadrante") ||
+        p.toLowerCase().includes("anti-loss") ||
+        p.toLowerCase().includes("sem fluxo") ||
+        p.toLowerCase().includes("choppy")
+      );
 
-      const dir = analysis.direction === "NEUTRAL"
-        ? (rsi >= 50 ? "CALL" : "PUT")
-        : analysis.direction;
+      if (indicators?.isAlternatingQuadrant || isCandleQuadrant || hasQuadrantWarning) {
+        setDecision("REJECTED");
+        setResolvedDir("NEUTRAL");
+        setRejectionReason("Filtro Anti-Loss Ativado: Quadrante de cores alternadas (mercado xadrez sem fluxo direcional). Entrada cancelada para proteger seu capital contra falso rompimento.");
+        soundManager.playRejectAlert();
+        soundManager.speakAlert("Sinal cancelado: Quadrante de cores alternadas detectado");
+        return;
+      }
 
-      const patterns = analysis.detectedPatterns || [];
-      const confluenceCount = patterns.length;
+      // 2. NEUTRAL DIRECTION / NO DEFINED FLOW CHECK
+      if (analysis.direction === "NEUTRAL") {
+        setDecision("REJECTED");
+        setResolvedDir("NEUTRAL");
+        setRejectionReason(analysis.rationale || "Mercado sem fluxo institucional definido (Aguardar Fluxo). Entrada cancelada pela IA.");
+        soundManager.playRejectAlert();
+        soundManager.speakAlert("Sinal cancelado: Aguardar fluxo direcional");
+        return;
+      }
 
-      // Real anti-loss checks
-      const isExtremeOverbought = rsi > 80 && dir === "CALL";
-      const isExtremeOversold = rsi < 20 && dir === "PUT";
-      const isAgainstTrend = (trend === "ALTA" && dir === "PUT") || (trend === "BAIXA" && dir === "CALL");
+      const dir = analysis.direction;
+      const confidence = analysis.confidenceScore || 0;
 
-      // STRICT 4-CONFLUENCE MINIMUM RULE
+      // 3. STRICT ACCURACY CHECK (Exigência >= 80%)
+      if (confidence < 80) {
+        setDecision("REJECTED");
+        setResolvedDir(dir);
+        setRejectionReason(`Assertividade insuficiente (${confidence}% < 80%). O CandleX exige no mínimo 80% de assertividade institucional para validar a entrada com segurança.`);
+        soundManager.playRejectAlert();
+        soundManager.speakAlert("Sinal cancelado: Assertividade abaixo de 80%");
+        return;
+      }
+
+      // 4. DIVERGENCE CHECKS (Zero Divergência Permitida)
+      const isCall = dir === "CALL";
+      const isPut = dir === "PUT";
+
+      // 4.1. Trend Divergence
+      if ((isCall && trend === "BAIXA") || (isPut && trend === "ALTA")) {
+        setDecision("REJECTED");
+        setResolvedDir(dir);
+        setRejectionReason(`Divergência de Tendência: Tentativa de ${isCall ? "COMPRA" : "VENDA"} contra a tendência principal de ${trend}. Sinal cancelado.`);
+        soundManager.playRejectAlert();
+        soundManager.speakAlert("Sinal cancelado por divergência contra a tendência");
+        return;
+      }
+
+      // 4.2. RSI Extreme Divergence
+      if (isCall && rsi > 75) {
+        setDecision("REJECTED");
+        setResolvedDir(dir);
+        setRejectionReason(`Divergência RSI: Sobrecarga compradora extrema (RSI: ${rsi.toFixed(1)} > 75). Risco de exaustão e retração contrária.`);
+        soundManager.playRejectAlert();
+        soundManager.speakAlert("Entrada rejeitada: RSI em sobrecompra extrema");
+        return;
+      }
+
+      if (isPut && rsi < 25) {
+        setDecision("REJECTED");
+        setResolvedDir(dir);
+        setRejectionReason(`Divergência RSI: Sobrecarga vendedora extrema (RSI: ${rsi.toFixed(1)} < 25). Risco de repique e retração contrária.`);
+        soundManager.playRejectAlert();
+        soundManager.speakAlert("Entrada rejeitada: RSI em sobrevenda extrema");
+        return;
+      }
+
+      // 4.3. EMA Moving Average Cross Divergence
+      if (indicators?.ema9 !== undefined && indicators?.ema20 !== undefined) {
+        if (isCall && indicators.ema9 < indicators.ema20) {
+          setDecision("REJECTED");
+          setResolvedDir(dir);
+          setRejectionReason(`Divergência de Médias: EMA 9 ($${indicators.ema9.toFixed(2)}) abaixo da EMA 20 ($${indicators.ema20.toFixed(2)}) em sinal de compra.`);
+          soundManager.playRejectAlert();
+          soundManager.speakAlert("Sinal cancelado por divergência de médias móveis");
+          return;
+        }
+        if (isPut && indicators.ema9 > indicators.ema20) {
+          setDecision("REJECTED");
+          setResolvedDir(dir);
+          setRejectionReason(`Divergência de Médias: EMA 9 ($${indicators.ema9.toFixed(2)}) acima da EMA 20 ($${indicators.ema20.toFixed(2)}) em sinal de venda.`);
+          soundManager.playRejectAlert();
+          soundManager.speakAlert("Sinal cancelado por divergência de médias móveis");
+          return;
+        }
+      }
+
+      // 4.4. MACD Momentum Divergence
+      if (indicators?.macdHist !== undefined) {
+        if (isCall && indicators.macdHist < -0.0001) {
+          setDecision("REJECTED");
+          setResolvedDir(dir);
+          setRejectionReason(`Divergência MACD: Histograma com pressão vendedora em tentativa de compra.`);
+          soundManager.playRejectAlert();
+          soundManager.speakAlert("Sinal cancelado por divergência no MACD");
+          return;
+        }
+        if (isPut && indicators.macdHist > 0.0001) {
+          setDecision("REJECTED");
+          setResolvedDir(dir);
+          setRejectionReason(`Divergência MACD: Histograma com pressão compradora em tentativa de venda.`);
+          soundManager.playRejectAlert();
+          soundManager.speakAlert("Sinal cancelado por divergência no MACD");
+          return;
+        }
+      }
+
+      // 5. STRICT 4-CONFLUENCE MINIMUM RULE
       if (confluenceCount < 4) {
         setDecision("REJECTED");
         setResolvedDir(dir);
-        setRejectionReason(`Filtro Anti-Loss Ativado: Apenas ${confluenceCount} confluência(s) institucional(is) detectada(s). O CandleX exige no mínimo 4 confluências (SMC, ICT, Price Action e Indicadores) para liberar a entrada com segurança.`);
+        setRejectionReason(`Filtro Anti-Loss Ativado: Apenas ${confluenceCount} confluência(s) institucional(is) detectada(s). O CandleX exige no mínimo 4 confluências sem divergências.`);
         soundManager.playRejectAlert();
-        soundManager.speakAlert("Sinal cancelado pelo Filtro Anti-Loss");
-      } else if (isExtremeOverbought) {
-        setDecision("REJECTED");
-        setResolvedDir(dir);
-        setRejectionReason("RSI extremo em sobrecompra (>80). Filtro Anti-Loss ativado para evitar reversão contra a compra.");
-        soundManager.playRejectAlert();
-        soundManager.speakAlert("Entrada rejeitada! RSI em sobrecompra extrema");
-      } else if (isExtremeOversold) {
-        setDecision("REJECTED");
-        setResolvedDir(dir);
-        setRejectionReason("RSI extremo em sobrevenda (<20). Filtro Anti-Loss ativado para evitar reversão contra a venda.");
-        soundManager.playRejectAlert();
-        soundManager.speakAlert("Entrada rejeitada! RSI em sobrevenda extrema");
-      } else if (isAgainstTrend && (analysis.confidenceScore || 90) < 85) {
-        setDecision("REJECTED");
-        setResolvedDir(dir);
-        setRejectionReason(`Operação contra a tendência principal de ${trend} com confiança moderada (${analysis.confidenceScore}%).`);
-        soundManager.playRejectAlert();
-        soundManager.speakAlert("Entrada rejeitada por baixa confluência contra a tendência");
+        soundManager.speakAlert("Sinal cancelado por confluências insuficientes");
+        return;
+      }
+
+      // All filters passed -> CONFIRM SIGNAL!
+      setDecision("CONFIRMED");
+      setResolvedDir(dir);
+      if (dir === "CALL") {
+        soundManager.playCallAlert();
+        soundManager.speakAlert(`Sinal confirmado: COMPRA em ${activeTicker}`);
       } else {
-        setDecision("CONFIRMED");
-        setResolvedDir(dir);
-        if (dir === "CALL") {
-          soundManager.playCallAlert();
-          soundManager.speakAlert(`Sinal confirmado: COMPRA em ${activeTicker}`);
-        } else {
-          soundManager.playPutAlert();
-          soundManager.speakAlert(`Sinal confirmado: VENDA em ${activeTicker}`);
-        }
+        soundManager.playPutAlert();
+        soundManager.speakAlert(`Sinal confirmado: VENDA em ${activeTicker}`);
       }
     }
   }, [
@@ -303,11 +391,138 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
     isAnalyzing,
     analysis,
     indicators,
+    candles,
     activeTicker,
     isVisible,
     currentTime,
     entryDate,
     decision,
+  ]);
+
+  // Lock entry price and register pending trade when entry candle starts
+  useEffect(() => {
+    if (!analysis || isAnalyzing || !isVisible || decision !== "CONFIRMED") return;
+
+    const nowMs = currentTime.getTime();
+    if (nowMs >= entryDate.getTime()) {
+      if (lockedEntryPriceRef.current === null) {
+        const lastCandle = candles.length > 0 ? candles[candles.length - 1] : null;
+        lockedEntryPriceRef.current = lastCandle ? (lastCandle.open || lastCandle.close) : (analysis.priceAtAnalysis || 100);
+      }
+
+      if (!hasRegisteredPendingRef.current && onSaveSignalTrade) {
+        hasRegisteredPendingRef.current = true;
+        const expiryMins = timeframe.toLowerCase().includes("5m") || timeframe === "5" ? 5 : timeframe.toLowerCase().includes("2m") || timeframe === "2" ? 2 : 1;
+        const stakeAmount = bankrollConfig?.initialBalance ? +(bankrollConfig.initialBalance * 0.01).toFixed(2) : 10;
+        
+        const pendingTrade: TradeRecord = {
+          id: `candlex_sig_${Date.now()}`,
+          timestamp: entryDate.getTime(),
+          ticker: activeTicker,
+          direction: resolvedDirection === "CALL" ? "CALL" : "PUT",
+          entryPrice: lockedEntryPriceRef.current || analysis.priceAtAnalysis || 100,
+          stake: stakeAmount,
+          payoutPercent: 89,
+          expiryMinutes: expiryMins,
+          result: "PENDING",
+          pnl: 0,
+          strategyUsed: analysis.strategyName || "CandleX Confluence Core",
+          confidenceAtEntry: analysis.confidenceScore || 90,
+          notes: `Entrada aos ${entryTimeStr} - Assertividade ${analysis.confidenceScore}%`,
+        };
+        onSaveSignalTrade(pendingTrade);
+      }
+    }
+  }, [currentTime, entryDate, decision, analysis, isAnalyzing, isVisible, candles, activeTicker, resolvedDirection, timeframe, bankrollConfig, onSaveSignalTrade, entryTimeStr]);
+
+  // AUTOMATIC OUTCOME RESOLUTION (WIN / LOSS / DOJI) WHEN EXPIRY TIME IS REACHED
+  useEffect(() => {
+    if (!analysis || isAnalyzing || !isVisible || decision !== "CONFIRMED") return;
+
+    const nowMs = currentTime.getTime();
+    if (nowMs >= expiryDate.getTime() && !hasResolvedOutcome && !isResolvingRef.current) {
+      isResolvingRef.current = true;
+      setHasResolvedOutcome(true);
+
+      const entryPrice = lockedEntryPriceRef.current || analysis.priceAtAnalysis || (candles.length > 0 ? candles[0].open : 100);
+      
+      // Determine expiry price from latest closed candle
+      const lastCandle = candles.length > 0 ? candles[candles.length - 1] : null;
+      const expiryPrice = lastCandle ? lastCandle.close : entryPrice;
+      const priceDiff = +(expiryPrice - entryPrice).toFixed(6);
+
+      let outcome: "WIN" | "LOSS" | "DRAW" = "DRAW";
+      if (Math.abs(priceDiff) <= 0.00001) {
+        outcome = "DRAW";
+      } else if (resolvedDirection === "CALL") {
+        outcome = priceDiff > 0 ? "WIN" : "LOSS";
+      } else if (resolvedDirection === "PUT") {
+        outcome = priceDiff < 0 ? "WIN" : "LOSS";
+      }
+
+      setPredictionResult(outcome);
+
+      // Sound, speech and celebratory effects
+      if (outcome === "WIN") {
+        soundManager.playWin();
+        soundManager.speakAlert(`Vitória confirmada! Operação em ${activeTicker} finalizada com WIN.`);
+        try {
+          confetti({
+            particleCount: 90,
+            spread: 70,
+            origin: { y: 0.6 },
+          });
+        } catch {
+          // ignore
+        }
+      } else if (outcome === "LOSS") {
+        soundManager.playLoss();
+        soundManager.speakAlert(`Derrota registrada em ${activeTicker}. Siga o gerenciamento de banca.`);
+      } else {
+        soundManager.speakAlert(`Operação encerrada em Empate (Doji) em ${activeTicker}. Capital protegido.`);
+      }
+
+      // Update trade in history & bankroll
+      if (onSaveSignalTrade) {
+        const expiryMins = timeframe.toLowerCase().includes("5m") || timeframe === "5" ? 5 : timeframe.toLowerCase().includes("2m") || timeframe === "2" ? 2 : 1;
+        const stakeAmount = bankrollConfig?.initialBalance ? +(bankrollConfig.initialBalance * 0.01).toFixed(2) : 10;
+        const payout = 89;
+        const pnl = outcome === "WIN" ? +((stakeAmount * payout) / 100).toFixed(2) : outcome === "LOSS" ? -stakeAmount : 0;
+
+        const finalizedTrade: TradeRecord = {
+          id: `candlex_sig_${analysis.timestamp || Date.now()}`,
+          timestamp: entryDate.getTime(),
+          ticker: activeTicker,
+          direction: resolvedDirection === "CALL" ? "CALL" : "PUT",
+          entryPrice,
+          expiryPrice,
+          stake: stakeAmount,
+          payoutPercent: payout,
+          expiryMinutes: expiryMins,
+          result: outcome,
+          pnl,
+          strategyUsed: analysis.strategyName || "CandleX Confluence Core",
+          confidenceAtEntry: analysis.confidenceScore || 90,
+          notes: `Resultado: ${outcome} (Entrada: ${entryPrice} / Saída: ${expiryPrice})`,
+        };
+        onSaveSignalTrade(finalizedTrade);
+      }
+    }
+  }, [
+    currentTime,
+    expiryDate,
+    hasResolvedOutcome,
+    decision,
+    analysis,
+    isAnalyzing,
+    isVisible,
+    candles,
+    resolvedDirection,
+    activeTicker,
+    timeframe,
+    bankrollConfig,
+    entryDate,
+    onSaveSignalTrade,
   ]);
 
   // Auto-dismiss rejected signal after 5 seconds to clear the screen cleanly
@@ -325,10 +540,10 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
   // Auto-dismiss confirmation after the entry candle begins to let user view chart cleanly
   useEffect(() => {
     if (!analysis || isAnalyzing || !isVisible) return;
-    if (currentTime.getTime() >= entryDate.getTime() + 6000 && !isMinimized) {
+    if (currentTime.getTime() >= entryDate.getTime() + 6000 && !isMinimized && predictionResult === null) {
       setIsMinimized(true);
     }
-  }, [currentTime, entryDate, analysis, isAnalyzing, isVisible, isMinimized]);
+  }, [currentTime, entryDate, analysis, isAnalyzing, isVisible, isMinimized, predictionResult]);
 
   if (!analysis || !isVisible || isAnalyzing) return null;
 

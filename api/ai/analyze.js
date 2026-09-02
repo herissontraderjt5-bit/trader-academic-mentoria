@@ -437,19 +437,95 @@ function generateAlgorithmicAnalysis(ticker, timeframe, candles, indicators = {}
   }
 
   // 4. REAL INSTITUTIONAL ACCURACY BASED ON TRUE CONFLUENCES
+  // 4. STRICT INSTITUTIONAL ACCURACY & DIVERGENCE AUDIT (Exigência >= 80% e Zero Divergência)
+  const isCall = direction === "CALL";
+  const isPut = direction === "PUT";
+
+  // Check 4.1: Trend Divergence
+  const isAgainstMajorTrend = (isCall && trend === "BAIXA") || (isPut && trend === "ALTA");
+  // Check 4.2: RSI Overbought/Oversold Extreme Divergence
+  const isRsiDivergent = (isCall && rsi > 75) || (isPut && rsi < 25);
+  // Check 4.3: MACD Histogram Divergence
+  const isMacdDivergent = (isCall && macdHist < -0.0001) || (isPut && macdHist > 0.0001);
+  // Check 4.4: EMA Alignment Divergence
+  const isEmaDivergent = (isCall && ema9 < ema20) || (isPut && ema9 > ema20);
+
+  const hasTechnicalDivergence = isAgainstMajorTrend || isRsiDivergent || isMacdDivergent || isEmaDivergent;
+
+  if (hasTechnicalDivergence) {
+    const divReason = isAgainstMajorTrend
+      ? `Divergência contra tendência principal (${trend})`
+      : isRsiDivergent
+      ? `Divergência RSI extremo (${rsi.toFixed(1)})`
+      : isMacdDivergent
+      ? "Divergência de momentum no MACD"
+      : "Divergência no alinhamento das médias EMA 9/20";
+
+    const timeframeExpiryLabel = timeframe === "5M" || timeframe === "5m" ? "Expiração 5 min" : timeframe === "2M" || timeframe === "2m" ? "Expiração 2 min" : "Próxima Vela (1 min)";
+
+    return {
+      direction: "NEUTRAL",
+      confidenceScore: 50.0,
+      confluenceCount: 0,
+      timeframeExpiry: timeframeExpiryLabel,
+      triggerZone: `Aguardar alinhamento sem divergências em $${currentPrice.toFixed(2)}`,
+      invalidationLevel: `Faixa de oscilação $${nearSupport} - $${nearResistance}`,
+      detectedPatterns: [
+        `⚠️ Alerta Anti-Loss: ${divReason} (Sinal Abortado)`,
+        "Proteção de Capital: Entrada cancelada devido a conflito técnico entre indicadores",
+        "Regra CandleX: Operações exigem 100% de convergência institucional sem divergências",
+        "Aguarde o próximo ciclo de fechamento de vela para novo escaneamento"
+      ],
+      strategyName: "Bloqueio Anti-Loss: Divergência Técnica",
+      marketSentiment: "LATERAL",
+      rationale: `Sinal cancelado preventivamente. Identificada ${divReason}. O CandleX não opera com indicadores em conflito.`,
+      hioveQuickTip: "NÃO OPERE AGORA: Divergência técnica identificada nos indicadores. Aguarde a convergência completa a favor da tendência.",
+      keyLevels: {
+        support: nearSupport,
+        resistance: nearResistance,
+        pivot,
+      },
+    };
+  }
+
   const N = detectedPatterns.length;
-  let rawConfidence = 78.0;
-  if (N <= 2) rawConfidence = 72.0 + N * 3.0;
-  else if (N === 3) rawConfidence = 80.5;
-  else if (N === 4) rawConfidence = 84.5;
-  else if (N === 5) rawConfidence = 88.0;
-  else if (N === 6) rawConfidence = 91.5;
-  else if (N === 7) rawConfidence = 94.0;
-  else if (N === 8) rawConfidence = 96.0;
-  else rawConfidence = Math.min(98.5, 96.0 + (N - 8) * 0.4);
+  if (N < 3) {
+    const timeframeExpiryLabel = timeframe === "5M" || timeframe === "5m" ? "Expiração 5 min" : timeframe === "2M" || timeframe === "2m" ? "Expiração 2 min" : "Próxima Vela (1 min)";
+    return {
+      direction: "NEUTRAL",
+      confidenceScore: 50.0,
+      confluenceCount: 0,
+      timeframeExpiry: timeframeExpiryLabel,
+      triggerZone: `Aguardar confluências adicionais em $${currentPrice.toFixed(2)}`,
+      invalidationLevel: `Faixa $${nearSupport} - $${nearResistance}`,
+      detectedPatterns: [
+        `⚠️ Confluências Insuficientes (${N} de no mínimo 4 exigidas)`,
+        "Assertividade abaixo do limite mínimo institucional de 80%",
+        "Aguarde formação de gatilho institucional completo"
+      ],
+      strategyName: "Aguardando Confluências (> 80%)",
+      marketSentiment: "LATERAL",
+      rationale: `Apenas ${N} confluência(s) detectada(s). Exigência mínima de 4 validações sem divergências.`,
+      hioveQuickTip: "AGUARDE: O mercado não atingiu 80% de assertividade e 4 confluências. Aguarde a próxima oportunidade.",
+      keyLevels: {
+        support: nearSupport,
+        resistance: nearResistance,
+        pivot,
+      },
+    };
+  }
+
+  // Calculate strict accuracy >= 80%
+  let rawConfidence = 82.0;
+  if (N === 3) rawConfidence = 82.5;
+  else if (N === 4) rawConfidence = 86.0;
+  else if (N === 5) rawConfidence = 89.5;
+  else if (N === 6) rawConfidence = 92.5;
+  else if (N === 7) rawConfidence = 95.0;
+  else if (N === 8) rawConfidence = 97.0;
+  else rawConfidence = Math.min(98.8, 97.0 + (N - 8) * 0.3);
 
   const confidenceScore = parseFloat(rawConfidence.toFixed(1));
-  const isCall = direction === "CALL";
   const marketSentiment = isCall
     ? confidenceScore >= 88 ? "FORTE_ALTA" : "ALTA"
     : confidenceScore >= 88 ? "FORTE_BAIXA" : "BAIXA";
