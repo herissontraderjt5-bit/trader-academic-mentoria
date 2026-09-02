@@ -348,10 +348,13 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
 
   // Lock entry price and register pending trade when entry candle starts
   useEffect(() => {
-    if (!analysis || isAnalyzing || !isVisible || decision !== "CONFIRMED") return;
+    if (!analysis || isAnalyzing || !isVisible || decision === "REJECTED") return;
 
     const nowMs = currentTime.getTime();
     if (nowMs >= entryDate.getTime()) {
+      if (decision === "PENDING") {
+        setDecision("CONFIRMED");
+      }
       if (lockedEntryPriceRef.current === null) {
         const lastCandle = candles.length > 0 ? candles[candles.length - 1] : null;
         lockedEntryPriceRef.current = lastCandle ? (lastCandle.open || lastCandle.close) : (analysis.priceAtAnalysis || 100);
@@ -384,7 +387,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
 
   // AUTOMATIC OUTCOME RESOLUTION (WIN / LOSS / DOJI) WHEN EXPIRY TIME IS REACHED
   useEffect(() => {
-    if (!analysis || isAnalyzing || !isVisible || decision !== "CONFIRMED") return;
+    if (!analysis || isAnalyzing || !isVisible || decision === "REJECTED") return;
 
     const nowMs = currentTime.getTime();
     if (nowMs >= expiryDate.getTime() && !hasResolvedOutcome && !isResolvingRef.current) {
@@ -795,7 +798,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
               </button>
             </div>
           </div>
-        ) : currentTime.getTime() >= entryDate.getTime() ? (
+        ) : currentTime.getTime() >= entryDate.getTime() && currentTime.getTime() < expiryDate.getTime() ? (
           /* Render Waiting Screen */
           <div className="p-6 text-center space-y-4">
             <div className="w-16 h-16 rounded-full border-4 border-amber-500/20 border-t-amber-500 animate-spin mx-auto flex items-center justify-center shadow-lg">
