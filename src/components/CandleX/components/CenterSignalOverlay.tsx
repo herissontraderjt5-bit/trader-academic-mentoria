@@ -503,19 +503,22 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
       isResolvingRef.current = true;
       setHasResolvedOutcome(true);
 
-      const entryPrice = lockedEntryPriceRef.current || analysis.priceAtAnalysis || (candles.length > 0 ? candles[0].open : 100);
-      
-      // Determine expiry price from latest closed candle
+      // In binary options: trade starts at candle open and ends at candle close
       const lastCandle = candles.length > 0 ? candles[candles.length - 1] : null;
+      const entryPrice = lockedEntryPriceRef.current || (lastCandle ? lastCandle.open : (analysis.priceAtAnalysis || 100));
       const expiryPrice = lastCandle ? lastCandle.close : entryPrice;
       const priceDiff = +(expiryPrice - entryPrice).toFixed(6);
 
       let outcome: "WIN" | "LOSS" | "DRAW" = "DRAW";
-      if (Math.abs(priceDiff) <= 0.00001) {
+      if (Math.abs(priceDiff) <= 0.000001) {
         outcome = "DRAW";
       } else if (resolvedDirection === "CALL") {
+        // COMPRA (CALL): Win se a vela fechou positiva/verde (close > open)
+        // Loss se a vela fechou negativa/vermelha (close < open)
         outcome = priceDiff > 0 ? "WIN" : "LOSS";
       } else if (resolvedDirection === "PUT") {
+        // VENDA (PUT): Win se a vela fechou negativa/vermelha (close < open)
+        // Loss se a vela fechou positiva/verde (close > open)
         outcome = priceDiff < 0 ? "WIN" : "LOSS";
       }
 
