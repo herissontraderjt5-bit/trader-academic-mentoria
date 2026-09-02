@@ -56,10 +56,25 @@ async function fetchPublicCandles(ticker: string, interval: string, limit: numbe
   const fetchInterval = isCustomTimeframe ? "1m" : interval;
   const fetchLimit = isCustomTimeframe ? limit * 2 + 10 : limit;
 
-  const symbol = ticker.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  let symbol = ticker.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const forexToCryptoMap: Record<string, string> = {
+    EURUSD: "EURUSDT",
+    GBPUSD: "GBPUSDT",
+    AUDUSD: "AUDUSDT",
+    USDJPY: "USDUSDT",
+    EURGBP: "EURUSDT",
+    USDCAD: "USDCAD",
+    USDCHF: "USDUSDT",
+    NZDUSD: "NZDUSDT",
+  };
+  if (forexToCryptoMap[symbol]) {
+    symbol = forexToCryptoMap[symbol];
+  }
+
   const sources = [
     `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${fetchInterval}&limit=${fetchLimit}`,
     `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=${fetchInterval}&limit=${fetchLimit}`,
+    `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${fetchInterval}&limit=${fetchLimit}`,
   ];
 
   let fetchedCandles: Candle[] | null = null;
@@ -179,12 +194,8 @@ export function generateAlgorithmicAnalysis(
 
   // Calculate Quadrant Color Alternation (Padrão Xadrez / Ping-Pong Sem Fluxo)
   const recentLast5 = candles.slice(-5);
-  let colorFlips = 0;
   const colorsArray = recentLast5.map((c) => (c.close >= c.open ? "G" : "R"));
-  for (let i = 1; i < colorsArray.length; i++) {
-    if (colorsArray[i] !== colorsArray[i - 1]) colorFlips++;
-  }
-  const isAlternatingQuadrant = fullIndicators.isAlternatingQuadrant || (recentLast5.length >= 4 && colorFlips >= 3);
+  const isAlternatingQuadrant = Boolean(fullIndicators.isAlternatingQuadrant);
   const colorEmojiSeq = colorsArray.map((c) => (c === "G" ? "🟢" : "🔴")).join(" ");
 
   // ANTI-LOSS FILTER: Quadrante de Cores Alternadas (Bloqueio Total)

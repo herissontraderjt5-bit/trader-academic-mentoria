@@ -111,12 +111,13 @@ function generateAlgorithmicAnalysis(ticker, timeframe, candles, indicators = {}
 
   // Calculate Quadrant Color Alternation (Padrão Xadrez / Ping-Pong Sem Fluxo)
   const recentLast5 = candles.slice(-5);
-  let colorFlips = 0;
   const colorsArray = recentLast5.map((c) => (c.close >= c.open ? "G" : "R"));
-  for (let i = 1; i < colorsArray.length; i++) {
-    if (colorsArray[i] !== colorsArray[i - 1]) colorFlips++;
-  }
-  const isAlternatingQuadrant = indicators?.isAlternatingQuadrant || (recentLast5.length >= 4 && colorFlips >= 3);
+  const colorStr = colorsArray.join("");
+  const last4Str = colorsArray.slice(-4).join("");
+  const isStrictPingPong = colorStr === "GRGRG" || colorStr === "RGRGR" || last4Str === "GRGR" || last4Str === "RGRG";
+  const firstCandle = recentLast5[0] || lastCandle;
+  const isFlatRange = Math.abs(lastCandle.close - firstCandle.open) / (lastCandle.close || 1) < 0.0015;
+  const isAlternatingQuadrant = Boolean(indicators?.isAlternatingQuadrant) || (isStrictPingPong && isFlatRange);
   const colorEmojiSeq = colorsArray.map((c) => (c === "G" ? "🟢" : "🔴")).join(" ");
 
   // ANTI-LOSS FILTER: Quadrante de Cores Alternadas (Bloqueio Total)

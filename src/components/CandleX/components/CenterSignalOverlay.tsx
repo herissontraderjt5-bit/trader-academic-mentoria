@@ -277,21 +277,13 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         const confluenceCount = patterns.length;
 
         // 1. QUADRANT COLOR ALTERNATION CHECK (Filtro Choppy / Xadrez)
-        const recentLast5 = candles.slice(-5);
-        let colorFlips = 0;
-        const colorsArray = recentLast5.map((c) => (c.close >= c.open ? "G" : "R"));
-        for (let i = 1; i < colorsArray.length; i++) {
-          if (colorsArray[i] !== colorsArray[i - 1]) colorFlips++;
-        }
-        const isCandleQuadrant = recentLast5.length >= 4 && colorFlips >= 3;
         const hasQuadrantWarning = patterns.some((p) =>
           p.toLowerCase().includes("quadrante") ||
-          p.toLowerCase().includes("anti-loss") ||
-          p.toLowerCase().includes("sem fluxo") ||
-          p.toLowerCase().includes("choppy")
+          p.toLowerCase().includes("mercado xadrez") ||
+          p.toLowerCase().includes("sem fluxo direcional")
         );
 
-        if (indicators?.isAlternatingQuadrant || isCandleQuadrant || hasQuadrantWarning) {
+        if (indicators?.isAlternatingQuadrant || hasQuadrantWarning) {
           setDecision("REJECTED");
           setResolvedDir("NEUTRAL");
           setRejectionReason("Filtro Anti-Loss Ativado: Quadrante de cores alternadas (mercado xadrez sem fluxo direcional). Entrada cancelada para proteger seu capital contra falso rompimento.");
