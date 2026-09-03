@@ -641,6 +641,8 @@ export const supabaseService = {
         candlexAiVersion: data.candlex_ai_version || 'v2.6.0 Neural Ultra',
         candlexMaintenanceProgress: Number(data.candlex_maintenance_progress ?? 85),
         candlexAllowAdminBypass: data.candlex_allow_admin_bypass ?? true,
+        requireAdminReleaseForNewUsers: data.require_admin_release_for_new_users ?? data.requireAdminReleaseForNewUsers ?? true,
+        studentToolAccessMap: data.student_tool_access_map ?? data.studentToolAccessMap ?? {},
       };
     } catch (e) {
       console.error('Error fetching settings:', e);
@@ -673,6 +675,8 @@ export const supabaseService = {
         candlex_ai_version: settings.candlexAiVersion || 'v2.6.0',
         candlex_maintenance_progress: settings.candlexMaintenanceProgress ?? 85,
         candlex_allow_admin_bypass: settings.candlexAllowAdminBypass ?? true,
+        require_admin_release_for_new_users: settings.requireAdminReleaseForNewUsers ?? true,
+        student_tool_access_map: settings.studentToolAccessMap || {},
         updated_at: new Date().toISOString(),
       });
     } catch (e) {

@@ -63,8 +63,18 @@ export const storageService = {
         }
       }
       if (remoteProfiles && remoteProfiles.length > 0) {
-        this.saveStudents(remoteProfiles, true);
-        result.users = remoteProfiles;
+        const localStudents = this.getStudents();
+        const mergedStudents = remoteProfiles.map((rp) => {
+          const local = localStudents.find((u) => u.id === rp.id);
+          return {
+            ...rp,
+            hasAiAccess: rp.hasAiAccess ?? local?.hasAiAccess ?? false,
+            hasGestaoAccess: rp.hasGestaoAccess ?? local?.hasGestaoAccess ?? false,
+            hasMentoriaAccess: rp.hasMentoriaAccess ?? local?.hasMentoriaAccess ?? false,
+          };
+        });
+        this.saveStudents(mergedStudents, true);
+        result.users = mergedStudents;
       }
       if (remoteAnnouncements !== null) {
         this.saveAnnouncements(remoteAnnouncements);
@@ -75,8 +85,18 @@ export const storageService = {
         result.liveSessions = remoteLive;
       }
       if (remoteSettings) {
-        this.saveSettings(remoteSettings);
-        result.settings = remoteSettings;
+        const localSettings = this.getSettings();
+        const mergedSettings: PlatformSettings = {
+          ...localSettings,
+          ...remoteSettings,
+          requireAdminReleaseForNewUsers: remoteSettings.requireAdminReleaseForNewUsers ?? localSettings.requireAdminReleaseForNewUsers ?? true,
+          studentToolAccessMap: {
+            ...(localSettings.studentToolAccessMap || {}),
+            ...(remoteSettings.studentToolAccessMap || {}),
+          },
+        };
+        this.saveSettings(mergedSettings);
+        result.settings = mergedSettings;
       }
       if (remoteJournal !== null) {
         this.saveJournal(remoteJournal);
