@@ -50,10 +50,22 @@ function aggregateCandles(candles: Candle[], multiplier: number): Candle[] {
   return aggregated;
 }
 
+function normalizeInterval(raw: string): string {
+  if (!raw) return "1m";
+  const str = raw.toString().toLowerCase().trim();
+  if (str === "2m" || str === "2" || str === "m2") return "2m";
+  if (str === "3m" || str === "3" || str === "m3") return "3m";
+  if (str === "5m" || str === "5" || str === "m5") return "5m";
+  if (str === "15m" || str === "15" || str === "m15") return "15m";
+  if (str === "30m" || str === "30" || str === "m30") return "30m";
+  if (str === "60m" || str === "60" || str === "1h" || str === "h1" || str === "m60") return "1h";
+  return "1m";
+}
+
 async function fetchPublicCandles(ticker: string, interval: string, limit: number): Promise<Candle[] | null> {
-  const lowerTf = (interval || "1m").toLowerCase();
-  const isCustomTimeframe = lowerTf.includes("2m") || lowerTf === "2" || lowerTf === "2min";
-  const fetchInterval = isCustomTimeframe ? "1m" : interval;
+  const normInterval = normalizeInterval(interval);
+  const isCustomTimeframe = normInterval === "2m";
+  const fetchInterval = isCustomTimeframe ? "1m" : normInterval;
   const fetchLimit = isCustomTimeframe ? limit * 2 + 10 : limit;
 
   let symbol = ticker.toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -61,10 +73,10 @@ async function fetchPublicCandles(ticker: string, interval: string, limit: numbe
     EURUSD: "EURUSDT",
     GBPUSD: "GBPUSDT",
     AUDUSD: "AUDUSDT",
-    USDJPY: "USDUSDT",
+    USDJPY: "BTCUSDT",
     EURGBP: "EURUSDT",
     USDCAD: "USDCAD",
-    USDCHF: "USDUSDT",
+    USDCHF: "EURUSDT",
     NZDUSD: "NZDUSDT",
   };
   if (forexToCryptoMap[symbol]) {
@@ -72,8 +84,9 @@ async function fetchPublicCandles(ticker: string, interval: string, limit: numbe
   }
 
   const sources = [
-    `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${fetchInterval}&limit=${fetchLimit}`,
     `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=${fetchInterval}&limit=${fetchLimit}`,
+    `https://api.binance.us/api/v3/klines?symbol=${symbol}&interval=${fetchInterval}&limit=${fetchLimit}`,
+    `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${fetchInterval}&limit=${fetchLimit}`,
     `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${fetchInterval}&limit=${fetchLimit}`,
   ];
 
@@ -103,7 +116,7 @@ async function fetchPublicCandles(ticker: string, interval: string, limit: numbe
   // Bybit public fallback
   if (!fetchedCandles) {
     try {
-      const bybitInterval = fetchInterval === "5m" ? "5" : fetchInterval === "15m" ? "15" : "1";
+      const bybitInterval = fetchInterval === "5m" ? "5" : fetchInterval === "15m" ? "15" : fetchInterval === "30m" ? "30" : fetchInterval === "1h" ? "60" : fetchInterval === "3m" ? "3" : "1";
       const bybitUrl = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${symbol}&interval=${bybitInterval}&limit=${fetchLimit}`;
       const bybitRes = await fetch(bybitUrl, { signal: AbortSignal.timeout(3500) });
       if (bybitRes.ok) {
@@ -603,8 +616,9 @@ export function generateAlgorithmicAnalysis(
 export const candlexApiService = {
   // 1. Fetch Market Candles
   async getCandles(ticker: string, interval: string, limit: number): Promise<Candle[]> {
+    const normInterval = normalizeInterval(interval);
     try {
-      const res = await fetch(`/api/market/candles?ticker=${ticker}&interval=${interval}&limit=${limit}`);
+      const res = await fetch(`/api/market/candles?ticker=${ticker}&interval=${normInterval}&limit=${limit}`);
       if (res.ok) {
         const data = await res.json();
         if (data.candles && Array.isArray(data.candles)) {
@@ -616,7 +630,7 @@ export const candlexApiService = {
     }
 
     // Client-side fallback: direct Binance/Bybit API request
-    const publicCandles = await fetchPublicCandles(ticker, interval, limit);
+    const publicCandles = await fetchPublicCandles(ticker, normInterval, limit);
     if (publicCandles && publicCandles.length > 0) {
       localPriceCache[ticker] = {
         lastPrice: publicCandles[publicCandles.length - 1].close,
@@ -635,7 +649,7 @@ export const candlexApiService = {
     }
 
     const candles: Candle[] = [];
-    const seconds = interval === "5m" ? 300 : interval === "2m" ? 120 : (interval === "15m" ? 900 : 60);
+    const seconds = normInterval === "5m" ? 300 : normInterval === "2m" ? 120 : normInterval === "3m" ? 180 : normInterval === "15m" ? 900 : normInterval === "30m" ? 1800 : normInterval === "1h" ? 3600 : 60;
     const currentCandleTime = Math.floor(now / seconds) * seconds;
     let currentClose = basePrice;
 

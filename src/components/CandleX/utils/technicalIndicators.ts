@@ -545,34 +545,58 @@ export function detectColorAlternation(candles: Candle[]): { isAlternating: bool
     return { isAlternating: false, flipsCount: 0, colorSequence: "" };
   }
 
-  const recent = candles.slice(-5); // last 5 candles
-  const colors = recent.map((c) => (c.close >= c.open ? "G" : "R")); // Green / Red
-  const colorSequence = colors.map((c) => (c === "G" ? "🟢" : "🔴")).join(" ");
-
-  const colorStr = colors.join(""); // e.g. "GRGRG" or "RGRGR"
-  const last4Str = colors.slice(-4).join(""); // e.g. "GRGR" or "RGRG"
-
-  let flips = 0;
-  for (let i = 1; i < colors.length; i++) {
-    if (colors[i] !== colors[i - 1]) {
-      flips++;
+  // Determine color for each candle ("G" for Green, "R" for Red, "D" for Doji/Neutral)
+  const getCandleColor = (c: Candle): "G" | "R" | "D" => {
+    const range = Math.max(0.000001, c.high - c.low);
+    const body = Math.abs(c.close - c.open);
+    if (body < range * 0.04 || c.close === c.open) {
+      return "D";
     }
+    return c.close > c.open ? "G" : "R";
+  };
+
+  const slice5 = candles.slice(-5);
+  const colors5 = slice5.map(getCandleColor);
+  const colorSequence = colors5.map((c) => (c === "G" ? "🟢" : c === "R" ? "🔴" : "⚪")).join(" ");
+
+  // Map Dojis appropriately to avoid breaking sequence detection
+  const effective5 = colors5.map((c, i, arr) => {
+    if (c !== "D") return c;
+    return i > 0 ? (arr[i - 1] === "G" ? "R" : "G") : "G";
+  });
+
+  // Calculate flips in last 5 candles
+  let flips5 = 0;
+  for (let i = 1; i < effective5.length; i++) {
+    if (effective5[i] !== effective5[i - 1]) flips5++;
   }
 
-  // Quadrante de Cores: alternância ping-pong nas últimas 4 ou 5 velas
-  // "GRGRG" / "RGRGR" ou "GRGR" / "RGRG" ou 3+ trocas de cor consecutivas
-  const isStrictPingPong =
-    colorStr === "GRGRG" ||
-    colorStr === "RGRGR" ||
-    last4Str === "GRGR" ||
-    last4Str === "RGRG" ||
-    (colors.length === 4 && (colorStr === "GRGR" || colorStr === "RGRG"));
+  // Calculate flips in last 4 candles (including current)
+  const last4 = effective5.slice(-4);
+  let flipsLast4 = 0;
+  for (let i = 1; i < last4.length; i++) {
+    if (last4[i] !== last4[i - 1]) flipsLast4++;
+  }
 
-  const hasHighAlternation = flips >= 3 && (last4Str === "GRGR" || last4Str === "RGRG" || colorStr.endsWith("GRG") || colorStr.endsWith("RGR"));
+  // Calculate flips in last 4 CLOSED candles (excluding current live candle)
+  const closed4 = candles.length >= 5 ? candles.slice(-5, -1).map(getCandleColor) : [];
+  const effectiveClosed4 = closed4.map((c, i, arr) => {
+    if (c !== "D") return c;
+    return i > 0 ? (arr[i - 1] === "G" ? "R" : "G") : "G";
+  });
+  let flipsClosed4 = 0;
+  for (let i = 1; i < effectiveClosed4.length; i++) {
+    if (effectiveClosed4[i] !== effectiveClosed4[i - 1]) flipsClosed4++;
+  }
 
-  const isAlternating = isStrictPingPong || hasHighAlternation;
+  // An alternating quadrant is present if:
+  // - 3 flips out of 3 in last 4 candles (e.g. G-R-G-R or R-G-R-G)
+  // - 3 flips out of 3 in last 4 closed candles
+  // - 3 or 4 flips in last 5 candles (e.g. G-R-G-R-G, R-G-R-G-R, G-R-G-R-x, x-G-R-G-R)
+  const isAlternating = flipsLast4 >= 3 || flipsClosed4 >= 3 || flips5 >= 3;
+  const flipsCount = Math.max(flips5, flipsLast4, flipsClosed4);
 
-  return { isAlternating, flipsCount: flips, colorSequence };
+  return { isAlternating, flipsCount, colorSequence };
 }
 
 // 15. Master Indicators Engine with Near Defense Region

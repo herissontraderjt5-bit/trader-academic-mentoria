@@ -758,7 +758,7 @@ export default function CandleXWorkstation({
     setTrades(updatedTrades);
     if (currentUser && currentUser.id !== 'usr-guest') {
       localStorage.setItem(`candlex_trades_${currentUser.id}`, JSON.stringify(updatedTrades));
-      await supabaseService.saveCandleXTrades(currentUser.id, updatedTrades);
+      await supabaseService.deleteCandleXTrade(currentUser.id, tradeId);
     }
   };
 

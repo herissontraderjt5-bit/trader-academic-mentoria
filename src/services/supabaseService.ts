@@ -1028,5 +1028,20 @@ export const supabaseService = {
       console.error('Error clearing CandleX trades from Supabase:', e);
       return false;
     }
-  }
+  },
+
+  async deleteCandleXTrade(userId: string, tradeId: string): Promise<boolean> {
+    if (!supabase) return false;
+    try {
+      const { error } = await supabase
+        .from('candlex_trades')
+        .delete()
+        .eq('user_id', userId)
+        .eq('id', tradeId);
+      return !error;
+    } catch (e) {
+      console.error('Error deleting CandleX trade from Supabase:', e);
+      return false;
+    }
+  },
 };

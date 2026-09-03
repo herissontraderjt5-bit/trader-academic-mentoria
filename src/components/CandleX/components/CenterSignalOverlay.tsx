@@ -27,7 +27,7 @@ import {
 import { AiAnalysisResult, TechnicalIndicators, Candle, TradeRecord, BankrollConfig } from "../../../types";
 import { soundManager } from "../utils/soundEffects";
 import { candlexApiService } from "../services/apiService";
-import { getCandleTimeRemaining, getSynchronizedDate, getSynchronizedTimestamp } from "../utils/technicalIndicators";
+import { getCandleTimeRemaining, getSynchronizedDate, getSynchronizedTimestamp, detectColorAlternation } from "../utils/technicalIndicators";
 import confetti from "canvas-confetti";
 
 interface CenterSignalOverlayProps {
@@ -224,21 +224,22 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
       return { confirmationThreshold: 1800, decisionThreshold: 300, candleLengthMs: 3600 * 1000 };
     }
     if (tf.includes("30m") || tf === "30" || tf === "m30") {
-      return { confirmationThreshold: 900, decisionThreshold: 180, candleLengthMs: 1800 * 1000 };
+      return { confirmationThreshold: 900, decisionThreshold: 120, candleLengthMs: 1800 * 1000 };
     }
     if (tf.includes("15m") || tf === "15" || tf === "m15") {
-      return { confirmationThreshold: 450, decisionThreshold: 90, candleLengthMs: 900 * 1000 };
+      return { confirmationThreshold: 450, decisionThreshold: 60, candleLengthMs: 900 * 1000 };
     }
     if (tf.includes("5m") || tf === "5" || tf === "m5") {
       return { confirmationThreshold: 150, decisionThreshold: 30, candleLengthMs: 300 * 1000 };
     }
     if (tf.includes("3m") || tf === "3" || tf === "m3") {
-      return { confirmationThreshold: 90, decisionThreshold: 30, candleLengthMs: 180 * 1000 };
+      return { confirmationThreshold: 90, decisionThreshold: 15, candleLengthMs: 180 * 1000 };
     }
     if (tf.includes("2m") || tf === "2" || tf === "m2") {
-      return { confirmationThreshold: 60, decisionThreshold: 20, candleLengthMs: 120 * 1000 };
+      return { confirmationThreshold: 60, decisionThreshold: 15, candleLengthMs: 120 * 1000 };
     }
-    return { confirmationThreshold: 30, decisionThreshold: 10, candleLengthMs: 60 * 1000 };
+    // M1 / default timeframe: 15 seconds decision window (confirms strictly between 15s and 1s before candle expiration)
+    return { confirmationThreshold: 30, decisionThreshold: 15, candleLengthMs: 60 * 1000 };
   }, [timeframe]);
 
   // Calculate real remaining seconds on the current candle using unified time utility
@@ -338,12 +339,18 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
       setIsVisible(true);
       setIsMinimized(false);
       lastDecisionCandleStartRef.current = null;
+      hasAnnouncedDecisionRef.current = false;
       hasRegisteredPendingRef.current = false;
       lockedEntryPriceRef.current = null;
       isResolvingRef.current = false;
       setPredictionResult(null);
       setHasResolvedOutcome(false);
       setPosition({ x: 0, y: 0 }); // Reset drag position to center
+
+      // Initialize in PENDING phase - strictly aguardando auditoria dos 15s a 1s da expiração da vela
+      setDecision("PENDING");
+      setResolvedDir("NEUTRAL");
+      setRejectionReason("");
 
       // Check if this analysis is cancelled at generation time (Quadrant, < 5 confluences, < 80% assertiveness)
       const patterns = analysis.detectedPatterns || [];
@@ -374,18 +381,6 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         setRejectionReason(rejectTxt);
         soundManager.playRejectAlert();
         soundManager.speakAlert("Sinal cancelado pelo Filtro Anti-Loss");
-      } else {
-        setDecision("CONFIRMED");
-        setResolvedDir(analysis.direction);
-        setRejectionReason("");
-        hasAnnouncedDecisionRef.current = true;
-        if (analysis.direction === "CALL") {
-          soundManager.playCallAlert();
-          soundManager.speakAlert(`Sinal confirmado: COMPRA em ${activeTicker}`);
-        } else if (analysis.direction === "PUT") {
-          soundManager.playPutAlert();
-          soundManager.speakAlert(`Sinal confirmado: VENDA em ${activeTicker}`);
-        }
       }
     }
   }, [analysis, lastSignalTimestamp, activeTicker, onDeleteSignalTrade, signalTradeId]);
@@ -439,10 +434,12 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         const hasQuadrantWarning = patterns.some((p) =>
           p.toLowerCase().includes("quadrante") ||
           p.toLowerCase().includes("mercado xadrez") ||
-          p.toLowerCase().includes("sem fluxo direcional")
+          p.toLowerCase().includes("sem fluxo direcional") ||
+          p.toLowerCase().includes("alternância") ||
+          p.toLowerCase().includes("alternancia")
         );
 
-        if (indicators?.isAlternatingQuadrant || hasQuadrantWarning) {
+        if (indicators?.isAlternatingQuadrant || hasQuadrantWarning || detectColorAlternation(candles).isAlternating) {
           setDecision("REJECTED");
           setResolvedDir("NEUTRAL");
           setRejectionReason("Filtro Anti-Loss Ativado: Quadrante de cores alternadas (mercado xadrez sem fluxo direcional). Entrada cancelada para proteger seu capital contra falso rompimento.");
@@ -812,12 +809,12 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
               ) : isConfirmed ? (
                 <>
                   <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                  SINAL IA CONFIRMADO ({decisionThreshold}s ANTES)
+                  SINAL IA CONFIRMADO (DOS {decisionThreshold}s AOS 1s)
                 </>
               ) : (
                 <>
                   <Radio className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-                  AGUARDANDO CONFIRMAÇÃO ({decisionThreshold}s ANTES)
+                  AGUARDANDO CONFIRMAÇÃO (DOS {decisionThreshold}s AOS 1s)
                 </>
               )}
             </span>
@@ -1217,7 +1214,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
                   AGUARDANDO CONFIRMAÇÃO DO ROBÔ
                 </span>
                 <p className="text-[10px] text-amber-200/70 font-mono leading-relaxed mt-1">
-                  Varredura em tempo real ativa. Auditoria final iniciará aos {decisionThreshold}s restantes.
+                  Varredura em tempo real ativa. A auditoria final e confirmação ocorrerão estritamente entre {decisionThreshold}s a 1s da expiração da vela.
                 </p>
               </div>
             ) : isRejected ? (

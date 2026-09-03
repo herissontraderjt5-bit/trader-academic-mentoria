@@ -34,16 +34,45 @@ function aggregateCandles(candles, multiplier) {
   return aggregated;
 }
 
+function normalizeInterval(raw) {
+  if (!raw) return "1m";
+  const str = raw.toString().toLowerCase().trim();
+  if (str === "2m" || str === "2" || str === "m2") return "2m";
+  if (str === "3m" || str === "3" || str === "m3") return "3m";
+  if (str === "5m" || str === "5" || str === "m5") return "5m";
+  if (str === "15m" || str === "15" || str === "m15") return "15m";
+  if (str === "30m" || str === "30" || str === "m30") return "30m";
+  if (str === "60m" || str === "60" || str === "1h" || str === "h1" || str === "m60") return "1h";
+  return "1m";
+}
+
 // Helper to fetch real-time crypto candles with multi-source resilient endpoints
 async function fetchCandlesFromSources(ticker, interval, limit) {
-  const isCustomTimeframe = interval === "2m";
-  const fetchInterval = isCustomTimeframe ? "1m" : interval;
+  const normInterval = normalizeInterval(interval);
+  const isCustomTimeframe = normInterval === "2m";
+  const fetchInterval = isCustomTimeframe ? "1m" : normInterval;
   const fetchLimit = isCustomTimeframe ? limit * 2 + 10 : limit;
 
+  let symbol = ticker.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const forexToCryptoMap = {
+    EURUSD: "EURUSDT",
+    GBPUSD: "GBPUSDT",
+    AUDUSD: "AUDUSDT",
+    USDJPY: "BTCUSDT",
+    EURGBP: "EURUSDT",
+    USDCAD: "USDCAD",
+    USDCHF: "EURUSDT",
+    NZDUSD: "NZDUSDT",
+  };
+  if (forexToCryptoMap[symbol]) {
+    symbol = forexToCryptoMap[symbol];
+  }
+
   const sources = [
-    `https://data-api.binance.vision/api/v3/klines?symbol=${ticker}&interval=${fetchInterval}&limit=${fetchLimit}`,
-    `https://api.binance.us/api/v3/klines?symbol=${ticker}&interval=${fetchInterval}&limit=${fetchLimit}`,
-    `https://api.binance.com/api/v3/klines?symbol=${ticker}&interval=${fetchInterval}&limit=${fetchLimit}`,
+    `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=${fetchInterval}&limit=${fetchLimit}`,
+    `https://api.binance.us/api/v3/klines?symbol=${symbol}&interval=${fetchInterval}&limit=${fetchLimit}`,
+    `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${fetchInterval}&limit=${fetchLimit}`,
+    `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${fetchInterval}&limit=${fetchLimit}`,
   ];
 
   let fetchedCandles = null;
@@ -76,8 +105,8 @@ async function fetchCandlesFromSources(ticker, interval, limit) {
   // Try Bybit as secondary global provider
   if (!fetchedCandles) {
     try {
-      const bybitInterval = fetchInterval === "5m" ? "5" : fetchInterval === "15m" ? "15" : "1";
-      const bybitUrl = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${ticker}&interval=${bybitInterval}&limit=${fetchLimit}`;
+      const bybitInterval = fetchInterval === "5m" ? "5" : fetchInterval === "15m" ? "15" : fetchInterval === "30m" ? "30" : fetchInterval === "1h" ? "60" : fetchInterval === "3m" ? "3" : "1";
+      const bybitUrl = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${symbol}&interval=${bybitInterval}&limit=${fetchLimit}`;
       const bybitRes = await fetch(bybitUrl, { signal: AbortSignal.timeout(3500) });
       if (bybitRes.ok) {
         const data = await bybitRes.json();
@@ -122,7 +151,8 @@ export default async function handler(req, res) {
   }
 
   const ticker = (req.query.ticker || "ETHUSDT").toUpperCase().replace(/[^A-Z0-9]/g, "");
-  const interval = (req.query.interval || "1m");
+  const rawInterval = (req.query.interval || "1m");
+  const interval = normalizeInterval(rawInterval);
   const limit = Math.min(parseInt(req.query.limit || "60", 10), 100);
 
   const realCandles = await fetchCandlesFromSources(ticker, interval, limit);
@@ -154,7 +184,7 @@ export default async function handler(req, res) {
   }
 
   const candles = [];
-  const intervalSeconds = interval === "5m" ? 300 : interval === "15m" ? 900 : 60;
+  const intervalSeconds = interval === "5m" ? 300 : interval === "2m" ? 120 : interval === "3m" ? 180 : interval === "15m" ? 900 : interval === "30m" ? 1800 : interval === "1h" ? 3600 : 60;
   
   let currentClose = basePrice;
   for (let i = limit - 1; i >= 0; i--) {

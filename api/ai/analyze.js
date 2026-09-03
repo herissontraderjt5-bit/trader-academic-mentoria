@@ -451,10 +451,6 @@ function generateAlgorithmicAnalysis(ticker, timeframe, candles, indicators = {}
     : `Sinal de VENDA (PUT) confirmado com ${N} confluências institucionais (${confidenceScore}% de assertividade).`;
 
   const hioveQuickTip = isCall
-    ? "ENTRADA COMPRA: Opere CALL na abertura da próxima vela. Alvo de vitória fixado com alta assertividade."
-    : "ENTRADA VENDA: Opere PUT na abertura da próxima vela. Alvo de vitória fixado com alta assertividade.";
-
-  const hioveQuickTip = isCall
     ? "Aguarde a vela buscar a retração na média móvel/suporte e clique em COMPRA (CALL) a favor do fluxo."
     : "Aguarde a vela esticar até a média móvel/resistência e clique em VENDA (PUT) a favor do fluxo.";
 

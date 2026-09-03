@@ -63,15 +63,19 @@ export const MultiMarketManagementView: React.FC = () => {
   const [forexStopPips, setForexStopPips] = useState<number>(20);
   const [forexTargetPips, setForexTargetPips] = useState<number>(40);
 
+  const riskAmountVal = useMemo(() => {
+    return Number(((customBankroll * riskPercent) / 100).toFixed(2));
+  }, [customBankroll, riskPercent]);
+
   const forexCalculations: ForexCalculationResult = useMemo(() => {
-    return calculateForexLotSize(
-      customBankroll,
-      riskPercent,
-      forexStopPips,
-      forexTargetPips,
-      forexAsset
-    );
-  }, [customBankroll, riskPercent, forexStopPips, forexTargetPips, forexAsset]);
+    return calculateForexLotSize({
+      bankroll: customBankroll,
+      riskAmount: riskAmountVal,
+      stopLossPips: forexStopPips,
+      takeProfitPips: forexTargetPips,
+      asset: forexAsset,
+    });
+  }, [customBankroll, riskAmountVal, forexStopPips, forexTargetPips, forexAsset]);
 
   // B3
   const [b3Asset, setB3Asset] = useState<'WIN' | 'WDO'>('WIN');
@@ -79,14 +83,14 @@ export const MultiMarketManagementView: React.FC = () => {
   const [b3TargetPoints, setB3TargetPoints] = useState<number>(300);
 
   const b3Calculations: B3CalculationResult = useMemo(() => {
-    return calculateB3Contracts(
-      customBankroll,
-      riskPercent,
-      b3StopPoints,
-      b3TargetPoints,
-      b3Asset
-    );
-  }, [customBankroll, riskPercent, b3StopPoints, b3TargetPoints, b3Asset]);
+    return calculateB3Contracts({
+      bankroll: customBankroll,
+      riskAmount: riskAmountVal,
+      stopLossPoints: b3StopPoints,
+      takeProfitPoints: b3TargetPoints,
+      instrumentType: b3Asset,
+    });
+  }, [customBankroll, riskAmountVal, b3StopPoints, b3TargetPoints, b3Asset]);
 
   // CRYPTO
   const [cryptoAsset, setCryptoAsset] = useState<string>('BTC/USDT');
@@ -97,18 +101,18 @@ export const MultiMarketManagementView: React.FC = () => {
   const [cryptoDirection, setCryptoDirection] = useState<'LONG' | 'SHORT'>('LONG');
 
   const cryptoCalculations: CryptoCalculationResult = useMemo(() => {
-    return calculateCryptoPosition(
-      customBankroll,
-      riskPercent,
-      cryptoEntryPrice,
-      cryptoStopPrice,
-      cryptoTargetPrice,
-      cryptoLeverage,
-      cryptoDirection
-    );
+    return calculateCryptoPosition({
+      bankroll: customBankroll,
+      riskAmount: riskAmountVal,
+      entryPrice: cryptoEntryPrice,
+      stopLossPrice: cryptoStopPrice,
+      takeProfitPrice: cryptoTargetPrice,
+      leverage: cryptoLeverage,
+      direction: cryptoDirection,
+    });
   }, [
     customBankroll,
-    riskPercent,
+    riskAmountVal,
     cryptoEntryPrice,
     cryptoStopPrice,
     cryptoTargetPrice,
@@ -129,17 +133,17 @@ export const MultiMarketManagementView: React.FC = () => {
     if (activeMarket === 'FOREX') {
       asset = forexAsset;
       investment = forexCalculations.riskAmount;
-      profit = outcome === 'WIN' ? forexCalculations.projectedProfit : -forexCalculations.riskAmount;
-      notes = `Forex - Lote: ${forexCalculations.recommendedLots} | Stop: ${forexStopPips} pips | Alvo: ${forexTargetPips} pips`;
+      profit = outcome === 'WIN' ? forexCalculations.rewardAmount : -forexCalculations.riskAmount;
+      notes = `Forex - Lote: ${forexCalculations.lotSize} | Stop: ${forexStopPips} pips | Alvo: ${forexTargetPips} pips`;
     } else if (activeMarket === 'B3') {
       asset = b3Asset === 'WIN' ? 'Mini-Índice (WIN)' : 'Mini-Dólar (WDO)';
       investment = b3Calculations.riskAmount;
-      profit = outcome === 'WIN' ? b3Calculations.projectedProfit : -b3Calculations.riskAmount;
-      notes = `B3 - ${b3Calculations.recommendedContracts} contratos | Stop: ${b3StopPoints} pts | Alvo: ${b3TargetPoints} pts`;
+      profit = outcome === 'WIN' ? b3Calculations.rewardAmount : -b3Calculations.riskAmount;
+      notes = `B3 - ${b3Calculations.contracts} contratos | Stop: ${b3StopPoints} pts | Alvo: ${b3TargetPoints} pts`;
     } else {
       asset = cryptoAsset;
-      investment = cryptoCalculations.positionMargin;
-      profit = outcome === 'WIN' ? cryptoCalculations.projectedProfit : -cryptoCalculations.riskAmount;
+      investment = cryptoCalculations.isolatedMargin;
+      profit = outcome === 'WIN' ? cryptoCalculations.rewardAmount : -cryptoCalculations.riskAmount;
       notes = `Cripto ${cryptoDirection} (${cryptoLeverage}x) | Stop: $${cryptoStopPrice} | Alvo: $${cryptoTargetPrice}`;
     }
 
@@ -304,8 +308,8 @@ export const MultiMarketManagementView: React.FC = () => {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-xs">
             <div className="p-3 bg-[#0D111A] border border-orange-500/30 rounded-xl space-y-1">
               <span className="text-[10px] text-orange-400 uppercase font-sans font-bold block">Tamanho do Lote</span>
-              <div className="text-xl font-black text-orange-400">{forexCalculations.recommendedLots}</div>
-              <span className="text-[10px] text-slate-400 block">{forexCalculations.lotType}</span>
+              <div className="text-xl font-black text-orange-400">{forexCalculations.lotSize}</div>
+              <span className="text-[10px] text-slate-400 block">Lotes Padrão</span>
             </div>
 
             <div className="p-3 bg-[#0D111A] border border-rose-500/30 rounded-xl space-y-1">
@@ -316,8 +320,8 @@ export const MultiMarketManagementView: React.FC = () => {
 
             <div className="p-3 bg-[#0D111A] border border-emerald-500/30 rounded-xl space-y-1">
               <span className="text-[10px] text-emerald-400 uppercase font-sans font-bold block">Lucro Projetado</span>
-              <div className="text-xl font-black text-emerald-400">+{formatCurrency(forexCalculations.projectedProfit)}</div>
-              <span className="text-[10px] text-slate-400 block">+{((forexCalculations.projectedProfit / customBankroll) * 100).toFixed(1)}%</span>
+              <div className="text-xl font-black text-emerald-400">+{formatCurrency(forexCalculations.rewardAmount)}</div>
+              <span className="text-[10px] text-slate-400 block">+{((forexCalculations.rewardAmount / customBankroll) * 100).toFixed(1)}%</span>
             </div>
 
             <div className="p-3 bg-[#0D111A] border border-[#1E2536] rounded-xl space-y-1">
@@ -374,7 +378,7 @@ export const MultiMarketManagementView: React.FC = () => {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-xs">
             <div className="p-3 bg-[#0D111A] border border-emerald-500/30 rounded-xl space-y-1">
               <span className="text-[10px] text-emerald-400 uppercase font-sans font-bold block">Contratos</span>
-              <div className="text-xl font-black text-emerald-400">{b3Calculations.recommendedContracts}</div>
+              <div className="text-xl font-black text-emerald-400">{b3Calculations.contracts}</div>
               <span className="text-[10px] text-slate-400 block">{b3Asset === 'WIN' ? 'Mini-Contratos WIN' : 'Mini-Contratos WDO'}</span>
             </div>
 
@@ -386,8 +390,8 @@ export const MultiMarketManagementView: React.FC = () => {
 
             <div className="p-3 bg-[#0D111A] border border-emerald-500/30 rounded-xl space-y-1">
               <span className="text-[10px] text-emerald-400 uppercase font-sans font-bold block">Lucro Projetado</span>
-              <div className="text-xl font-black text-emerald-400">+{formatCurrency(b3Calculations.projectedProfit)}</div>
-              <span className="text-[10px] text-slate-400 block">+{((b3Calculations.projectedProfit / customBankroll) * 100).toFixed(1)}%</span>
+              <div className="text-xl font-black text-emerald-400">+{formatCurrency(b3Calculations.rewardAmount)}</div>
+              <span className="text-[10px] text-slate-400 block">+{((b3Calculations.rewardAmount / customBankroll) * 100).toFixed(1)}%</span>
             </div>
 
             <div className="p-3 bg-[#0D111A] border border-[#1E2536] rounded-xl space-y-1">
@@ -471,8 +475,8 @@ export const MultiMarketManagementView: React.FC = () => {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-xs">
             <div className="p-3 bg-[#0D111A] border border-cyan-500/30 rounded-xl space-y-1">
               <span className="text-[10px] text-cyan-400 uppercase font-sans font-bold block">Margem Necessária</span>
-              <div className="text-xl font-black text-cyan-300">{formatCurrency(cryptoCalculations.positionMargin)}</div>
-              <span className="text-[10px] text-slate-400 block">{cryptoCalculations.coinQuantity} {cryptoAsset.split('/')[0]}</span>
+              <div className="text-xl font-black text-cyan-300">{formatCurrency(cryptoCalculations.isolatedMargin)}</div>
+              <span className="text-[10px] text-slate-400 block">{cryptoCalculations.coinAmount} {cryptoAsset.split('/')[0]}</span>
             </div>
 
             <div className="p-3 bg-[#0D111A] border border-rose-500/30 rounded-xl space-y-1">
@@ -483,7 +487,7 @@ export const MultiMarketManagementView: React.FC = () => {
 
             <div className="p-3 bg-[#0D111A] border border-emerald-500/30 rounded-xl space-y-1">
               <span className="text-[10px] text-emerald-400 uppercase font-sans font-bold block">Lucro Projetado</span>
-              <div className="text-xl font-black text-emerald-400">+{formatCurrency(cryptoCalculations.projectedProfit)}</div>
+              <div className="text-xl font-black text-emerald-400">+{formatCurrency(cryptoCalculations.rewardAmount)}</div>
               <span className="text-[10px] text-slate-400 block">Alvo: ${cryptoTargetPrice}</span>
             </div>
 

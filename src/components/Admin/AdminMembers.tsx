@@ -23,7 +23,7 @@ import {
   Globe,
   TrendingUp
 } from 'lucide-react';
-import { User, Module, Tier, StudentStatus } from '../../types';
+import { User, Module, Tier, StudentStatus, PlatformSettings } from '../../types';
 import { supabaseService } from '../../services/supabaseService';
 import { storageService } from '../../services/storage';
 import { getAvatarUrl } from '../../utils/avatar';
