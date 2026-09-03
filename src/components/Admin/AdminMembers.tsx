@@ -51,8 +51,18 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
       if (supabaseService.isConfigured()) {
         const remoteProfiles = await supabaseService.getProfiles();
         if (remoteProfiles && remoteProfiles.length > 0) {
-          onUpdateUsers(remoteProfiles);
-          storageService.saveStudents(remoteProfiles);
+          const localStudents = storageService.getStudents();
+          const mergedProfiles = remoteProfiles.map((rp) => {
+            const local = localStudents.find((u) => u.id === rp.id) || users.find((u) => u.id === rp.id);
+            return {
+              ...rp,
+              hasAiAccess: rp.hasAiAccess ?? local?.hasAiAccess ?? false,
+              hasGestaoAccess: rp.hasGestaoAccess ?? local?.hasGestaoAccess ?? false,
+              hasMentoriaAccess: rp.hasMentoriaAccess ?? local?.hasMentoriaAccess ?? false,
+            };
+          });
+          onUpdateUsers(mergedProfiles);
+          storageService.saveStudents(mergedProfiles, true);
         }
       }
     } catch (e) {
