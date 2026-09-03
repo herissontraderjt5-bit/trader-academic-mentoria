@@ -254,6 +254,12 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
     return getCandleTimeRemaining(tsDate, timeframe).remainingSeconds;
   }, [analysis?.timestamp, timeframe]);
 
+  // Start of current candle
+  const currentCandleStart = useMemo(() => {
+    const ms = currentTime.getTime();
+    return Math.floor(ms / candleLengthMs) * candleLengthMs;
+  }, [currentTime, candleLengthMs]);
+
   // Target candle entry start time: Entry is ALWAYS set to the open of the NEXT candle
   const signalCandleStart = useMemo(() => {
     const ts = analysis?.timestamp || getSynchronizedTimestamp();
