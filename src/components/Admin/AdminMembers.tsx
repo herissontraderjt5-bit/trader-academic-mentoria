@@ -219,16 +219,30 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
 
   // Toggle Tool Access (IA, Gestão, Mentoria) per student
   const handleToggleToolAccess = (userId: string, toolKey: 'hasAiAccess' | 'hasGestaoAccess' | 'hasMentoriaAccess') => {
+    const toolCodeMap = {
+      hasAiAccess: 'TOOL_AI',
+      hasGestaoAccess: 'TOOL_GESTAO',
+      hasMentoriaAccess: 'TOOL_MENTORIA',
+    };
+    const toolCode = toolCodeMap[toolKey];
+
     const currentSettings = settings || storageService.getSettings();
     const currentMap = { ...(currentSettings.studentToolAccessMap || {}) };
-    const userAccess = { ...(currentMap[userId] || {}) };
 
     const userObj = users.find((u) => u.id === userId);
-    const currentVal = userAccess[toolKey] ?? userObj?.[toolKey] ?? false;
+    if (!userObj) return;
+
+    const emailKey = userObj.email ? userObj.email.toLowerCase() : '';
+    const userAccess = { ...(currentMap[userId] || (emailKey ? currentMap[emailKey] : {}) || {}) };
+
+    const currentVal = userAccess[toolKey] ?? userObj[toolKey] ?? (userObj.customAllowedModuleIds || []).includes(toolCode);
     const newVal = !currentVal;
 
     userAccess[toolKey] = newVal;
     currentMap[userId] = userAccess;
+    if (emailKey) {
+      currentMap[emailKey] = userAccess;
+    }
 
     const updatedSettings: PlatformSettings = {
       ...currentSettings,
@@ -241,22 +255,30 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
     storageService.saveSettings(updatedSettings);
 
     let targetUpdated: User | null = null;
-    const updated = users.map((u) => {
-      if (u.id === userId) {
+    const updatedUsers = users.map((u) => {
+      if (u.id === userId || (emailKey && u.email.toLowerCase() === emailKey)) {
+        let currentCustom = [...(u.customAllowedModuleIds || [])];
+        if (newVal) {
+          if (!currentCustom.includes(toolCode)) currentCustom.push(toolCode);
+        } else {
+          currentCustom = currentCustom.filter((c) => c !== toolCode);
+        }
+
         targetUpdated = {
           ...u,
           [toolKey]: newVal,
+          customAllowedModuleIds: currentCustom,
         };
         return targetUpdated;
       }
       return u;
     });
 
-    onUpdateUsers(updated);
+    onUpdateUsers(updatedUsers);
     if (targetUpdated && supabaseService.isConfigured()) {
       supabaseService.upsertProfile(targetUpdated);
     }
-    storageService.saveStudents(updated);
+    storageService.saveStudents(updatedUsers);
   };
 
   // Change Tier
@@ -516,10 +538,13 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
                       {/* Tool Access Quick Toggles (IA, Gestão, Mentoria) */}
                       <td className="py-4 px-4">
                         {(() => {
-                          const mapAccess = settings?.studentToolAccessMap?.[user.id] || {};
-                          const isAiOn = mapAccess.hasAiAccess === true || user.hasAiAccess === true;
-                          const isGestaoOn = mapAccess.hasGestaoAccess === true || user.hasGestaoAccess === true;
-                          const isMentoriaOn = mapAccess.hasMentoriaAccess === true || user.hasMentoriaAccess === true;
+                          const emailKey = user.email ? user.email.toLowerCase() : '';
+                          const mapAccess = settings?.studentToolAccessMap?.[user.id] || (emailKey ? settings?.studentToolAccessMap?.[emailKey] : {}) || {};
+                          const customMods = user.customAllowedModuleIds || [];
+
+                          const isAiOn = customMods.includes('TOOL_AI') || mapAccess.hasAiAccess === true || user.hasAiAccess === true;
+                          const isGestaoOn = customMods.includes('TOOL_GESTAO') || mapAccess.hasGestaoAccess === true || user.hasGestaoAccess === true;
+                          const isMentoriaOn = customMods.includes('TOOL_MENTORIA') || mapAccess.hasMentoriaAccess === true || user.hasMentoriaAccess === true;
 
                           return (
                             <div className="flex items-center gap-1.5">

@@ -239,9 +239,9 @@ export const supabaseService = {
           termsAcceptedAt: p.terms_accepted_at,
           customAllowedModuleIds: p.custom_allowed_module_ids,
           allowedCertificates: p.allowed_certificates,
-          hasAiAccess: p.has_ai_access ?? p.hasAiAccess ?? false,
-          hasGestaoAccess: p.has_gestao_access ?? p.hasGestaoAccess ?? false,
-          hasMentoriaAccess: p.has_mentoria_access ?? p.hasMentoriaAccess ?? false,
+          hasAiAccess: (p.custom_allowed_module_ids || []).includes('TOOL_AI') || p.has_ai_access === true || p.hasAiAccess === true,
+          hasGestaoAccess: (p.custom_allowed_module_ids || []).includes('TOOL_GESTAO') || p.has_gestao_access === true || p.hasGestaoAccess === true,
+          hasMentoriaAccess: (p.custom_allowed_module_ids || []).includes('TOOL_MENTORIA') || p.has_mentoria_access === true || p.hasMentoriaAccess === true,
           referredById: p.referred_by_id,
           referralBalance: Number(p.referral_balance || 0),
           totalEarned: Number(p.total_earned || 0),
@@ -267,7 +267,7 @@ export const supabaseService = {
   async upsertProfile(user: User): Promise<void> {
     if (!supabase) return;
     try {
-      await supabase.from('profiles').upsert({
+      const payload: any = {
         id: user.id,
         email: user.email,
         name: user.name,
@@ -287,17 +287,16 @@ export const supabaseService = {
         terms_accepted_at: user.termsAcceptedAt,
         custom_allowed_module_ids: user.customAllowedModuleIds,
         allowed_certificates: user.allowedCertificates,
-        has_ai_access: user.hasAiAccess ?? false,
-        has_gestao_access: user.hasGestaoAccess ?? false,
-        has_mentoria_access: user.hasMentoriaAccess ?? false,
-        hasAiAccess: user.hasAiAccess ?? false,
-        hasGestaoAccess: user.hasGestaoAccess ?? false,
-        hasMentoriaAccess: user.hasMentoriaAccess ?? false,
         referred_by_id: user.referredById,
         referral_balance: user.referralBalance || 0,
         total_earned: user.totalEarned || 0,
         updated_at: new Date().toISOString(),
-      });
+      };
+
+      const { error: upsertErr } = await supabase.from('profiles').upsert(payload);
+      if (upsertErr) {
+        console.warn('Upsert profile standard payload warning:', upsertErr);
+      }
 
       // Also upsert progress
       if (user.progress) {
