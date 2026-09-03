@@ -1010,32 +1010,52 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
             </div>
           </div>
         ) : currentTime.getTime() >= entryDate.getTime() && currentTime.getTime() < expiryDate.getTime() ? (
-          /* Render Waiting Screen */
-          <div className="p-6 text-center space-y-4">
-            <div className="w-16 h-16 rounded-full border-4 border-amber-500/20 border-t-amber-500 animate-spin mx-auto flex items-center justify-center shadow-lg">
+          /* Render Waiting Screen for Active Operation */
+          <div className="p-6 text-center space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 rounded-full border-4 border-amber-500/30 border-t-amber-400 animate-spin mx-auto flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.3)]">
               <Clock className="w-8 h-8 text-amber-400 animate-pulse" />
             </div>
             
             <div className="space-y-1.5">
-              <h3 className="text-xl font-black text-amber-400 tracking-wider">
+              <span className="text-[10px] font-mono font-extrabold text-amber-400 uppercase tracking-widest block">
+                {isNextCandleSignal ? "Sinal em Cima da Hora: Próxima Vela Ativa" : "Vela Atual em Operação"}
+              </span>
+              <h3 className="text-2xl font-black text-amber-400 tracking-wider uppercase">
                 OPERAÇÃO EM ANDAMENTO
               </h3>
               <p className="text-xs text-slate-300 font-mono">
-                Aguardando encerramento da vela de sinal de {timeframe.toUpperCase()}...
+                Aguardando encerramento da vela de {timeframe.toUpperCase()} às {expiryTimeStr}...
               </p>
+            </div>
+
+            {/* Signal direction & entry price summary card */}
+            <div className="grid grid-cols-2 gap-2 bg-[#0D121F] p-3 rounded-xl border border-[#1E293B] max-w-sm mx-auto text-left font-mono">
+              <div className="space-y-0.5">
+                <span className="text-[10px] text-slate-400 font-bold block">DIREÇÃO</span>
+                <span className={`text-sm font-black flex items-center gap-1 ${isCall ? "text-emerald-400" : "text-rose-400"}`}>
+                  {isCall ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                  {isCall ? "COMPRA (CALL)" : "VENDA (PUT)"}
+                </span>
+              </div>
+              <div className="space-y-0.5 text-right">
+                <span className="text-[10px] text-slate-400 font-bold block">TAXA DE ENTRADA</span>
+                <span className="text-sm font-black text-amber-300">
+                  ${(lockedEntryPriceRef.current || analysis?.priceAtAnalysis || 0).toFixed(2)}
+                </span>
+              </div>
             </div>
 
             {/* Progress bar of entry candle */}
             <div className="bg-[#111726] p-3 rounded-xl border border-[#1E293B] space-y-2 max-w-sm mx-auto">
               <div className="flex items-center justify-between text-xs font-mono text-slate-300">
-                <span>Tempo restante da operação:</span>
-                <span className="font-bold text-amber-400">
+                <span>Tempo restante da vela:</span>
+                <span className="font-bold text-amber-400 text-sm">
                   {Math.max(0, Math.ceil((expiryDate.getTime() - currentTime.getTime()) / 1000))}s
                 </span>
               </div>
-              <div className="h-2 w-full bg-[#1A2234] rounded-full overflow-hidden">
+              <div className="h-2.5 w-full bg-[#1A2234] rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-amber-500 rounded-full transition-all duration-1000"
+                  className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(245,158,11,0.5)]"
                   style={{
                     width: `${Math.max(0, Math.min(100, ((expiryDate.getTime() - currentTime.getTime()) / candleLengthMs) * 100))}%`
                   }}
@@ -1043,11 +1063,9 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
               </div>
             </div>
             
-            <div className="bg-[#090D15] p-2.5 rounded-lg border border-[#1E293B] text-[11px] font-mono text-slate-400 max-w-sm mx-auto">
-              <span>Ativo: <strong className="text-white">{activeTicker}</strong> | Direção: <strong className={isCall ? "text-emerald-400" : "text-rose-400"}>{isCall ? "CALL" : "PUT"}</strong></span>
+            <div className="bg-[#090D15] p-2.5 rounded-lg border border-[#1E293B] text-[11px] font-mono text-slate-300 max-w-sm mx-auto">
+              <span>Ativo: <strong className="text-white">{activeTicker}</strong> | Expiração: <strong className="text-cyan-400">{expiryTimeStr}</strong></span>
             </div>
-
-
 
             {/* Action buttons during operation */}
             <div className="flex flex-col gap-2 max-w-sm mx-auto w-full">
