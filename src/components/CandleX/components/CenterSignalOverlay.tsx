@@ -254,22 +254,14 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
     return getCandleTimeRemaining(tsDate, timeframe).remainingSeconds;
   }, [analysis?.timestamp, timeframe]);
 
-  // RULE: If user clicked Analisar with <= 20s remaining on current candle, analyze/target the NEXT CANDLE.
-  // Otherwise, target the CURRENT CANDLE.
-  const isNextCandleSignal = secondsRemainingAtAnalysis <= 20;
-
-  // Start of current candle
-  const currentCandleStart = useMemo(() => {
-    const ms = currentTime.getTime();
-    return Math.floor(ms / candleLengthMs) * candleLengthMs;
-  }, [currentTime, candleLengthMs]);
-
-  // Calculate the fixed target candle start time
+  // Target candle entry start time: Entry is ALWAYS set to the open of the NEXT candle
   const signalCandleStart = useMemo(() => {
     const ts = analysis?.timestamp || getSynchronizedTimestamp();
     const baseStart = Math.floor(ts / candleLengthMs) * candleLengthMs;
-    return isNextCandleSignal ? baseStart + candleLengthMs : baseStart;
-  }, [analysis?.timestamp, candleLengthMs, isNextCandleSignal]);
+    return baseStart + candleLengthMs;
+  }, [analysis?.timestamp, candleLengthMs]);
+
+  const isNextCandleSignal = true;
 
   // Dates for entry and expiry corresponding strictly to the target candle
   const entryDate = useMemo(() => {
@@ -728,7 +720,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
               : "border-slate-500 shadow-[0_0_50px_rgba(148,163,184,0.4)]"
             : isRejected
             ? "border-rose-600 shadow-[0_0_50px_rgba(225,29,72,0.45)]"
-            : currentTime.getTime() >= entryDate.getTime()
+            : currentTime.getTime() >= entryDate.getTime() && decision === "CONFIRMED"
             ? "border-amber-500 shadow-[0_0_50px_rgba(245,158,11,0.6)]"
             : isConfirmed
             ? isCall
@@ -749,7 +741,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
                 : "bg-slate-900 border-slate-700"
               : isRejected
               ? "bg-rose-950/70 border-rose-500/40"
-              : currentTime.getTime() >= entryDate.getTime()
+              : currentTime.getTime() >= entryDate.getTime() && decision === "CONFIRMED"
               ? "bg-amber-950/70 border-amber-500/40"
               : isConfirmed
               ? isCall
@@ -769,7 +761,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
                     : "bg-slate-400"
                   : isRejected
                   ? "bg-rose-500"
-                  : currentTime.getTime() >= entryDate.getTime()
+                  : currentTime.getTime() >= entryDate.getTime() && decision === "CONFIRMED"
                   ? "bg-amber-400"
                   : isConfirmed
                   ? isCall
@@ -801,7 +793,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
                   <Ban className="w-3.5 h-3.5 text-rose-400" />
                   SINAL CANCELADO (ANTI-LOSS)
                 </>
-              ) : currentTime.getTime() >= entryDate.getTime() ? (
+              ) : currentTime.getTime() >= entryDate.getTime() && decision === "CONFIRMED" ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 text-amber-400 animate-spin" />
                   AGUARDANDO RESULTADO...
@@ -1006,7 +998,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
               </button>
             </div>
           </div>
-        ) : currentTime.getTime() >= entryDate.getTime() && currentTime.getTime() < expiryDate.getTime() ? (
+        ) : decision === "CONFIRMED" && currentTime.getTime() >= entryDate.getTime() && currentTime.getTime() < expiryDate.getTime() ? (
           /* Render Waiting Screen for Active Operation */
           <div className="p-6 text-center space-y-4 animate-in zoom-in-95 duration-200">
             <div className="w-16 h-16 rounded-full border-4 border-amber-500/30 border-t-amber-400 animate-spin mx-auto flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.3)]">
