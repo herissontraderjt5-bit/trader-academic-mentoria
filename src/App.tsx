@@ -538,9 +538,11 @@ export default function App() {
   const isAdmin = currentUser?.role === 'admin' || ['viniciussestremmm@gmail.com', 'herisson.trader.jt5@gmail.com'].includes(currentUser?.email?.toLowerCase() || '');
   const requireRelease = settings.requireAdminReleaseForNewUsers ?? true;
 
-  const hasAiAccess = isAdmin || (requireRelease ? currentUser?.hasAiAccess === true : currentUser?.hasAiAccess !== false);
-  const hasGestaoAccess = isAdmin || (requireRelease ? currentUser?.hasGestaoAccess === true : currentUser?.hasGestaoAccess !== false);
-  const hasMentoriaAccess = isAdmin || (requireRelease ? currentUser?.hasMentoriaAccess === true : currentUser?.hasMentoriaAccess !== false);
+  const currentToolMap = settings.studentToolAccessMap?.[currentUser?.id || ''] || {};
+
+  const hasAiAccess = isAdmin || currentToolMap.hasAiAccess === true || currentUser?.hasAiAccess === true || (!requireRelease && currentToolMap.hasAiAccess !== false && currentUser?.hasAiAccess !== false);
+  const hasGestaoAccess = isAdmin || currentToolMap.hasGestaoAccess === true || currentUser?.hasGestaoAccess === true || (!requireRelease && currentToolMap.hasGestaoAccess !== false && currentUser?.hasGestaoAccess !== false);
+  const hasMentoriaAccess = isAdmin || currentToolMap.hasMentoriaAccess === true || currentUser?.hasMentoriaAccess === true || (!requireRelease && currentToolMap.hasMentoriaAccess !== false && currentUser?.hasMentoriaAccess !== false);
 
   // Lock Screen: CandleX AI pending release
   if (activeView === 'candlex' && !hasAiAccess) {

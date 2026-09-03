@@ -31,13 +31,17 @@ import { getAvatarUrl } from '../../utils/avatar';
 interface AdminMembersProps {
   users: User[];
   modules: Module[];
+  settings?: PlatformSettings;
   onUpdateUsers: (users: User[]) => void;
+  onUpdateSettings?: (settings: PlatformSettings) => void;
 }
 
 export const AdminMembers: React.FC<AdminMembersProps> = ({
   users,
   modules,
+  settings,
   onUpdateUsers,
+  onUpdateSettings,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterTier, setFilterTier] = useState<string>('all');
@@ -215,18 +219,39 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
 
   // Toggle Tool Access (IA, Gestão, Mentoria) per student
   const handleToggleToolAccess = (userId: string, toolKey: 'hasAiAccess' | 'hasGestaoAccess' | 'hasMentoriaAccess') => {
+    const currentSettings = settings || storageService.getSettings();
+    const currentMap = { ...(currentSettings.studentToolAccessMap || {}) };
+    const userAccess = { ...(currentMap[userId] || {}) };
+
+    const userObj = users.find((u) => u.id === userId);
+    const currentVal = userAccess[toolKey] ?? userObj?.[toolKey] ?? false;
+    const newVal = !currentVal;
+
+    userAccess[toolKey] = newVal;
+    currentMap[userId] = userAccess;
+
+    const updatedSettings: PlatformSettings = {
+      ...currentSettings,
+      studentToolAccessMap: currentMap,
+    };
+
+    if (onUpdateSettings) {
+      onUpdateSettings(updatedSettings);
+    }
+    storageService.saveSettings(updatedSettings);
+
     let targetUpdated: User | null = null;
     const updated = users.map((u) => {
       if (u.id === userId) {
-        const currentVal = u[toolKey] ?? false;
         targetUpdated = {
           ...u,
-          [toolKey]: !currentVal,
+          [toolKey]: newVal,
         };
         return targetUpdated;
       }
       return u;
     });
+
     onUpdateUsers(updated);
     if (targetUpdated && supabaseService.isConfigured()) {
       supabaseService.upsertProfile(targetUpdated);
@@ -490,52 +515,61 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
 
                       {/* Tool Access Quick Toggles (IA, Gestão, Mentoria) */}
                       <td className="py-4 px-4">
-                        <div className="flex items-center gap-1.5">
-                          {/* 1. IA CandleX */}
-                          <button
-                            type="button"
-                            onClick={() => handleToggleToolAccess(user.id, 'hasAiAccess')}
-                            className={`px-2 py-1 rounded-lg text-[10px] font-black font-mono flex items-center gap-1 border transition-all cursor-pointer ${
-                              user.hasAiAccess === true
-                                ? 'bg-emerald-950/80 text-emerald-400 border-emerald-500/50 hover:bg-emerald-900 shadow-[0_0_8px_rgba(16,185,129,0.2)]'
-                                : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:border-zinc-700 hover:text-zinc-300'
-                            }`}
-                            title={user.hasAiAccess === true ? "IA CandleX Liberada (Clique para Bloquear)" : "IA CandleX Bloqueada (Clique para Liberar)"}
-                          >
-                            <Sparkles className="w-3 h-3" />
-                            <span>{user.hasAiAccess === true ? 'IA ON' : 'IA OFF'}</span>
-                          </button>
+                        {(() => {
+                          const mapAccess = settings?.studentToolAccessMap?.[user.id] || {};
+                          const isAiOn = mapAccess.hasAiAccess === true || user.hasAiAccess === true;
+                          const isGestaoOn = mapAccess.hasGestaoAccess === true || user.hasGestaoAccess === true;
+                          const isMentoriaOn = mapAccess.hasMentoriaAccess === true || user.hasMentoriaAccess === true;
 
-                          {/* 2. Gestão de Banca */}
-                          <button
-                            type="button"
-                            onClick={() => handleToggleToolAccess(user.id, 'hasGestaoAccess')}
-                            className={`px-2 py-1 rounded-lg text-[10px] font-black font-mono flex items-center gap-1 border transition-all cursor-pointer ${
-                              user.hasGestaoAccess === true
-                                ? 'bg-cyan-950/80 text-cyan-400 border-cyan-500/50 hover:bg-cyan-900 shadow-[0_0_8px_rgba(6,182,212,0.2)]'
-                                : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:border-zinc-700 hover:text-zinc-300'
-                            }`}
-                            title={user.hasGestaoAccess === true ? "Gestão de Banca Liberada (Clique para Bloquear)" : "Gestão de Banca Bloqueada (Clique para Liberar)"}
-                          >
-                            <BarChart2 className="w-3 h-3" />
-                            <span>{user.hasGestaoAccess === true ? 'Gestão ON' : 'Gestão OFF'}</span>
-                          </button>
+                          return (
+                            <div className="flex items-center gap-1.5">
+                              {/* 1. IA CandleX */}
+                              <button
+                                type="button"
+                                onClick={() => handleToggleToolAccess(user.id, 'hasAiAccess')}
+                                className={`px-2 py-1 rounded-lg text-[10px] font-black font-mono flex items-center gap-1 border transition-all cursor-pointer ${
+                                  isAiOn
+                                    ? 'bg-emerald-950/80 text-emerald-400 border-emerald-500/50 hover:bg-emerald-900 shadow-[0_0_8px_rgba(16,185,129,0.2)]'
+                                    : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:border-zinc-700 hover:text-zinc-300'
+                                }`}
+                                title={isAiOn ? "IA CandleX Liberada (Clique para Bloquear)" : "IA CandleX Bloqueada (Clique para Liberar)"}
+                              >
+                                <Sparkles className="w-3 h-3" />
+                                <span>{isAiOn ? 'IA ON' : 'IA OFF'}</span>
+                              </button>
 
-                          {/* 3. Mentoria Gratuita */}
-                          <button
-                            type="button"
-                            onClick={() => handleToggleToolAccess(user.id, 'hasMentoriaAccess')}
-                            className={`px-2 py-1 rounded-lg text-[10px] font-black font-mono flex items-center gap-1 border transition-all cursor-pointer ${
-                              user.hasMentoriaAccess === true
-                                ? 'bg-amber-950/80 text-amber-400 border-amber-500/50 hover:bg-amber-900 shadow-[0_0_8px_rgba(245,158,11,0.2)]'
-                                : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:border-zinc-700 hover:text-zinc-300'
-                            }`}
-                            title={user.hasMentoriaAccess === true ? "Mentoria Liberada (Clique para Bloquear)" : "Mentoria Bloqueada (Clique para Liberar)"}
-                          >
-                            <Users className="w-3 h-3" />
-                            <span>{user.hasMentoriaAccess === true ? 'Mentoria ON' : 'Mentoria OFF'}</span>
-                          </button>
-                        </div>
+                              {/* 2. Gestão de Banca */}
+                              <button
+                                type="button"
+                                onClick={() => handleToggleToolAccess(user.id, 'hasGestaoAccess')}
+                                className={`px-2 py-1 rounded-lg text-[10px] font-black font-mono flex items-center gap-1 border transition-all cursor-pointer ${
+                                  isGestaoOn
+                                    ? 'bg-cyan-950/80 text-cyan-400 border-cyan-500/50 hover:bg-cyan-900 shadow-[0_0_8px_rgba(6,182,212,0.2)]'
+                                    : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:border-zinc-700 hover:text-zinc-300'
+                                }`}
+                                title={isGestaoOn ? "Gestão de Banca Liberada (Clique para Bloquear)" : "Gestão de Banca Bloqueada (Clique para Liberar)"}
+                              >
+                                <BarChart2 className="w-3 h-3" />
+                                <span>{isGestaoOn ? 'Gestão ON' : 'Gestão OFF'}</span>
+                              </button>
+
+                              {/* 3. Mentoria Gratuita */}
+                              <button
+                                type="button"
+                                onClick={() => handleToggleToolAccess(user.id, 'hasMentoriaAccess')}
+                                className={`px-2 py-1 rounded-lg text-[10px] font-black font-mono flex items-center gap-1 border transition-all cursor-pointer ${
+                                  isMentoriaOn
+                                    ? 'bg-amber-950/80 text-amber-400 border-amber-500/50 hover:bg-amber-900 shadow-[0_0_8px_rgba(245,158,11,0.2)]'
+                                    : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:border-zinc-700 hover:text-zinc-300'
+                                }`}
+                                title={isMentoriaOn ? "Mentoria Liberada (Clique para Bloquear)" : "Mentoria Bloqueada (Clique para Liberar)"}
+                              >
+                                <Users className="w-3 h-3" />
+                                <span>{isMentoriaOn ? 'Mentoria ON' : 'Mentoria OFF'}</span>
+                              </button>
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       {/* Progress */}

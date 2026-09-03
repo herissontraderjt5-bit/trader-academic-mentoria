@@ -164,6 +164,12 @@ export interface PlatformSettings {
   defaultGrantAi?: boolean;
   defaultGrantGestao?: boolean;
   defaultGrantMentoria?: boolean;
+  // Master persistent map for student tool access releases (userId -> permissions)
+  studentToolAccessMap?: Record<string, {
+    hasAiAccess?: boolean;
+    hasGestaoAccess?: boolean;
+    hasMentoriaAccess?: boolean;
+  }>;
 }
 
 export interface WithdrawalRequest {

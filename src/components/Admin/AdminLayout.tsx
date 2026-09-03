@@ -189,7 +189,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           <AdminMembers
             users={allUsers}
             modules={modules}
+            settings={settings}
             onUpdateUsers={onUpdateUsers}
+            onUpdateSettings={onUpdateSettings}
           />
         )}
 
