@@ -19,6 +19,10 @@ export const INITIAL_SETTINGS: PlatformSettings = {
   candlexAiVersion: 'v2.6.0 Neural Ultra',
   candlexMaintenanceProgress: 85,
   candlexAllowAdminBypass: true,
+  requireAdminReleaseForNewUsers: true,
+  defaultGrantAi: false,
+  defaultGrantGestao: false,
+  defaultGrantMentoria: false,
 };
 
 export const INITIAL_MODULES: Module[] = [

@@ -203,6 +203,27 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
     }
   };
 
+  // Toggle Tool Access (IA, Gestão, Mentoria) per student
+  const handleToggleToolAccess = (userId: string, toolKey: 'hasAiAccess' | 'hasGestaoAccess' | 'hasMentoriaAccess') => {
+    let targetUpdated: User | null = null;
+    const updated = users.map((u) => {
+      if (u.id === userId) {
+        const currentVal = u[toolKey] ?? false;
+        targetUpdated = {
+          ...u,
+          [toolKey]: !currentVal,
+        };
+        return targetUpdated;
+      }
+      return u;
+    });
+    onUpdateUsers(updated);
+    if (targetUpdated && supabaseService.isConfigured()) {
+      supabaseService.upsertProfile(targetUpdated);
+    }
+    storageService.saveStudents(updated);
+  };
+
   // Change Tier
   const handleChangeTier = async (userId: string, newTier: Tier) => {
     const oldUser = users.find(u => u.id === userId);
@@ -356,7 +377,8 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
               <tr className="border-b border-white/5 bg-zinc-900/80 text-[11px] font-bold text-zinc-500 uppercase font-mono tracking-wider">
                 <th className="py-3.5 px-4 sm:px-6">Aluno</th>
                 <th className="py-3.5 px-4">Plano / Categoria</th>
-                <th className="py-3.5 px-4">Acessos</th>
+                <th className="py-3.5 px-4">Acessos Módulos</th>
+                <th className="py-3.5 px-4">Liberação de Ferramentas</th>
                 <th className="py-3.5 px-4">Progresso</th>
                 <th className="py-3.5 px-4">Status</th>
                 <th className="py-3.5 px-4 text-right">Ações</th>
@@ -454,6 +476,56 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
                           <Sliders className="w-3.5 h-3.5" />
                           <span>{isCustom ? 'Personalizado' : 'Padrão'}</span>
                         </button>
+                      </td>
+
+                      {/* Tool Access Quick Toggles (IA, Gestão, Mentoria) */}
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-1.5">
+                          {/* 1. IA CandleX */}
+                          <button
+                            type="button"
+                            onClick={() => handleToggleToolAccess(user.id, 'hasAiAccess')}
+                            className={`px-2 py-1 rounded-lg text-[10px] font-black font-mono flex items-center gap-1 border transition-all cursor-pointer ${
+                              user.hasAiAccess === true
+                                ? 'bg-emerald-950/80 text-emerald-400 border-emerald-500/50 hover:bg-emerald-900 shadow-[0_0_8px_rgba(16,185,129,0.2)]'
+                                : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:border-zinc-700 hover:text-zinc-300'
+                            }`}
+                            title={user.hasAiAccess === true ? "IA CandleX Liberada (Clique para Bloquear)" : "IA CandleX Bloqueada (Clique para Liberar)"}
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            <span>{user.hasAiAccess === true ? 'IA ON' : 'IA OFF'}</span>
+                          </button>
+
+                          {/* 2. Gestão de Banca */}
+                          <button
+                            type="button"
+                            onClick={() => handleToggleToolAccess(user.id, 'hasGestaoAccess')}
+                            className={`px-2 py-1 rounded-lg text-[10px] font-black font-mono flex items-center gap-1 border transition-all cursor-pointer ${
+                              user.hasGestaoAccess === true
+                                ? 'bg-cyan-950/80 text-cyan-400 border-cyan-500/50 hover:bg-cyan-900 shadow-[0_0_8px_rgba(6,182,212,0.2)]'
+                                : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:border-zinc-700 hover:text-zinc-300'
+                            }`}
+                            title={user.hasGestaoAccess === true ? "Gestão de Banca Liberada (Clique para Bloquear)" : "Gestão de Banca Bloqueada (Clique para Liberar)"}
+                          >
+                            <BarChart2 className="w-3 h-3" />
+                            <span>{user.hasGestaoAccess === true ? 'Gestão ON' : 'Gestão OFF'}</span>
+                          </button>
+
+                          {/* 3. Mentoria Gratuita */}
+                          <button
+                            type="button"
+                            onClick={() => handleToggleToolAccess(user.id, 'hasMentoriaAccess')}
+                            className={`px-2 py-1 rounded-lg text-[10px] font-black font-mono flex items-center gap-1 border transition-all cursor-pointer ${
+                              user.hasMentoriaAccess === true
+                                ? 'bg-amber-950/80 text-amber-400 border-amber-500/50 hover:bg-amber-900 shadow-[0_0_8px_rgba(245,158,11,0.2)]'
+                                : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:border-zinc-700 hover:text-zinc-300'
+                            }`}
+                            title={user.hasMentoriaAccess === true ? "Mentoria Liberada (Clique para Bloquear)" : "Mentoria Bloqueada (Clique para Liberar)"}
+                          >
+                            <Users className="w-3 h-3" />
+                            <span>{user.hasMentoriaAccess === true ? 'Mentoria ON' : 'Mentoria OFF'}</span>
+                          </button>
+                        </div>
                       </td>
 
                       {/* Progress */}

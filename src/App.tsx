@@ -536,6 +536,119 @@ export default function App() {
 
   // Admin security check: viniciussestremmm@gmail.com or herisson.trader.jt5@gmail.com
   const isAdmin = currentUser?.role === 'admin' || ['viniciussestremmm@gmail.com', 'herisson.trader.jt5@gmail.com'].includes(currentUser?.email?.toLowerCase() || '');
+  const requireRelease = settings.requireAdminReleaseForNewUsers ?? true;
+
+  const hasAiAccess = isAdmin || (requireRelease ? currentUser?.hasAiAccess === true : currentUser?.hasAiAccess !== false);
+  const hasGestaoAccess = isAdmin || (requireRelease ? currentUser?.hasGestaoAccess === true : currentUser?.hasGestaoAccess !== false);
+  const hasMentoriaAccess = isAdmin || (requireRelease ? currentUser?.hasMentoriaAccess === true : currentUser?.hasMentoriaAccess !== false);
+
+  // Lock Screen: CandleX AI pending release
+  if (activeView === 'candlex' && !hasAiAccess) {
+    return (
+      <div className="min-h-screen bg-[#070709] text-white flex flex-col items-center justify-center p-4">
+        <div className="w-full max-w-md bg-[#0e0e12] border border-[#ff7a00]/40 rounded-3xl p-8 shadow-2xl text-center space-y-4 animate-in zoom-in-95">
+          <div className="w-16 h-16 rounded-2xl bg-[#ff7a00]/20 border border-[#ff7a00]/40 text-[#ff7a00] flex items-center justify-center mx-auto shadow-xl">
+            <Lock className="w-8 h-8" />
+          </div>
+          <span className="px-3 py-1 rounded-full text-[10px] font-black bg-[#ff7a00]/20 text-[#ff7a00] border border-[#ff7a00]/30 uppercase tracking-widest font-mono">
+            Acesso Pendente pelo Administrador
+          </span>
+          <h2 className="text-xl font-black text-white uppercase tracking-tight">IA CandleX Aguardando Liberação</h2>
+          <p className="text-xs text-zinc-400 leading-relaxed font-mono">
+            Olá, <strong className="text-white">{currentUser.name}</strong>! Seu cadastro foi recebido com sucesso. O acesso ao terminal da IA CandleX é liberado individualmente pelo administrador. Fale com o mentor no WhatsApp para acelerar sua liberação.
+          </p>
+          <div className="pt-3 flex flex-col gap-2 font-mono">
+            <a
+              href={`https://wa.me/${settings.supportWhatsapp}?text=${encodeURIComponent(`Olá! Me cadastrei na plataforma e gostaria de solicitar a liberação do meu acesso à IA CandleX. Meu email: ${currentUser.email}`)}`}
+              target="_blank"
+              rel="noreferrer"
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-[#ff7a00] to-amber-500 hover:from-[#e06c00] hover:to-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-orange-600/20 text-center"
+            >
+              Falar com o Suporte / Mentor no WhatsApp
+            </a>
+            <button
+              onClick={() => setActiveView('home')}
+              className="w-full py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs font-bold uppercase transition-all"
+            >
+              Voltar ao Painel Principal
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Lock Screen: Gestão de Banca pending release
+  if (activeView === 'gestao' && !hasGestaoAccess) {
+    return (
+      <div className="min-h-screen bg-[#070709] text-white flex flex-col items-center justify-center p-4">
+        <div className="w-full max-w-md bg-[#0e0e12] border border-cyan-500/40 rounded-3xl p-8 shadow-2xl text-center space-y-4 animate-in zoom-in-95">
+          <div className="w-16 h-16 rounded-2xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-400 flex items-center justify-center mx-auto shadow-xl">
+            <Lock className="w-8 h-8" />
+          </div>
+          <span className="px-3 py-1 rounded-full text-[10px] font-black bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 uppercase tracking-widest font-mono">
+            Acesso Pendente pelo Administrador
+          </span>
+          <h2 className="text-xl font-black text-white uppercase tracking-tight">Planilha de Gestão Pendente</h2>
+          <p className="text-xs text-zinc-400 leading-relaxed font-mono">
+            Olá, <strong className="text-white">{currentUser.name}</strong>! O acesso à Planilha Profissional de Gestão de Banca requer liberação individual do administrador. Fale com o suporte para liberar seu acesso.
+          </p>
+          <div className="pt-3 flex flex-col gap-2 font-mono">
+            <a
+              href={`https://wa.me/${settings.supportWhatsapp}?text=${encodeURIComponent(`Olá! Gostaria de solicitar a liberação do meu acesso à Planilha de Gestão de Banca. Meu email: ${currentUser.email}`)}`}
+              target="_blank"
+              rel="noreferrer"
+              className="w-full py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-cyan-600/20 text-center"
+            >
+              Solicitar Liberação no WhatsApp
+            </a>
+            <button
+              onClick={() => setActiveView('home')}
+              className="w-full py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs font-bold uppercase transition-all"
+            >
+              Voltar ao Painel Principal
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Lock Screen: Mentoria Gratuita pending release
+  if (activeView === 'player' && !hasMentoriaAccess) {
+    return (
+      <div className="min-h-screen bg-[#070709] text-white flex flex-col items-center justify-center p-4">
+        <div className="w-full max-w-md bg-[#0e0e12] border border-amber-500/40 rounded-3xl p-8 shadow-2xl text-center space-y-4 animate-in zoom-in-95">
+          <div className="w-16 h-16 rounded-2xl bg-amber-950/80 border border-amber-500/40 text-amber-400 flex items-center justify-center mx-auto shadow-xl">
+            <Lock className="w-8 h-8" />
+          </div>
+          <span className="px-3 py-1 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase tracking-widest font-mono">
+            Acesso Pendente pelo Administrador
+          </span>
+          <h2 className="text-xl font-black text-white uppercase tracking-tight">Mentoria Gratuita Pendente</h2>
+          <p className="text-xs text-zinc-400 leading-relaxed font-mono">
+            Olá, <strong className="text-white">{currentUser.name}</strong>! As aulas da Mentoria Gratuita necessitam de liberação manual do mentor. Entre em contato para ativar suas aulas.
+          </p>
+          <div className="pt-3 flex flex-col gap-2 font-mono">
+            <a
+              href={`https://wa.me/${settings.supportWhatsapp}?text=${encodeURIComponent(`Olá! Gostaria de solicitar a liberação do meu acesso às aulas da Mentoria Gratuita. Meu email: ${currentUser.email}`)}`}
+              target="_blank"
+              rel="noreferrer"
+              className="w-full py-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-amber-600/20 text-center"
+            >
+              Falar com o Mentor no WhatsApp
+            </a>
+            <button
+              onClick={() => setActiveView('home')}
+              className="w-full py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs font-bold uppercase transition-all"
+            >
+              Voltar ao Painel Principal
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#070709] text-gray-100 flex flex-col font-sans selection:bg-orange-500 selection:text-white">

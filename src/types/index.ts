@@ -24,6 +24,10 @@ export interface User {
   termsAcceptedAt?: string;
   customAllowedModuleIds?: string[]; // If defined, overrides tier default
   allowedCertificates?: ('b3' | 'binarias' | 'forex' | 'cripto')[]; // Explicitly unlocked certificates by Admin
+  // Admin-released feature access flags per student
+  hasAiAccess?: boolean;
+  hasGestaoAccess?: boolean;
+  hasMentoriaAccess?: boolean;
   referredById?: string;
   referralCode?: string;
   referralBalance?: number;
@@ -155,6 +159,11 @@ export interface PlatformSettings {
   candlexAiVersion?: string;
   candlexMaintenanceProgress?: number;
   candlexAllowAdminBypass?: boolean;
+  // Student Access Control Settings (Individual Admin Release)
+  requireAdminReleaseForNewUsers?: boolean;
+  defaultGrantAi?: boolean;
+  defaultGrantGestao?: boolean;
+  defaultGrantMentoria?: boolean;
 }
 
 export interface WithdrawalRequest {

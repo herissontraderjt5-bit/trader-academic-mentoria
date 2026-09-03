@@ -11,7 +11,10 @@ import {
   Zap, 
   Wrench, 
   Clock, 
-  Eye 
+  Eye,
+  Lock,
+  Users,
+  BarChart2
 } from 'lucide-react';
 import { PlatformSettings } from '../../types';
 import { storageService } from '../../services/storage';
@@ -552,6 +555,53 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
             </div>
           </div>
 
+        </div>
+
+        {/* Student Access Control (IA, Gestão & Mentoria) */}
+        <div className="space-y-4 pt-6 border-t border-[#222230]">
+          <div className="flex items-center gap-2">
+            <Lock className="w-4 h-4 text-[#ff8800]" />
+            <h3 className="text-sm font-bold text-[#ff8800] uppercase tracking-wider font-mono">
+              Controle de Liberação de Acesso aos Alunos
+            </h3>
+          </div>
+
+          <div className="p-5 rounded-2xl bg-[#15151f] border border-[#252538] space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-white uppercase font-mono tracking-wider block">
+                  Exigir Liberação Manual pelo Administrador para Novos Cadastros
+                </span>
+                <p className="text-[11px] text-gray-400 leading-relaxed">
+                  Ao ativar esta opção, qualquer pessoa que se cadastrar na plataforma ficará <strong>SEM ACESSO</strong> à <strong>IA CandleX</strong>, à <strong>Planilha de Gestão</strong> e às aulas da <strong>Mentoria Gratuita</strong> até que você libere o acesso individualmente no painel de membros.
+                </p>
+              </div>
+
+              <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                <input
+                  type="checkbox"
+                  checked={formData.requireAdminReleaseForNewUsers ?? true}
+                  onChange={(e) => setFormData({ ...formData, requireAdminReleaseForNewUsers: e.target.checked })}
+                  className="sr-only peer"
+                />
+                <div className="w-12 h-6 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#ff6b00]"></div>
+                <span className="ml-3 text-xs font-bold text-gray-300 font-mono">
+                  {formData.requireAdminReleaseForNewUsers ?? true ? 'Ativado' : 'Desativado'}
+                </span>
+              </label>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-[#0d0d14] border border-[#222233] text-xs font-mono text-gray-300 space-y-1.5">
+              <div className="flex items-center gap-2 text-[#ff8800] font-bold">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Como funciona a liberação:</span>
+              </div>
+              <p className="text-[11px] text-gray-400 leading-relaxed">
+                1. No menu <strong>Alunos / Membros</strong>, você verá 3 botões rápidos em cada aluno: <strong>[IA]</strong>, <strong>[Gestão]</strong> e <strong>[Mentoria]</strong>.<br />
+                2. Basta clicar para liberar ou bloquear qualquer ferramenta individualmente para o aluno em tempo real.
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Footer Actions */}
