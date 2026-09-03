@@ -504,39 +504,33 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
     const nowMs = currentTime.getTime();
     if (nowMs >= entryDate.getTime()) {
       if (decision === "PENDING") {
-        setDecision("CONFIRMED");
+        setDecision("REJECTED");
+        setRejectionReason("Tempo de confirmação expirado antes da validação final do CandleX.");
+        return;
       }
-      if (lockedEntryPriceRef.current === null) {
+
+      if (decision === "CONFIRMED" && lockedEntryPriceRef.current === null) {
         const entryCandleSecs = Math.floor(entryDate.getTime() / 1000);
-        const candleLengthSecs = Math.max(60, Math.floor(candleLengthMs / 1000));
         
-        // Try exact match or match within current timeframe candle
+        // Search exact candle starting at entryDate
         let exactCandle = candles.find((c) => c.time === entryCandleSecs);
         if (!exactCandle) {
-          exactCandle = candles.find((c) => Math.abs(c.time - entryCandleSecs) < (candleLengthSecs / 2));
+          exactCandle = candles.find((c) => Math.abs(c.time - entryCandleSecs) <= 10);
         }
 
-        if (isNextCandleSignal) {
-          // For NEXT CANDLE signal (<=20s remaining), entry price is the OPEN price of the next candle
-          if (exactCandle) {
-            lockedEntryPriceRef.current = exactCandle.open;
-          } else if (candles.length > 0) {
-            const lastCandle = candles[candles.length - 1];
-            lockedEntryPriceRef.current = lastCandle.close;
-          } else {
-            lockedEntryPriceRef.current = analysis.priceAtAnalysis || 100;
-          }
+        if (exactCandle) {
+          lockedEntryPriceRef.current = exactCandle.open;
+        } else if (candles.length > 0) {
+          lockedEntryPriceRef.current = candles[candles.length - 1].open || candles[candles.length - 1].close;
         } else {
-          // For CURRENT CANDLE signal (>20s remaining), entry price is the exact price at signal generation time
-          lockedEntryPriceRef.current = analysis.priceAtAnalysis || (exactCandle ? exactCandle.open : 100);
+          lockedEntryPriceRef.current = analysis.priceAtAnalysis || 100;
         }
       }
 
-      if (!hasRegisteredPendingRef.current && onSaveSignalTrade) {
+      if (decision === "CONFIRMED" && !hasRegisteredPendingRef.current && onSaveSignalTrade) {
         hasRegisteredPendingRef.current = true;
         const expiryMins = Math.max(1, Math.round(candleLengthMs / 60000));
         const stakeAmount = bankrollConfig?.initialBalance ? +(bankrollConfig.initialBalance * 0.01).toFixed(2) : 10;
-        const targetLabel = isNextCandleSignal ? "Próxima Vela" : "Vela Atual";
         
         const pendingTrade: TradeRecord = {
           id: signalTradeId,
@@ -551,16 +545,16 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
           pnl: 0,
           strategyUsed: analysis.strategyName || "CandleX Confluence Core",
           confidenceAtEntry: analysis.confidenceScore || 90,
-          notes: `Entrada aos ${entryTimeStr} (${targetLabel}) - Assertividade ${analysis.confidenceScore}%`,
+          notes: `Entrada aos ${entryTimeStr} (Próxima Vela) - Assertividade ${analysis.confidenceScore}%`,
         };
         onSaveSignalTrade(pendingTrade);
       }
     }
-  }, [currentTime, entryDate, decision, analysis, isAnalyzing, isVisible, candles, activeTicker, resolvedDirection, timeframe, candleLengthMs, bankrollConfig, onSaveSignalTrade, entryTimeStr, signalTradeId, isNextCandleSignal]);
+  }, [currentTime, entryDate, decision, analysis, isAnalyzing, isVisible, candles, activeTicker, resolvedDirection, timeframe, candleLengthMs, bankrollConfig, onSaveSignalTrade, entryTimeStr, signalTradeId]);
 
   // AUTOMATIC OUTCOME RESOLUTION (WIN / LOSS / DOJI) WHEN EXPIRY TIME IS REACHED
   useEffect(() => {
-    if (!analysis || isAnalyzing || !isVisible || decision === "REJECTED") return;
+    if (!analysis || isAnalyzing || !isVisible || decision !== "CONFIRMED") return;
 
     const nowMs = currentTime.getTime();
     if (nowMs >= expiryDate.getTime() && !hasResolvedOutcome && !isResolvingRef.current) {
@@ -568,36 +562,33 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
       setHasResolvedOutcome(true);
 
       const entryCandleSecs = Math.floor(entryDate.getTime() / 1000);
-      const candleLengthSecs = Math.max(60, Math.floor(candleLengthMs / 1000));
+      const expiryCandleSecs = Math.floor(expiryDate.getTime() / 1000);
 
-      // Locate the exact operational candle (starts at entryDate)
+      // Locate the exact operational trade candle
       let tradeCandle = candles.find((c) => c.time === entryCandleSecs);
       if (!tradeCandle) {
-        tradeCandle = candles.find((c) => Math.abs(c.time - entryCandleSecs) < (candleLengthSecs / 2));
+        tradeCandle = candles.find((c) => Math.abs(c.time - entryCandleSecs) <= 10);
       }
-      if (!tradeCandle && candles.length > 0) {
-        // Take the candle that covers the trade period
-        const pastCandles = candles.filter((c) => c.time <= entryCandleSecs);
-        tradeCandle = pastCandles.length > 0 ? pastCandles[pastCandles.length - 1] : candles[candles.length - 1];
+      if (!tradeCandle) {
+        tradeCandle = candles.find((c) => c.time >= entryCandleSecs && c.time < expiryCandleSecs);
       }
 
-      const entryPrice = lockedEntryPriceRef.current || (isNextCandleSignal ? (tradeCandle ? tradeCandle.open : (analysis.priceAtAnalysis || 100)) : (analysis.priceAtAnalysis || (tradeCandle ? tradeCandle.open : 100)));
-      const expiryPrice = tradeCandle ? tradeCandle.close : entryPrice;
+      const entryPrice = lockedEntryPriceRef.current || (tradeCandle ? tradeCandle.open : (analysis.priceAtAnalysis || 100));
+      const expiryPrice = tradeCandle ? tradeCandle.close : (candles.length > 0 ? candles[candles.length - 1].close : entryPrice);
       const priceDiff = +(expiryPrice - entryPrice).toFixed(6);
 
       const dir = resolvedDirection === "CALL" ? "CALL" : "PUT";
       let outcome: "WIN" | "LOSS" | "DRAW" = "DRAW";
 
-      if (Math.abs(priceDiff) <= 0.000001) {
+      if (Math.abs(priceDiff) <= 0.0000001) {
         outcome = "DRAW";
       } else if (dir === "CALL") {
         // COMPRA (CALL): Win se a vela fechou acima da entrada (close > entryPrice)
-        // Loss se a vela fechou abaixo da entrada (close < entryPrice)
         outcome = expiryPrice > entryPrice ? "WIN" : "LOSS";
       } else if (dir === "PUT") {
         // VENDA (PUT): Win se a vela fechou abaixo da entrada (close < entryPrice)
-        // Loss se a vela fechou acima da entrada (close > entryPrice)
         outcome = expiryPrice < entryPrice ? "WIN" : "LOSS";
+      }
       }
 
       setPredictionResult(outcome);
