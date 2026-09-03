@@ -589,7 +589,6 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         // VENDA (PUT): Win se a vela fechou abaixo da entrada (close < entryPrice)
         outcome = expiryPrice < entryPrice ? "WIN" : "LOSS";
       }
-      }
 
       setPredictionResult(outcome);
 
