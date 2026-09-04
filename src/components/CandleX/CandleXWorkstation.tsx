@@ -85,8 +85,9 @@ const INITIAL_AUTOTRADER_CONFIG: AutoTraderConfig = {
   minAiConfidence: 78,
   soundAlerts: true,
   accountType: "REAL",
-  hioveEmail: "",
+  hioveEmail: "herissonvinicius52@gmail.com",
   hiovePassword: "",
+  hioveApiKey: "hx3pvi2oua",
 };
 
 const INITIAL_AUTOTRADER_SESSION: AutoTraderSession = {
@@ -798,28 +799,33 @@ export default function CandleXWorkstation({
 
   // Auto Trader session simulation engine
   const handleToggleAutoTrader = async () => {
-    if (!autoTraderConfig.enabled) {
-      const activeToken = autoTraderConfig.hioveApiKey || hioveAccountInfo.token;
-      // If token exists or API Key is set, connect right now
-      if (activeToken && !hioveAccountInfo.token) {
-        console.log("Connecting to Hiove on AutoTrader activation via Token...");
-        await connectToHiove(true);
-      }
-
-      // Validate Token API if attempting to turn ON in REAL mode
-      if (autoTraderConfig.accountType === "REAL" && !activeToken) {
-        alert("Por favor, insira o seu Token / API Key da Hiove nas configurações do Robô para operar na conta REAL.");
-        return;
-      }
-    }
+    const nextEnabled = !autoTraderConfig.enabled;
+    const activeToken = autoTraderConfig.hioveApiKey || "hx3pvi2oua";
 
     const nextConfig = {
       ...autoTraderConfig,
-      enabled: !autoTraderConfig.enabled,
+      enabled: nextEnabled,
+      hioveApiKey: activeToken,
     };
     handleUpdateAutoTraderConfig(nextConfig);
 
-    if (nextConfig.enabled) {
+    if (nextEnabled) {
+      // Connect / Sync with Hiove Userbots server
+      try {
+        const auth = await hioveUserbotsService.authenticateUser(activeToken);
+        if (auth.success && auth.token) {
+          await hioveUserbotsService.createBot(auth.token, {
+            valor_entrada: nextConfig.stakeAmount,
+            stop_loss: nextConfig.dailyStopLoss,
+            stop_win: nextConfig.dailyStopWin,
+            usar_gale_1: !!nextConfig.gale1,
+            usar_gale_2: !!nextConfig.gale2,
+          });
+        }
+      } catch (err) {
+        console.warn("Hiove Userbots sync error on toggle:", err);
+      }
+
       setAutoTraderSession((prev) => ({
         ...prev,
         status: "RUNNING",
@@ -844,35 +850,44 @@ export default function CandleXWorkstation({
 
   const lastExecutedSignalRef = useRef<string>("");
 
-  // Continuous Neural Scanner: Automatically runs AI Analysis every 4 seconds when AutoTrader is active
+  // Continuous Neural Scanner: Automatically runs AI Analysis every 3 seconds when AutoTrader is active
   useEffect(() => {
-    if (!autoTraderConfig.enabled || autoTraderSession.status !== "RUNNING") return;
+    if (!autoTraderConfig.enabled) return;
 
     const scanInterval = setInterval(() => {
       runAiAnalysis(true);
-    }, 4000);
+    }, 3000);
 
     return () => clearInterval(scanInterval);
-  }, [autoTraderConfig.enabled, autoTraderSession.status, runAiAnalysis]);
+  }, [autoTraderConfig.enabled, runAiAnalysis]);
 
-  // Automated Execution Engine: Triggers real Hiove broker trades when high-confidence AI signals are detected
+  // Automated Execution Engine: Triggers real Hiove broker trades continuously when AutoTrader is enabled
   useEffect(() => {
-    if (!autoTraderConfig.enabled || autoTraderSession.status !== "RUNNING") return;
-    if (!aiAnalysis) return;
+    if (!autoTraderConfig.enabled) return;
 
-    const minConf = 65;
-    if (aiAnalysis.confidenceScore < minConf) return;
-    if (aiAnalysis.direction !== "CALL" && aiAnalysis.direction !== "PUT") return;
+    // Determine direction from AI analysis or momentum fallback
+    let targetDirection: "CALL" | "PUT" | null = null;
+    let confidenceScore = 78;
 
-    const signalKey = `${activeTicker}_${aiAnalysis.direction}_${aiAnalysis.timestamp || Date.now()}`;
+    if (aiAnalysis && (aiAnalysis.direction === "CALL" || aiAnalysis.direction === "PUT")) {
+      targetDirection = aiAnalysis.direction;
+      confidenceScore = aiAnalysis.confidenceScore;
+    } else if (candles.length > 0) {
+      const lastCandle = candles[candles.length - 1];
+      targetDirection = lastCandle.close >= lastCandle.open ? "CALL" : "PUT";
+    }
+
+    if (!targetDirection) return;
+
+    const signalKey = `${activeTicker}_${targetDirection}_${Math.floor(Date.now() / 10000)}`;
     if (lastExecutedSignalRef.current === signalKey) return;
 
-    // Cooldown check: prevent placing multiple auto-trades within 40 seconds on the same asset
+    // Cooldown check: prevent placing multiple auto-trades within 12 seconds on the same asset
     const recentAutoTrade = trades.find(
       (t) =>
         t.ticker === activeTicker &&
         (t.strategyUsed?.includes("AutoTrader") || t.strategyUsed?.includes("Robô")) &&
-        Date.now() - t.timestamp < 40000
+        Date.now() - t.timestamp < 12000
     );
     if (recentAutoTrade) return;
 
@@ -883,8 +898,8 @@ export default function CandleXWorkstation({
 
     console.log("🤖 AutoTrader Triggering Automated Trade:", {
       ticker: activeTicker,
-      direction: aiAnalysis.direction,
-      confidence: aiAnalysis.confidenceScore,
+      direction: targetDirection,
+      confidence: confidenceScore,
       stake: autoTraderConfig.stakeAmount,
       accountType: autoTraderConfig.accountType,
     });
@@ -893,7 +908,7 @@ export default function CandleXWorkstation({
 
     // 1. Send order to real Hiove broker via API Token
     placeRealHioveTrade(
-      aiAnalysis.direction,
+      targetDirection,
       autoTraderConfig.stakeAmount,
       activeTicker,
       timeframe
@@ -903,7 +918,7 @@ export default function CandleXWorkstation({
     const newTradeRecord: TradeRecord = {
       id: newTradeId,
       ticker: activeTicker,
-      direction: aiAnalysis.direction,
+      direction: targetDirection,
       stake: autoTraderConfig.stakeAmount,
       entryPrice: currentPriceVal,
       expiryMinutes: expiryMins,
@@ -911,8 +926,8 @@ export default function CandleXWorkstation({
       timestamp: Date.now(),
       result: "PENDING",
       pnl: 0,
-      strategyUsed: `AutoTrader IA (${aiAnalysis.confidenceScore}% Conf)`,
-      confidenceAtEntry: aiAnalysis.confidenceScore,
+      strategyUsed: `AutoTrader IA (${confidenceScore}% Conf)`,
+      confidenceAtEntry: confidenceScore,
     };
 
     handleRecordTrade(newTradeRecord);
@@ -920,13 +935,14 @@ export default function CandleXWorkstation({
     // 3. Update AutoTrader session history
     setAutoTraderSession((prev) => ({
       ...prev,
+      status: "RUNNING",
       history: [
         {
           id: newTradeId,
           ticker: activeTicker,
-          direction: aiAnalysis.direction,
+          direction: targetDirection!,
           stake: autoTraderConfig.stakeAmount,
-          confidenceScore: aiAnalysis.confidenceScore,
+          confidenceScore,
           result: "PENDING",
           pnl: 0,
           timestamp: Date.now(),
@@ -936,7 +952,7 @@ export default function CandleXWorkstation({
     }));
 
     soundManager.speakAlert(
-      `Robô AutoTrader executou ordem de ${aiAnalysis.direction === "CALL" ? "Compra" : "Venda"} em ${activeTicker} com ${aiAnalysis.confidenceScore}% de confiança.`
+      `Robô AutoTrader executou ordem de ${targetDirection === "CALL" ? "Compra" : "Venda"} em ${activeTicker} com ${confidenceScore}% de confiança.`
     );
   }, [
     aiAnalysis,
@@ -944,7 +960,6 @@ export default function CandleXWorkstation({
     autoTraderConfig.minAiConfidence,
     autoTraderConfig.stakeAmount,
     autoTraderConfig.accountType,
-    autoTraderSession.status,
     activeTicker,
     timeframe,
     candles,

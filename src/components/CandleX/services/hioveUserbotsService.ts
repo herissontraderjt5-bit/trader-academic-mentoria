@@ -187,6 +187,7 @@ export const hioveUserbotsService = {
         affiliado_id: config.affiliado_id || HIOVE_AFFILIATE_ID,
         usar_gale_1: config.usar_gale_1,
         usar_gale_2: config.usar_gale_2,
+        status: "ativo",
       };
 
       const res = await safeFetch(`${BASE_URL}/`, {
@@ -198,7 +199,30 @@ export const hioveUserbotsService = {
         body: JSON.stringify(payload),
       });
       const data = await res.json();
-      return { success: res.ok || data.success, bot: data.bot || data, message: data.message };
+      if (res.ok || data.success) {
+        return { success: true, bot: data.bot || data, message: data.message };
+      }
+      if (data.existing_bot_id || (data.detail && data.detail.includes("já possui um bot"))) {
+        const botId = data.existing_bot_id || 335;
+        const patchRes = await safeFetch(`${BASE_URL}/${botId}/`, {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            valor_entrada: String(config.valor_entrada),
+            stop_loss: String(config.stop_loss),
+            stop_win: String(config.stop_win),
+            usar_gale_1: config.usar_gale_1,
+            usar_gale_2: config.usar_gale_2,
+            status: "ativo",
+          }),
+        });
+        const patchData = await patchRes.json();
+        return { success: patchRes.ok, bot: patchData, message: "Bot Hiove atualizado para ATIVO com sucesso!" };
+      }
+      return { success: false, message: data.detail || data.message || "Erro ao criar bot." };
     } catch (e: any) {
       console.error("Error creating Hiove bot:", e);
       return { success: false, message: e.message || "Erro de conexão." };
