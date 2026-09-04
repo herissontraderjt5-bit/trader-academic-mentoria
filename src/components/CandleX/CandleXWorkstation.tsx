@@ -799,18 +799,17 @@ export default function CandleXWorkstation({
   // Auto Trader session simulation engine
   const handleToggleAutoTrader = async () => {
     if (!autoTraderConfig.enabled) {
-      // If credentials exist but token is missing, connect right now
-      if (autoTraderConfig.hioveEmail && autoTraderConfig.hiovePassword && !hioveAccountInfo.token) {
-        console.log("Connecting to Hiove on AutoTrader activation...");
+      const activeToken = autoTraderConfig.hioveApiKey || hioveAccountInfo.token;
+      // If token exists or API Key is set, connect right now
+      if (activeToken && !hioveAccountInfo.token) {
+        console.log("Connecting to Hiove on AutoTrader activation via Token...");
         await connectToHiove(true);
       }
 
-      // Validate credentials if attempting to turn ON in REAL mode
-      if (autoTraderConfig.accountType === "REAL") {
-        if (!autoTraderConfig.hioveEmail || !autoTraderConfig.hiovePassword) {
-          alert("Por favor, preencha o E-mail e Senha da Hiove nas configurações do Robô para operar na conta REAL.");
-          return;
-        }
+      // Validate Token API if attempting to turn ON in REAL mode
+      if (autoTraderConfig.accountType === "REAL" && !activeToken) {
+        alert("Por favor, insira o seu Token / API Key da Hiove nas configurações do Robô para operar na conta REAL.");
+        return;
       }
     }
 
