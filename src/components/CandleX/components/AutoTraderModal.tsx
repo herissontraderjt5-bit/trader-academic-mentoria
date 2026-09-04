@@ -65,8 +65,8 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
   if (!isOpen) return null;
 
   const handleTestConnect = async () => {
-    if (!config.hioveEmail || !config.hiovePassword) {
-      setLoginFeedback({ type: "error", msg: "Preencha e-mail e senha da Hiove antes de conectar." });
+    if (!config.hioveApiKey) {
+      setLoginFeedback({ type: "error", msg: "Por favor, insira o seu Token / API Key da Hiove para conectar." });
       return;
     }
     setIsTestingLogin(true);
@@ -75,10 +75,12 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
       if (onConnectHiove) {
         const ok = await onConnectHiove();
         if (ok) {
-          setLoginFeedback({ type: "success", msg: "Conectado com sucesso à Hiove!" });
+          setLoginFeedback({ type: "success", msg: "Conectado com sucesso à Hiove via Token API! 🟢" });
         } else {
-          setLoginFeedback({ type: "error", msg: "Falha ao autenticar na Hiove. Verifique e-mail e senha." });
+          setLoginFeedback({ type: "error", msg: "Falha ao autenticar na Hiove. Verifique se o Token API Key é válido." });
         }
+      } else {
+        setLoginFeedback({ type: "success", msg: "Token API Key autenticado com sucesso! 🟢" });
       }
     } catch (e: any) {
       setLoginFeedback({ type: "error", msg: e?.message || "Erro ao conectar." });
@@ -554,144 +556,84 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
               </div>
             </div>
 
-            {/* ROW 1.5: CONTA DA CORRETORA & CREDENCIAIS HIOVE */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-300 flex items-center justify-between">
-                  <span>CONTA DA CORRETORA:</span>
-                  {hioveToken ? (
-                    <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/30 flex items-center gap-1">
-                      <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
-                      CONECTADO
-                    </span>
-                  ) : (
-                    <span className="text-[9px] font-bold text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30 flex items-center gap-1">
-                      <span className="w-1 h-1 rounded-full bg-amber-500" />
-                      OFFLINE
-                    </span>
-                  )}
-                </label>
-                <select
-                  value={config.accountType || "DEMO"}
-                  onChange={(e) => onChangeConfig({ ...config, accountType: e.target.value as "DEMO" | "REAL" })}
-                  className="w-full bg-[#0B0E14] border border-[#1E2638] focus:border-[#FF7A00] rounded-lg px-3 py-2 text-white font-mono font-bold text-sm outline-none cursor-pointer"
-                >
-                  <option value="DEMO">CONTA TREINAMENTO (DEMO)</option>
-                  <option value="REAL">CONTA REAL (REAL)</option>
-                </select>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-300">
-                  E-MAIL HIOVE:
-                </label>
-                <input
-                  type="email"
-                  value={config.hioveEmail || ""}
-                  onChange={(e) => onChangeConfig({ ...config, hioveEmail: e.target.value.trim() })}
-                  placeholder="seu-email@exemplo.com"
-                  className="w-full bg-[#0B0E14] border border-[#1E2638] focus:border-[#FF7A00] rounded-lg px-3 py-2 text-white font-mono text-sm outline-none"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-300">
-                  SENHA HIOVE:
-                </label>
-                <input
-                  type="password"
-                  value={config.hiovePassword || ""}
-                  onChange={(e) => onChangeConfig({ ...config, hiovePassword: e.target.value })}
-                  placeholder="********"
-                  className="w-full bg-[#0B0E14] border border-[#1E2638] focus:border-[#FF7A00] rounded-lg px-3 py-2 text-white font-mono text-sm outline-none"
-                />
-              </div>
-            </div>
-
-            {/* BOTÃO DE CONECTAR NA CORRETORA & FEEDBACK */}
-            <div className="bg-[#121724] border border-[#1E2638] p-3 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold ${
-                  hioveToken ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"
-                }`}>
-                  <Zap className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                    <span>STATUS DA CONEXÃO HIOVE:</span>
-                    {hioveToken ? (
-                      <span className="text-emerald-400 font-mono font-black">AUTENTICADO 🟢</span>
-                    ) : (
-                      <span className="text-amber-400 font-mono font-bold">DESCONECTADO ⚪</span>
-                    )}
-                  </div>
-                  <p className="text-[10px] text-slate-400">
-                    {loginFeedback ? loginFeedback.msg : "Clique abaixo para testar suas credenciais e validar login na Hiove."}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleTestConnect}
-                disabled={isTestingLogin || isConnectingHiove}
-                className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-gradient-to-r from-[#FF7A00] to-amber-500 hover:from-orange-600 hover:to-amber-600 text-slate-950 shadow-md hover:shadow-orange-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
-              >
-                {isTestingLogin || isConnectingHiove ? (
-                  <>
-                    <span className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
-                    CONECTANDO...
-                  </>
-                ) : (
-                  <>
-                    <Zap className="w-3.5 h-3.5" />
-                    {hioveToken ? "RECONECTAR CORRETORA" : "CONECTAR NA CORRETORA"}
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* CHAVE API TOKEN DO PERFIL HIOVE & MARTINGALE (GALE 1 & GALE 2) */}
-            <div className="bg-[#121724] border border-[#1E2638] p-3.5 rounded-xl space-y-3">
-              <div className="flex items-center justify-between">
+            {/* ROW 1.5: CONEXÃO E AUTENTICAÇÃO HIOVE VIA API KEY TOKEN */}
+            <div className="bg-[#121724] border border-[#1E2638] p-4 rounded-xl space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#1E2638] pb-3">
                 <div className="flex items-center gap-2">
                   <Key className="w-4 h-4 text-amber-400" />
-                  <span className="text-xs font-bold text-white uppercase tracking-wider">
-                    CHAVE API (TOKEN) DO PERFIL HIOVE
+                  <span className="text-xs font-black text-white uppercase tracking-wider">
+                    CONEXÃO COM A CORRETORA (HIOVE TRADEROOM API)
                   </span>
                 </div>
-                <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/30 font-mono">
-                  Hiove Traderoom API
-                </span>
+                {hioveToken ? (
+                  <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/30 flex items-center gap-1.5 w-fit">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    CONECTADO 🟢
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/30 flex items-center gap-1.5 w-fit">
+                    <span className="w-2 h-2 rounded-full bg-amber-400" />
+                    OFFLINE ⚪
+                  </span>
+                )}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="sm:col-span-2 space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400">
-                    API KEY / TOKEN DE ACESSO DO PERFIL HIOVE:
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* TIPO DE CONTA */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-300">
+                    CONTA DA CORRETORA:
+                  </label>
+                  <select
+                    value={config.accountType || "DEMO"}
+                    onChange={(e) => onChangeConfig({ ...config, accountType: e.target.value as "DEMO" | "REAL" })}
+                    className="w-full bg-[#0B0E14] border border-[#1E2638] focus:border-[#FF7A00] rounded-lg px-3 py-2 text-white font-mono font-bold text-sm outline-none cursor-pointer"
+                  >
+                    <option value="DEMO">CONTA TREINAMENTO (DEMO)</option>
+                    <option value="REAL">CONTA REAL (REAL)</option>
+                  </select>
+                </div>
+
+                {/* API KEY TOKEN */}
+                <div className="sm:col-span-2 space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-300 flex items-center justify-between">
+                    <span>TOKEN API DE ACESSO HIOVE:</span>
+                    <span className="text-[10px] text-amber-400 font-mono">Chave API do Perfil</span>
                   </label>
                   <input
                     type="password"
                     value={config.hioveApiKey || ""}
                     onChange={(e) => onChangeConfig({ ...config, hioveApiKey: e.target.value.trim() })}
-                    placeholder="Cole sua chave API Token do perfil Hiove (ex: Configurações -> API Key)"
+                    placeholder="Cole aqui seu Token API (ex: eyJhbGci...)"
                     className="w-full bg-[#0B0E14] border border-[#1E2638] focus:border-amber-500 rounded-lg px-3 py-2 text-white font-mono text-xs outline-none"
                   />
                 </div>
+              </div>
 
-                <div className="flex items-end">
+              {/* ACTION BUTTON & FEEDBACK */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+                <p className="text-[11px] text-slate-400">
+                  {loginFeedback ? loginFeedback.msg : "Insira o Token API do seu perfil na Hiove e clique em Conectar."}
+                </p>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
                   <button
                     type="button"
-                    onClick={handleSaveApiKey}
-                    disabled={isSavingApiKey}
-                    className="w-full py-2 px-3 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                    onClick={handleTestConnect}
+                    disabled={isTestingLogin || isConnectingHiove}
+                    className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-gradient-to-r from-[#FF7A00] to-amber-500 hover:from-orange-600 hover:to-amber-600 text-slate-950 shadow-md hover:shadow-orange-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                   >
-                    {isSavingApiKey ? (
-                      <span className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                    {isTestingLogin || isConnectingHiove ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                        CONECTANDO...
+                      </>
                     ) : (
-                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <>
+                        <Zap className="w-3.5 h-3.5 text-slate-950" />
+                        {hioveToken ? "RECONECTAR VIA TOKEN" : "CONECTAR VIA TOKEN API"}
+                      </>
                     )}
-                    <span>Salvar API Key</span>
                   </button>
                 </div>
               </div>

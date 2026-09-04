@@ -244,8 +244,17 @@ export default function CandleXWorkstation({
 
   // Connect to Hiove API
   const connectToHiove = useCallback(async (forceReconnect = false) => {
+    if (autoTraderConfig.hioveApiKey) {
+      setHioveAccountInfo((prev) => ({
+        ...prev,
+        token: autoTraderConfig.hioveApiKey!,
+        email: autoTraderConfig.hioveEmail || "api-user@hiove.com",
+      }));
+      return true;
+    }
+
     if (!autoTraderConfig.hioveEmail || !autoTraderConfig.hiovePassword) {
-      return;
+      return false;
     }
 
     if (hioveWsRef.current && hioveWsRef.current.readyState === WebSocket.OPEN && !forceReconnect) {
@@ -1248,7 +1257,7 @@ export default function CandleXWorkstation({
         soundEnabled={soundEnabled}
         onToggleSound={handleToggleSound}
         syncStatus={syncStatus}
-        hioveToken={hioveAccountInfo.token}
+        hioveToken={autoTraderConfig.hioveApiKey || hioveAccountInfo.token}
         chartEngine={chartEngine}
         onSelectChartEngine={setChartEngine}
         timeframe={timeframe}
@@ -1367,7 +1376,7 @@ export default function CandleXWorkstation({
         onToggleEnabled={handleToggleAutoTrader}
         onResetSession={handleResetAutoTraderSession}
         currencySymbol="$"
-        hioveToken={hioveAccountInfo.token}
+        hioveToken={autoTraderConfig.hioveApiKey || hioveAccountInfo.token}
         activeTicker={activeTicker}
         onConnectHiove={() => connectToHiove(true)}
         isConnectingHiove={false}
