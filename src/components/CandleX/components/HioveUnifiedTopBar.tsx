@@ -20,7 +20,7 @@ import {
   Activity,
   Zap,
 } from "lucide-react";
-import { BankrollConfig } from "../../../types";
+import { BankrollConfig, AutoTraderConfig } from "../../../types";
 
 interface HioveUnifiedTopBarProps {
   activeTicker: string;
@@ -36,6 +36,8 @@ interface HioveUnifiedTopBarProps {
   onOpenIndicators: () => void;
   onOpenVision: () => void;
   onOpenChat: () => void;
+  onOpenAutoTrader?: () => void;
+  autoTraderConfig?: AutoTraderConfig;
   soundEnabled: boolean;
   onToggleSound: () => void;
   syncStatus: 'syncing' | 'synced' | 'local';
@@ -59,6 +61,8 @@ export const HioveUnifiedTopBar: React.FC<HioveUnifiedTopBarProps> = ({
   onOpenIndicators,
   onOpenVision,
   onOpenChat,
+  onOpenAutoTrader,
+  autoTraderConfig,
   soundEnabled,
   onToggleSound,
   syncStatus,
@@ -138,6 +142,23 @@ export const HioveUnifiedTopBar: React.FC<HioveUnifiedTopBarProps> = ({
 
         {/* Sleek Tool Actions Bar */}
         <div className="flex items-center gap-1 bg-[#121622]/60 border border-[#1E2638] rounded-lg p-0.5 max-w-[190px] sm:max-w-none overflow-x-auto no-scrollbar">
+          {/* Auto Trader IA */}
+          <button
+            type="button"
+            onClick={onOpenAutoTrader}
+            className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-black transition-all cursor-pointer border ${
+              autoTraderConfig?.enabled
+                ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-slate-950 border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.4)] animate-pulse"
+                : "bg-[#141A26] text-amber-400 border-[#1E2638] hover:bg-[#1E2638] hover:text-amber-300"
+            }`}
+            title="Auto Trader IA & Bot Hiove"
+          >
+            <Bot className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Auto Trader</span>
+          </button>
+
+          <div className="w-[1px] h-4 bg-[#1E2638] mx-0.5" />
+
           {/* AI Vision Scanner */}
           <button
             type="button"

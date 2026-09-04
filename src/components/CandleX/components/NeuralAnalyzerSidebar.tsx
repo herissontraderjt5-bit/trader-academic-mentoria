@@ -48,6 +48,7 @@ interface NeuralAnalyzerSidebarProps {
   indicators: TechnicalIndicators | null;
   currentPrice: number;
   onOpenOperations?: () => void;
+  onOpenAutoTrader?: () => void;
   tradesCount?: number;
   winsCount?: number;
   lossesCount?: number;
@@ -58,17 +59,10 @@ const AVAILABLE_ASSETS = [
   { id: "ETHUSDT", label: "ETH/USDT", type: "CRYPTO", payout: 89 },
   { id: "BTCUSDT", label: "BTC/USDT", type: "CRYPTO", payout: 90 },
   { id: "XRPUSDT", label: "XRP/USDT", type: "CRYPTO", payout: 89 },
-  { id: "SOLUSDT", label: "SOLANA/USDT", type: "CRYPTO", payout: 88 },
-  { id: "EURUSD", label: "EUR/USD", type: "FOREX", payout: 91 },
-  { id: "AUDUSD", label: "AUD/USD", type: "FOREX", payout: 90 },
-  { id: "EURGBP", label: "EUR/GBP", type: "FOREX", payout: 89 },
-  { id: "GBPCHF", label: "GBP/CHF", type: "FOREX", payout: 88 },
-  { id: "GBPJPY", label: "GBP/JPY", type: "FOREX", payout: 91 },
-  { id: "GBPUSD", label: "GBP/USD", type: "FOREX", payout: 92 },
-  { id: "NZDUSD", label: "NZD/USD", type: "FOREX", payout: 88 },
-  { id: "USDCAD", label: "USD/CAD", type: "FOREX", payout: 89 },
-  { id: "USDCHF", label: "USD/CHF", type: "FOREX", payout: 88 },
-  { id: "USDJPY", label: "USD/JPY", type: "FOREX", payout: 90 },
+  { id: "DOGEUSDT", label: "DOGE/USDT", type: "CRYPTO", payout: 88 },
+  { id: "EURUSD", label: "EUR/USD", type: "FOREX", payout: 92 },
+  { id: "GBPUSD", label: "GBP/USD", type: "FOREX", payout: 91 },
+  { id: "USDJPY", label: "USD/JPY", type: "FOREX", payout: 89 },
 ];
 
 export const NeuralAnalyzerSidebar: React.FC<NeuralAnalyzerSidebarProps> = ({
@@ -84,7 +78,8 @@ export const NeuralAnalyzerSidebar: React.FC<NeuralAnalyzerSidebarProps> = ({
   indicators,
   currentPrice,
   onOpenOperations,
-  tradesCount,
+  onOpenAutoTrader,
+  tradesCount = 0,
   winsCount = 0,
   lossesCount = 0,
   drawsCount = 0,
@@ -95,76 +90,64 @@ export const NeuralAnalyzerSidebar: React.FC<NeuralAnalyzerSidebarProps> = ({
   const activeAssetObj =
     AVAILABLE_ASSETS.find((a) => a.id === activeTicker) || {
       id: activeTicker,
-      label: activeTicker.includes("USDT")
-        ? `${activeTicker.replace("USDT", "")}/USDT`
-        : activeTicker,
-      type: "CRYPTO",
+      label: activeTicker,
+      type: "PAIR",
       payout: 89,
     };
 
   const handleCopySignal = () => {
     if (!analysis) return;
-    const directionText =
-      analysis.direction === "CALL"
-        ? "COMPRA (CALL) ↗"
-        : analysis.direction === "PUT"
-        ? "VENDA (PUT) ↘"
-        : "AGUARDAR ↔";
-    const timeFormatted = new Date(analysis.timestamp || Date.now()).toLocaleTimeString("pt-BR", {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
-    const expText = timeframe === "5m" || timeframe === "5MIN"
-      ? "M5 (5 Minutos)"
-      : timeframe === "2m" || timeframe === "2MIN"
-      ? "M2 (2 Minutos)"
-      : "M1 (1 Minuto)";
-    const confluencesList = (analysis.detectedPatterns && analysis.detectedPatterns.length > 0
-      ? analysis.detectedPatterns
-      : ["Cruzamento de Médias Móveis EMA", "RSI em Zona Estratégica", "Rejeição em Zona Institucional"]
-    ).map((c) => `• ${c}`).join("\n");
-
-    const textToCopy = `📊 SINAL GERADO - CANDLEX AI
-━━━━━━━━━━━━━━━━━━━━
-Entrada no ativo: ${activeAssetObj.label} (${directionText})
-Horario: ${timeFormatted}
-Expiração: ${expText}
-Assertividade: ${analysis.confidenceScore}%
-
-Confluencias:
-${confluencesList}
-━━━━━━━━━━━━━━━━━━━━`;
-
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(textToCopy);
-      setCopiedSignal(true);
-      setTimeout(() => setCopiedSignal(false), 2500);
-    }
+    const textToCopy = `🤖 CandleX AI Signal
+📌 Par: ${activeTicker} (${timeframe})
+🎯 Direção: ${analysis.direction === "CALL" ? "COMPRA (CALL) 🟢" : "VENDA (PUT) 🔴"}
+📊 Assertividade: ${analysis.confidenceScore}%
+⚡ Estratégia: ${analysis.strategyName}`;
+    navigator.clipboard.writeText(textToCopy);
+    setCopiedSignal(true);
+    setTimeout(() => setCopiedSignal(false), 2500);
   };
 
   return (
     <aside className="w-full md:w-[340px] xl:w-[360px] h-full flex flex-col bg-[#0B0E14] border-r border-[#1B2230] text-slate-200 select-none z-20 flex-shrink-0">
       {/* Main Controls Scroll Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* Title: ◆ CandleX */}
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-[#FF7A00] text-lg leading-none animate-pulse drop-shadow-[0_0_10px_#FF7A00]">
-              ◆
-            </span>
-            <h1 className="font-black text-xl tracking-wide select-none">
-              <span className="relative inline-block px-2.5 py-0.5 rounded-lg bg-gradient-to-r from-[#FF7A00]/20 via-amber-500/15 to-orange-600/20 border border-[#FF7A00]/40 shadow-[0_0_18px_rgba(255,122,0,0.35)]">
-                <span className="bg-gradient-to-r from-amber-300 via-[#FF9500] to-[#FF7A00] bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(255,122,0,0.8)] font-black">
-                  Candle<span className="text-amber-200 drop-shadow-[0_0_14px_rgba(254,240,138,0.9)]">X</span>
+        {/* Title: ◆ CandleX & Auto Trader button */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[#FF7A00] text-lg leading-none animate-pulse drop-shadow-[0_0_10px_#FF7A00]">
+                  ◆
                 </span>
-                <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
-              </span>
-            </h1>
+                <h1 className="font-black text-xl tracking-wide select-none">
+                  <span className="relative inline-block px-2.5 py-0.5 rounded-lg bg-gradient-to-r from-[#FF7A00]/20 via-amber-500/15 to-orange-600/20 border border-[#FF7A00]/40 shadow-[0_0_18px_rgba(255,122,0,0.35)]">
+                    <span className="bg-gradient-to-r from-amber-300 via-[#FF9500] to-[#FF7A00] bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(255,122,0,0.8)] font-black">
+                      Candle<span className="text-amber-200 drop-shadow-[0_0_14px_rgba(254,240,138,0.9)]">X</span>
+                    </span>
+                    <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
+                  </span>
+                </h1>
+              </div>
+              <p className="text-xs text-slate-400 mt-1 ml-5 font-medium">
+                Análise e confluência em tempo real
+              </p>
+            </div>
           </div>
-          <p className="text-xs text-slate-400 mt-1 ml-5 font-medium">
-            Análise e confluência em tempo real
-          </p>
+
+          {/* ROBÔ AUTO TRADER BUTTON */}
+          <button
+            type="button"
+            onClick={onOpenAutoTrader}
+            className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500/20 via-[#FF7A00]/20 to-orange-500/20 border border-[#FF7A00]/50 hover:border-[#FF7A00] text-amber-300 font-bold text-xs flex items-center justify-between transition-all cursor-pointer shadow-md group"
+          >
+            <div className="flex items-center gap-2">
+              <Bot className="w-4 h-4 text-[#FF7A00] group-hover:scale-110 transition-transform" />
+              <span className="font-extrabold uppercase text-white">Robô Auto Trader IA</span>
+            </div>
+            <span className="text-[10px] font-mono font-bold bg-[#FF7A00] text-slate-950 px-2.5 py-0.5 rounded-full">
+              ABRIR ROBÔ 🤖
+            </span>
+          </button>
         </div>
 
         {/* TIMEFRAME */}

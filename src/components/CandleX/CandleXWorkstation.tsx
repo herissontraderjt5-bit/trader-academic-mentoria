@@ -34,6 +34,7 @@ import { AiChatDrawer } from "./components/AiChatDrawer";
 import { AiNeuralScannerOverlay } from "./components/AiNeuralScannerOverlay";
 import { CenterSignalOverlay } from "./components/CenterSignalOverlay";
 import { HioveUnifiedTopBar } from "./components/HioveUnifiedTopBar";
+import { AutoTraderModal } from "./components/AutoTraderModal";
 
 import {
   Candle,
@@ -1242,6 +1243,8 @@ export default function CandleXWorkstation({
         onOpenIndicators={() => setIsIndicatorsOpen(true)}
         onOpenVision={() => setIsVisionOpen(true)}
         onOpenChat={() => setIsChatOpen(true)}
+        onOpenAutoTrader={() => setIsAutoTraderOpen(true)}
+        autoTraderConfig={autoTraderConfig}
         soundEnabled={soundEnabled}
         onToggleSound={handleToggleSound}
         syncStatus={syncStatus}
@@ -1295,6 +1298,7 @@ export default function CandleXWorkstation({
             indicators={indicators}
             currentPrice={currentPrice}
             onOpenOperations={() => setIsOperationsOpen(true)}
+            onOpenAutoTrader={() => setIsAutoTraderOpen(true)}
             tradesCount={trades.length}
             winsCount={trades.filter((t) => t.result === "WIN").length}
             lossesCount={trades.filter((t) => t.result === "LOSS").length}
@@ -1354,6 +1358,21 @@ export default function CandleXWorkstation({
       </div>
 
       {/* Modals */}
+      <AutoTraderModal
+        isOpen={isAutoTraderOpen}
+        onClose={() => setIsAutoTraderOpen(false)}
+        config={autoTraderConfig}
+        onChangeConfig={handleUpdateAutoTraderConfig}
+        session={autoTraderSession}
+        onToggleEnabled={handleToggleAutoTrader}
+        onResetSession={handleResetAutoTraderSession}
+        currencySymbol="$"
+        hioveToken={hioveAccountInfo.token}
+        activeTicker={activeTicker}
+        onConnectHiove={() => connectToHiove(true)}
+        isConnectingHiove={isConnectingHiove}
+      />
+
       <OperationsModal
         isOpen={isOperationsOpen}
         onClose={() => setIsOperationsOpen(false)}

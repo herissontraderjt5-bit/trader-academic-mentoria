@@ -23,6 +23,7 @@ import {
   Layers,
   GitCommit,
   SplitSquareVertical,
+  Bot,
 } from "lucide-react";
 
 interface BrokerToolsSidebarProps {
@@ -33,6 +34,7 @@ interface BrokerToolsSidebarProps {
   onOpenDailyBonus: () => void;
   onOpenEconomicCalendar: () => void;
   onOpenNotifications: () => void;
+  onOpenAutoTrader?: () => void;
   selectedTool: string;
   onSelectTool: (tool: string) => void;
   activeTradeCount: number;
@@ -46,6 +48,7 @@ export const BrokerToolsSidebar: React.FC<BrokerToolsSidebarProps> = ({
   onOpenDailyBonus,
   onOpenEconomicCalendar,
   onOpenNotifications,
+  onOpenAutoTrader,
   selectedTool,
   onSelectTool,
   activeTradeCount,
@@ -54,6 +57,19 @@ export const BrokerToolsSidebar: React.FC<BrokerToolsSidebarProps> = ({
     <div className="w-[52px] h-full bg-[#0E121B] border-r border-[#1B2230] flex flex-col justify-between items-center py-2 select-none z-10 flex-shrink-0 text-slate-400">
       {/* Top Section - Broker Feature Icons */}
       <div className="flex flex-col items-center gap-1 w-full px-1">
+        {/* Auto Trader IA */}
+        <button
+          type="button"
+          onClick={onOpenAutoTrader}
+          className="flex flex-col items-center justify-center w-full py-1.5 rounded hover:bg-[#1C2436] text-amber-400 hover:text-amber-300 transition-colors cursor-pointer group"
+          title="Auto Trader IA & Bot Hiove"
+        >
+          <Bot className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
+          <span className="text-[8px] font-bold tracking-tighter mt-0.5 scale-90 text-amber-400">
+            AutoTrader
+          </span>
+        </button>
+
         {/* Operações */}
         <button
           type="button"
