@@ -19,9 +19,13 @@ import {
   AlertTriangle,
   Flame,
   Award,
+  Key,
+  Save,
+  RefreshCw,
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { AutoTraderConfig, AutoTraderSession, AutoTradeLogItem } from "../../../types";
+import { hioveUserbotsService } from "../services/hioveUserbotsService";
 
 interface AutoTraderModalProps {
   isOpen: boolean;
@@ -54,6 +58,9 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
 }) => {
   const [isTestingLogin, setIsTestingLogin] = React.useState(false);
   const [loginFeedback, setLoginFeedback] = React.useState<{ type: "success" | "error"; msg: string } | null>(null);
+  const [isSavingApiKey, setIsSavingApiKey] = React.useState(false);
+  const [isSyncingBot, setIsSyncingBot] = React.useState(false);
+  const [botSyncFeedback, setBotSyncFeedback] = React.useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -77,6 +84,57 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
       setLoginFeedback({ type: "error", msg: e?.message || "Erro ao conectar." });
     } finally {
       setIsTestingLogin(false);
+    }
+  };
+
+  const handleSaveApiKey = async () => {
+    if (!config.hioveApiKey) {
+      setLoginFeedback({ type: "error", msg: "Insira sua API Key antes de salvar." });
+      return;
+    }
+    setIsSavingApiKey(true);
+    try {
+      if (hioveToken) {
+        const res = await hioveUserbotsService.updateApiKey(hioveToken, config.hioveApiKey);
+        if (res.success) {
+          setLoginFeedback({ type: "success", msg: "API Key da Hiove salva e atualizada com sucesso!" });
+        } else {
+          setLoginFeedback({ type: "error", msg: res.message || "Erro ao salvar API Key na Hiove." });
+        }
+      } else {
+        setLoginFeedback({ type: "success", msg: "API Key salva localmente. Conecte na Hiove para sincronizar." });
+      }
+    } catch (e: any) {
+      setLoginFeedback({ type: "error", msg: e.message || "Falha de conexão com a Hiove." });
+    } finally {
+      setIsSavingApiKey(false);
+    }
+  };
+
+  const handleSyncHioveBot = async () => {
+    if (!hioveToken) {
+      setBotSyncFeedback("Faça login ou conecte na Hiove primeiro.");
+      return;
+    }
+    setIsSyncingBot(true);
+    setBotSyncFeedback(null);
+    try {
+      const res = await hioveUserbotsService.createBot(hioveToken, {
+        valor_entrada: config.stakeAmount,
+        stop_loss: config.dailyStopLoss,
+        stop_win: config.dailyStopWin,
+        usar_gale_1: !!config.gale1,
+        usar_gale_2: !!config.gale2,
+      });
+      if (res.success) {
+        setBotSyncFeedback("Bot sincronizado na Hiove com sucesso! 🚀");
+      } else {
+        setBotSyncFeedback(res.message || "Erro ao sincronizar bot na Hiove.");
+      }
+    } catch (e: any) {
+      setBotSyncFeedback(e.message || "Erro de sincronização.");
+    } finally {
+      setIsSyncingBot(false);
     }
   };
 
@@ -591,6 +649,108 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
                   </>
                 )}
               </button>
+            </div>
+
+            {/* CHAVE API TOKEN DO PERFIL HIOVE & MARTINGALE (GALE 1 & GALE 2) */}
+            <div className="bg-[#121724] border border-[#1E2638] p-3.5 rounded-xl space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Key className="w-4 h-4 text-amber-400" />
+                  <span className="text-xs font-bold text-white uppercase tracking-wider">
+                    CHAVE API (TOKEN) DO PERFIL HIOVE
+                  </span>
+                </div>
+                <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/30 font-mono">
+                  Hiove Traderoom API
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="sm:col-span-2 space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400">
+                    API KEY / TOKEN DE ACESSO DO PERFIL HIOVE:
+                  </label>
+                  <input
+                    type="password"
+                    value={config.hioveApiKey || ""}
+                    onChange={(e) => onChangeConfig({ ...config, hioveApiKey: e.target.value.trim() })}
+                    placeholder="Cole sua chave API Token do perfil Hiove (ex: Configurações -> API Key)"
+                    className="w-full bg-[#0B0E14] border border-[#1E2638] focus:border-amber-500 rounded-lg px-3 py-2 text-white font-mono text-xs outline-none"
+                  />
+                </div>
+
+                <div className="flex items-end">
+                  <button
+                    type="button"
+                    onClick={handleSaveApiKey}
+                    disabled={isSavingApiKey}
+                    className="w-full py-2 px-3 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {isSavingApiKey ? (
+                      <span className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                    )}
+                    <span>Salvar API Key</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* MARTINGALE (GALE 1 & GALE 2) TOGGLES */}
+              <div className="pt-2 border-t border-[#1E2638] grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="bg-[#0B0E14] border border-[#1E2638] p-2.5 rounded-lg flex items-center justify-between">
+                  <div>
+                    <div className="text-xs font-bold text-emerald-400">Gale 1 (Primeira Proteção)</div>
+                    <div className="text-[9px] text-slate-400">Ativa 1ª recuperação de entrada</div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={!!config.gale1}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      const nextGale2 = checked ? !!config.gale2 : false;
+                      onChangeConfig({ ...config, gale1: checked, gale2: nextGale2 });
+                    }}
+                    className="w-4 h-4 accent-emerald-500 cursor-pointer"
+                  />
+                </div>
+
+                <div className={`bg-[#0B0E14] border border-[#1E2638] p-2.5 rounded-lg flex items-center justify-between ${
+                  !config.gale1 ? "opacity-50 pointer-events-none" : ""
+                }`}>
+                  <div>
+                    <div className="text-xs font-bold text-amber-400">Gale 2 (Segunda Proteção)</div>
+                    <div className="text-[9px] text-slate-400">Ativa 2ª recuperação (requer Gale 1)</div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={!!config.gale2}
+                    disabled={!config.gale1}
+                    onChange={(e) => onChangeConfig({ ...config, gale2: e.target.checked })}
+                    className="w-4 h-4 accent-amber-500 cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              {/* BOTÃO DE SINCRONIZAÇÃO DE BOT COM HIOVE */}
+              <div className="pt-1 flex items-center justify-between flex-wrap gap-2">
+                <span className="text-[10px] text-slate-400">
+                  {botSyncFeedback ? botSyncFeedback : "Sincronize Stake, Stop Loss e Stop Win direto na Hiove Userbots"}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleSyncHioveBot}
+                  disabled={isSyncingBot}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold text-xs uppercase flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  {isSyncingBot ? (
+                    <span className="w-3 h-3 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-3.5 h-3.5" />
+                  )}
+                  <span>Sincronizar Bot Hiove</span>
+                </button>
+              </div>
             </div>
 
             {/* SELEÇÃO DE ATIVOS PARA O ROBÔ OPERAR */}

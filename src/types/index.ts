@@ -341,6 +341,9 @@ export interface AutoTraderConfig {
   accountType?: "DEMO" | "REAL";
   hioveEmail?: string;
   hiovePassword?: string;
+  hioveApiKey?: string;
+  gale1?: boolean;
+  gale2?: boolean;
   selectedAssets?: string[];
 }
 
