@@ -84,7 +84,7 @@ const INITIAL_AUTOTRADER_CONFIG: AutoTraderConfig = {
   managementMode: "2x1",
   minAiConfidence: 78,
   soundAlerts: true,
-  accountType: "DEMO",
+  accountType: "REAL",
   hioveEmail: "",
   hiovePassword: "",
 };

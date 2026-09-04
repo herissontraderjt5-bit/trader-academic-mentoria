@@ -585,7 +585,7 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
                     CONTA DA CORRETORA:
                   </label>
                   <select
-                    value={config.accountType || "DEMO"}
+                    value={config.accountType || "REAL"}
                     onChange={(e) => onChangeConfig({ ...config, accountType: e.target.value as "DEMO" | "REAL" })}
                     className="w-full bg-[#0B0E14] border border-[#1E2638] focus:border-[#FF7A00] rounded-lg px-3 py-2 text-white font-mono font-bold text-sm outline-none cursor-pointer"
                   >
