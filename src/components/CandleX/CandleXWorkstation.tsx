@@ -912,6 +912,7 @@ export default function CandleXWorkstation({
       result: "PENDING",
       pnl: 0,
       strategyUsed: `AutoTrader IA (${aiAnalysis.confidenceScore}% Conf)`,
+      confidenceAtEntry: aiAnalysis.confidenceScore,
     };
 
     handleRecordTrade(newTradeRecord);
