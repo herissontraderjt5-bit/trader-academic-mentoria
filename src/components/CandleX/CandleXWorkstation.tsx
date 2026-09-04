@@ -1370,7 +1370,7 @@ export default function CandleXWorkstation({
         hioveToken={hioveAccountInfo.token}
         activeTicker={activeTicker}
         onConnectHiove={() => connectToHiove(true)}
-        isConnectingHiove={isConnectingHiove}
+        isConnectingHiove={false}
       />
 
       <OperationsModal
