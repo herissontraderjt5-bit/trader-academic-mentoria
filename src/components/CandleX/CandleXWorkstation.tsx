@@ -603,7 +603,7 @@ export default function CandleXWorkstation({
   // Run AI Neural Analysis
   const runAiAnalysis = useCallback(async (force = false) => {
     const now = Date.now();
-    if (!force && now - lastAnalysisTimeRef.current < 8000) {
+    if (!force && now - lastAnalysisTimeRef.current < 3000) {
       return; // Cooldown protection
     }
     if (candles.length === 0 || isAnalyzing) return;
@@ -844,13 +844,13 @@ export default function CandleXWorkstation({
 
   const lastExecutedSignalRef = useRef<string>("");
 
-  // Continuous Neural Scanner: Automatically runs AI Analysis every 6 seconds when AutoTrader is active
+  // Continuous Neural Scanner: Automatically runs AI Analysis every 4 seconds when AutoTrader is active
   useEffect(() => {
     if (!autoTraderConfig.enabled || autoTraderSession.status !== "RUNNING") return;
 
     const scanInterval = setInterval(() => {
-      runAiAnalysis(false);
-    }, 6000);
+      runAiAnalysis(true);
+    }, 4000);
 
     return () => clearInterval(scanInterval);
   }, [autoTraderConfig.enabled, autoTraderSession.status, runAiAnalysis]);
@@ -860,7 +860,7 @@ export default function CandleXWorkstation({
     if (!autoTraderConfig.enabled || autoTraderSession.status !== "RUNNING") return;
     if (!aiAnalysis) return;
 
-    const minConf = autoTraderConfig.minAiConfidence || 75;
+    const minConf = 65;
     if (aiAnalysis.confidenceScore < minConf) return;
     if (aiAnalysis.direction !== "CALL" && aiAnalysis.direction !== "PUT") return;
 
