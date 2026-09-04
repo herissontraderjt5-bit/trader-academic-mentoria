@@ -52,6 +52,7 @@ import {
 import { calculateAllIndicators, getCandleTimeRemaining, getSynchronizedDate } from "./utils/technicalIndicators";
 import { soundManager } from "./utils/soundEffects";
 import { candlexApiService } from "./services/apiService";
+import { hioveUserbotsService } from "./services/hioveUserbotsService";
 import { supabaseService } from "../../services/supabaseService";
 import confetti from "canvas-confetti";
 
