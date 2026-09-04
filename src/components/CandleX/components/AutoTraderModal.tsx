@@ -325,9 +325,9 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
                 </span>
               </div>
               <div className="mt-2 text-[10px] text-slate-400 flex items-center justify-between">
-                <span>Alvo {config.managementMode}:</span>
+                <span>Total Operações:</span>
                 <span className="font-mono font-bold text-amber-400">
-                  {session.wins}/{targetWins} Wins
+                  {session.wins + session.losses} Entradas
                 </span>
               </div>
             </div>
@@ -359,19 +359,14 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
               </div>
             </div>
 
-            {/* Gestão Selecionada */}
+            {/* Conta Corretora REAL */}
             <div className="bg-[#121622] border border-[#1E2638] rounded-xl p-3 flex flex-col justify-between">
               <span className="text-[10px] uppercase font-bold text-slate-400">
-                Gestão Ativa
+                Conta Corretora
               </span>
               <div className="mt-1 flex items-center gap-2">
-                <span className="text-xl font-black text-[#FF7A00] font-mono px-2 py-0.5 rounded bg-[#FF7A00]/10 border border-[#FF7A00]/30">
-                  {config.managementMode}
-                </span>
-                <span className="text-[10px] text-slate-400 leading-tight">
-                  {config.managementMode === "2x1"
-                    ? "2 Wins p/ Meta (1 Loss Stop)"
-                    : "5 Wins p/ Meta (2 Loss Stop)"}
+                <span className="text-xs font-black text-emerald-400 font-mono px-2 py-1 rounded bg-emerald-500/10 border border-emerald-500/30">
+                  CONTA REAL 🟢
                 </span>
               </div>
               <div className="mt-2 text-[10px] text-slate-400 flex items-center justify-between">
@@ -436,133 +431,75 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
               </span>
             </div>
 
-            {/* ROW 1: GESTÃO (2x1 ou 5x2) & TIMEFRAME (M1 ou M5) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* SELEÇÃO DE GESTÃO: 2x1 vs 5x2 */}
-              <div className="space-y-2">
-                <label className="text-[11px] font-bold text-slate-300 flex items-center justify-between">
-                  <span>1. SELECIONE A GESTÃO:</span>
-                  <span className="text-[#FF7A00] font-mono text-[10px]">
-                    {config.managementMode === "2x1" ? "2 Wins / 1 Loss" : "5 Wins / 2 Losses"}
-                  </span>
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onChangeConfig({ ...config, managementMode: "2x1" })}
-                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                      config.managementMode === "2x1"
-                        ? "bg-[#1C2436] border-[#FF7A00] text-white shadow-[0_0_15px_rgba(255,122,0,0.25)]"
-                        : "bg-[#0B0E14] border-[#1E2638] text-slate-400 hover:border-slate-600 hover:text-slate-200"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-base font-black font-mono text-[#FF7A00]">
-                        Gestão 2x1
-                      </span>
-                      {config.managementMode === "2x1" && (
-                        <CheckCircle2 className="w-4 h-4 text-[#FF7A00]" />
-                      )}
-                    </div>
-                    <p className="text-[10px] text-slate-400 mt-1 leading-tight">
-                      Conservadora: Meta com 2 Wins. Stop com 1 Loss.
-                    </p>
-                  </button>
+            {/* TIMEFRAME: M1, M2 ou M5 */}
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold text-slate-300 flex items-center justify-between">
+                <span>TIME DAS OPERAÇÕES (EXPIRAÇÃO):</span>
+                <span className="text-cyan-400 font-mono text-[10px]">
+                  {config.timeframe === "1m" ? "1 Minuto (M1)" : config.timeframe === "2m" ? "2 Minutos (M2)" : "5 Minutos (M5)"}
+                </span>
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => onChangeConfig({ ...config, timeframe: "1m" })}
+                  className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                    config.timeframe === "1m"
+                      ? "bg-[#1C2436] border-cyan-400 text-white shadow-[0_0_15px_rgba(34,211,238,0.25)]"
+                      : "bg-[#0B0E14] border-[#1E2638] text-slate-400 hover:border-slate-600 hover:text-slate-200"
+                  }`}
+                >
+                  <div className="text-sm font-black font-mono text-cyan-400">
+                    M1 (1 MIN)
+                  </div>
+                  <p className="text-[9px] text-slate-400 mt-0.5">
+                    Fluxo rápido
+                  </p>
+                </button>
 
-                  <button
-                    type="button"
-                    onClick={() => onChangeConfig({ ...config, managementMode: "5x2" })}
-                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                      config.managementMode === "5x2"
-                        ? "bg-[#1C2436] border-[#FF7A00] text-white shadow-[0_0_15px_rgba(255,122,0,0.25)]"
-                        : "bg-[#0B0E14] border-[#1E2638] text-slate-400 hover:border-slate-600 hover:text-slate-200"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-base font-black font-mono text-cyan-400">
-                        Gestão 5x2
-                      </span>
-                      {config.managementMode === "5x2" && (
-                        <CheckCircle2 className="w-4 h-4 text-cyan-400" />
-                      )}
-                    </div>
-                    <p className="text-[10px] text-slate-400 mt-1 leading-tight">
-                      Alavancagem: Meta com 5 Wins. Stop com 2 Losses.
-                    </p>
-                  </button>
-                </div>
-              </div>
+                <button
+                  type="button"
+                  onClick={() => onChangeConfig({ ...config, timeframe: "2m" })}
+                  className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                    config.timeframe === "2m"
+                      ? "bg-[#1C2436] border-cyan-400 text-white shadow-[0_0_15px_rgba(34,211,238,0.25)]"
+                      : "bg-[#0B0E14] border-[#1E2638] text-slate-400 hover:border-slate-600 hover:text-slate-200"
+                  }`}
+                >
+                  <div className="text-sm font-black font-mono text-cyan-400">
+                    M2 (2 MIN)
+                  </div>
+                  <p className="text-[9px] text-slate-400 mt-0.5">
+                    Filtro ideal
+                  </p>
+                </button>
 
-              {/* TIMEFRAME: M1, M2 ou M5 */}
-              <div className="space-y-2">
-                <label className="text-[11px] font-bold text-slate-300 flex items-center justify-between">
-                  <span>2. TIME DAS OPERAÇÕES (EXPIRAÇÃO):</span>
-                  <span className="text-cyan-400 font-mono text-[10px]">
-                    {config.timeframe === "1m" ? "1 Minuto (M1)" : config.timeframe === "2m" ? "2 Minutos (M2)" : "5 Minutos (M5)"}
-                  </span>
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onChangeConfig({ ...config, timeframe: "1m" })}
-                    className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
-                      config.timeframe === "1m"
-                        ? "bg-[#1C2436] border-cyan-400 text-white shadow-[0_0_15px_rgba(34,211,238,0.25)]"
-                        : "bg-[#0B0E14] border-[#1E2638] text-slate-400 hover:border-slate-600 hover:text-slate-200"
-                    }`}
-                  >
-                    <div className="text-sm font-black font-mono text-cyan-400">
-                      M1 (1 MIN)
-                    </div>
-                    <p className="text-[9px] text-slate-400 mt-0.5">
-                      Fluxo rápido
-                    </p>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => onChangeConfig({ ...config, timeframe: "2m" })}
-                    className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
-                      config.timeframe === "2m"
-                        ? "bg-[#1C2436] border-cyan-400 text-white shadow-[0_0_15px_rgba(34,211,238,0.25)]"
-                        : "bg-[#0B0E14] border-[#1E2638] text-slate-400 hover:border-slate-600 hover:text-slate-200"
-                    }`}
-                  >
-                    <div className="text-sm font-black font-mono text-cyan-400">
-                      M2 (2 MIN)
-                    </div>
-                    <p className="text-[9px] text-slate-400 mt-0.5">
-                      Filtro ideal
-                    </p>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => onChangeConfig({ ...config, timeframe: "5m" })}
-                    className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
-                      config.timeframe === "5m"
-                        ? "bg-[#1C2436] border-cyan-400 text-white shadow-[0_0_15px_rgba(34,211,238,0.25)]"
-                        : "bg-[#0B0E14] border-[#1E2638] text-slate-400 hover:border-slate-600 hover:text-slate-200"
-                    }`}
-                  >
-                    <div className="text-sm font-black font-mono text-cyan-400">
-                      M5 (5 MIN)
-                    </div>
-                    <p className="text-[9px] text-slate-400 mt-0.5">
-                      Consistência
-                    </p>
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => onChangeConfig({ ...config, timeframe: "5m" })}
+                  className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                    config.timeframe === "5m"
+                      ? "bg-[#1C2436] border-cyan-400 text-white shadow-[0_0_15px_rgba(34,211,238,0.25)]"
+                      : "bg-[#0B0E14] border-[#1E2638] text-slate-400 hover:border-slate-600 hover:text-slate-200"
+                  }`}
+                >
+                  <div className="text-sm font-black font-mono text-cyan-400">
+                    M5 (5 MIN)
+                  </div>
+                  <p className="text-[9px] text-slate-400 mt-0.5">
+                    Consistência
+                  </p>
+                </button>
               </div>
             </div>
 
-            {/* ROW 1.5: CONEXÃO E AUTENTICAÇÃO HIOVE VIA API KEY TOKEN */}
+            {/* CONEXÃO E AUTENTICAÇÃO HIOVE VIA API KEY TOKEN */}
             <div className="bg-[#121724] border border-[#1E2638] p-4 rounded-xl space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#1E2638] pb-3">
                 <div className="flex items-center gap-2">
                   <Key className="w-4 h-4 text-amber-400" />
                   <span className="text-xs font-black text-white uppercase tracking-wider">
-                    CONEXÃO COM A CORRETORA (HIOVE TRADEROOM API)
+                    CONEXÃO COM A CORRETORA (HIOVE TRADEROOM API - CONTA REAL)
                   </span>
                 </div>
                 {hioveToken ? (
@@ -578,36 +515,19 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
                 )}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {/* TIPO DE CONTA */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-slate-300">
-                    CONTA DA CORRETORA:
-                  </label>
-                  <select
-                    value={config.accountType || "REAL"}
-                    onChange={(e) => onChangeConfig({ ...config, accountType: e.target.value as "DEMO" | "REAL" })}
-                    className="w-full bg-[#0B0E14] border border-[#1E2638] focus:border-[#FF7A00] rounded-lg px-3 py-2 text-white font-mono font-bold text-sm outline-none cursor-pointer"
-                  >
-                    <option value="DEMO">CONTA TREINAMENTO (DEMO)</option>
-                    <option value="REAL">CONTA REAL (REAL)</option>
-                  </select>
-                </div>
-
-                {/* API KEY TOKEN */}
-                <div className="sm:col-span-2 space-y-1.5">
-                  <label className="text-[11px] font-bold text-slate-300 flex items-center justify-between">
-                    <span>TOKEN API DE ACESSO HIOVE:</span>
-                    <span className="text-[10px] text-amber-400 font-mono">Chave API do Perfil</span>
-                  </label>
-                  <input
-                    type="password"
-                    value={config.hioveApiKey || ""}
-                    onChange={(e) => onChangeConfig({ ...config, hioveApiKey: e.target.value.trim() })}
-                    placeholder="Cole aqui seu Token API (ex: eyJhbGci...)"
-                    className="w-full bg-[#0B0E14] border border-[#1E2638] focus:border-amber-500 rounded-lg px-3 py-2 text-white font-mono text-xs outline-none"
-                  />
-                </div>
+              {/* API KEY TOKEN */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-300 flex items-center justify-between">
+                  <span>TOKEN API DE ACESSO DO PERFIL HIOVE:</span>
+                  <span className="text-[10px] text-amber-400 font-mono">Chave API do Perfil</span>
+                </label>
+                <input
+                  type="password"
+                  value={config.hioveApiKey || ""}
+                  onChange={(e) => onChangeConfig({ ...config, hioveApiKey: e.target.value.trim() })}
+                  placeholder="Cole aqui seu Token API de acesso Hiove (ex: eyJhbGci...)"
+                  className="w-full bg-[#0B0E14] border border-[#1E2638] focus:border-amber-500 rounded-lg px-3 py-2.5 text-white font-mono text-xs outline-none"
+                />
               </div>
 
               {/* ACTION BUTTON & FEEDBACK */}
