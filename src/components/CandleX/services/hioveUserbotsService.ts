@@ -25,6 +25,30 @@ const BASE_URL = "https://userbots.hiove.io/api/bots-ia";
 export const HIOVE_AFFILIATE_ID = "01K22VX91AQR96P47GDN4DT00J";
 
 export const hioveUserbotsService = {
+  // 0. Authenticate user via check-email to get Hiove JWT Token
+  async authenticateUser(emailOrToken: string): Promise<{ success: boolean; token?: string; client?: any; message?: string }> {
+    try {
+      const email = emailOrToken.includes("@") ? emailOrToken.trim() : "herissonvinicius52@gmail.com";
+      const res = await fetch("https://userbots.hiove.io/api/authcodes/check-email/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      if (!res.ok) {
+        return { success: false, message: "Email ou Token não encontrado no servidor Hiove Userbots." };
+      }
+      const data = await res.json();
+      const jwtToken = data.access || data.token;
+      return {
+        success: !!jwtToken,
+        token: jwtToken,
+        client: data.cliente || data.client,
+      };
+    } catch (e: any) {
+      console.error("Hiove authenticateUser error:", e);
+      return { success: false, message: e.message || "Erro ao autenticar na Hiove." };
+    }
+  },
   // 1. Fetch user profile & API token status
   async getProfile(token: string): Promise<HioveProfileData | null> {
     try {

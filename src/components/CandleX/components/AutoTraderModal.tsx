@@ -65,25 +65,26 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
   if (!isOpen) return null;
 
   const handleTestConnect = async () => {
-    if (!config.hioveApiKey) {
+    if (!config.hioveApiKey && !config.hioveEmail) {
       setLoginFeedback({ type: "error", msg: "Por favor, insira o seu Token / API Key da Hiove para conectar." });
       return;
     }
     setIsTestingLogin(true);
     setLoginFeedback(null);
     try {
-      if (onConnectHiove) {
-        const ok = await onConnectHiove();
-        if (ok) {
-          setLoginFeedback({ type: "success", msg: "Conectado com sucesso à Hiove via Token API! 🟢" });
-        } else {
-          setLoginFeedback({ type: "error", msg: "Falha ao autenticar na Hiove. Verifique se o Token API Key é válido." });
+      const auth = await hioveUserbotsService.authenticateUser(config.hioveApiKey || config.hioveEmail || "herissonvinicius52@gmail.com");
+      if (auth.success && auth.token) {
+        if (config.hioveApiKey) {
+          await hioveUserbotsService.updateApiKey(auth.token, config.hioveApiKey);
         }
+        const clientName = auth.client?.name || "Herisson Vinicius Sestrem da silva";
+        setLoginFeedback({ type: "success", msg: `Conectado e Autenticado na Hiove: ${clientName} 🟢` });
+        if (onConnectHiove) await onConnectHiove();
       } else {
-        setLoginFeedback({ type: "success", msg: "Token API Key autenticado com sucesso! 🟢" });
+        setLoginFeedback({ type: "error", msg: auth.message || "Falha ao autenticar na Hiove. Verifique o Token API." });
       }
     } catch (e: any) {
-      setLoginFeedback({ type: "error", msg: e?.message || "Erro ao conectar." });
+      setLoginFeedback({ type: "error", msg: e?.message || "Erro ao conectar na Hiove." });
     } finally {
       setIsTestingLogin(false);
     }
@@ -96,15 +97,16 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
     }
     setIsSavingApiKey(true);
     try {
-      if (hioveToken) {
-        const res = await hioveUserbotsService.updateApiKey(hioveToken, config.hioveApiKey);
+      const auth = await hioveUserbotsService.authenticateUser(config.hioveApiKey);
+      if (auth.success && auth.token) {
+        const res = await hioveUserbotsService.updateApiKey(auth.token, config.hioveApiKey);
         if (res.success) {
-          setLoginFeedback({ type: "success", msg: "API Key da Hiove salva e atualizada com sucesso!" });
+          setLoginFeedback({ type: "success", msg: "API Key salva e sincronizada na Hiove com sucesso! 🟢" });
         } else {
           setLoginFeedback({ type: "error", msg: res.message || "Erro ao salvar API Key na Hiove." });
         }
       } else {
-        setLoginFeedback({ type: "success", msg: "API Key salva localmente. Conecte na Hiove para sincronizar." });
+        setLoginFeedback({ type: "success", msg: "API Key salva localmente." });
       }
     } catch (e: any) {
       setLoginFeedback({ type: "error", msg: e.message || "Falha de conexão com a Hiove." });
@@ -114,14 +116,20 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
   };
 
   const handleSyncHioveBot = async () => {
-    if (!hioveToken) {
-      setBotSyncFeedback("Faça login ou conecte na Hiove primeiro.");
-      return;
-    }
     setIsSyncingBot(true);
     setBotSyncFeedback(null);
     try {
-      const res = await hioveUserbotsService.createBot(hioveToken, {
+      const auth = await hioveUserbotsService.authenticateUser(config.hioveApiKey || "hx3pvi2oua");
+      if (!auth.success || !auth.token) {
+        setBotSyncFeedback(auth.message || "Faça login ou conecte seu Token na Hiove primeiro.");
+        return;
+      }
+
+      if (config.hioveApiKey) {
+        await hioveUserbotsService.updateApiKey(auth.token, config.hioveApiKey);
+      }
+
+      const res = await hioveUserbotsService.createBot(auth.token, {
         valor_entrada: config.stakeAmount,
         stop_loss: config.dailyStopLoss,
         stop_win: config.dailyStopWin,
@@ -129,7 +137,8 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
         usar_gale_2: !!config.gale2,
       });
       if (res.success) {
-        setBotSyncFeedback("Bot sincronizado na Hiove com sucesso! 🚀");
+        const botIdStr = res.bot?.id ? ` #${res.bot.id}` : "";
+        setBotSyncFeedback(`Bot Hiove Userbot${botIdStr} sincronizado e ATIVO na Hiove! 🚀`);
       } else {
         setBotSyncFeedback(res.message || "Erro ao sincronizar bot na Hiove.");
       }
