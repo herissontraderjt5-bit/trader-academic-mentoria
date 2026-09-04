@@ -12,10 +12,11 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  const { endpoint = '/auth/login', method = 'POST', token = null, payload = {} } = req.body || {};
+  const { endpoint = '/auth/login', method = 'POST', token = null, payload = {}, targetHost = null } = req.body || {};
   const tenantId = "01JWYBZHW6DM9D7NKPBGJFDZEA";
 
-  const targetUrl = `https://broker-api.mybrokerdev.com${endpoint}`;
+  const host = targetHost ? targetHost.replace(/\/$/, '') : "https://broker-api.mybrokerdev.com";
+  const targetUrl = `${host}${endpoint}`;
 
   try {
     const headers = {
