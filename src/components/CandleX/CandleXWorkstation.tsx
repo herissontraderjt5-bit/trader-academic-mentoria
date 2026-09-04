@@ -871,7 +871,7 @@ export default function CandleXWorkstation({
       }
 
       if (candle) {
-        const entryPrice = t.entryPrice || candle.open;
+        const entryPrice = candle.open || t.entryPrice;
         const expiryPrice = candle.close;
         const priceDiff = +(expiryPrice - entryPrice).toFixed(6);
 

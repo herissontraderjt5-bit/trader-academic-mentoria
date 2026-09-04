@@ -99,8 +99,8 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
       tradeCandle = pastCandles.length > 0 ? pastCandles[pastCandles.length - 1] : candles[candles.length - 1];
     }
 
-    const entryPrice = lockedEntryPriceRef.current || (tradeCandle ? tradeCandle.open : (analysis?.priceAtAnalysis || 100));
-    const expiryPrice = tradeCandle ? tradeCandle.close : entryPrice;
+    const entryPrice = tradeCandle ? tradeCandle.open : (lockedEntryPriceRef.current || (analysis?.priceAtAnalysis || 100));
+    const expiryPrice = tradeCandle ? tradeCandle.close : (candles.length > 0 ? candles[candles.length - 1].close : entryPrice);
 
     if (outcome === "WIN") {
       soundManager.playWin();
@@ -521,7 +521,8 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         if (exactCandle) {
           lockedEntryPriceRef.current = exactCandle.open;
         } else if (candles.length > 0) {
-          lockedEntryPriceRef.current = candles[candles.length - 1].open || candles[candles.length - 1].close;
+          const lastCandle = candles[candles.length - 1];
+          lockedEntryPriceRef.current = lastCandle.close || lastCandle.open;
         } else {
           lockedEntryPriceRef.current = analysis.priceAtAnalysis || 100;
         }
@@ -573,7 +574,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         tradeCandle = candles.find((c) => c.time >= entryCandleSecs && c.time < expiryCandleSecs);
       }
 
-      const entryPrice = lockedEntryPriceRef.current || (tradeCandle ? tradeCandle.open : (analysis.priceAtAnalysis || 100));
+      const entryPrice = tradeCandle ? tradeCandle.open : (lockedEntryPriceRef.current || (analysis.priceAtAnalysis || 100));
       const expiryPrice = tradeCandle ? tradeCandle.close : (candles.length > 0 ? candles[candles.length - 1].close : entryPrice);
       const priceDiff = +(expiryPrice - entryPrice).toFixed(6);
 
