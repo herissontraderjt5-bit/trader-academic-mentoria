@@ -24,6 +24,7 @@ import {
   RefreshCw,
   BookOpen,
   AlertTriangle,
+  DollarSign,
 } from "lucide-react";
 import { AiAnalysisResult, TechnicalIndicators, Candle, TradeRecord, BankrollConfig } from "../../../types";
 import { soundManager } from "../utils/soundEffects";
@@ -70,6 +71,26 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
   const [isMinimized, setIsMinimized] = useState<boolean>(false);
   const [lastSignalTimestamp, setLastSignalTimestamp] = useState<number | null>(null);
   const [currentTime, setCurrentTime] = useState<Date>(getSynchronizedDate());
+
+  // User configurable entry stake (valor financeiro da mão em R$)
+  const [userStake, setUserStake] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("candlex_custom_stake");
+      if (saved) {
+        const val = parseFloat(saved);
+        if (!isNaN(val) && val > 0) return val;
+      }
+    }
+    return bankrollConfig?.initialBalance ? +(bankrollConfig.initialBalance * 0.01).toFixed(2) : 10;
+  });
+
+  const handleUpdateUserStake = (val: number) => {
+    const clean = Math.max(1, Math.round(val * 100) / 100);
+    setUserStake(clean);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("candlex_custom_stake", clean.toString());
+    }
+  };
   
   // Real technical decision states
   const [decision, setDecision] = useState<"PENDING" | "CONFIRMED" | "REJECTED">("PENDING");
@@ -118,7 +139,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
 
     if (onSaveSignalTrade && analysis) {
       const expiryMins = timeframe.toLowerCase().includes("5m") || timeframe === "5" ? 5 : timeframe.toLowerCase().includes("2m") || timeframe === "2" ? 2 : 1;
-      const stakeAmount = bankrollConfig?.initialBalance ? +(bankrollConfig.initialBalance * 0.01).toFixed(2) : 10;
+      const stakeAmount = userStake;
       const payout = 89;
       const pnl = outcome === "WIN" ? +((stakeAmount * payout) / 100).toFixed(2) : outcome === "LOSS" ? -stakeAmount : 0;
 
@@ -538,7 +559,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
       if (decision === "CONFIRMED" && !hasRegisteredPendingRef.current && onSaveSignalTrade) {
         hasRegisteredPendingRef.current = true;
         const expiryMins = Math.max(1, Math.round(candleLengthMs / 60000));
-        const stakeAmount = bankrollConfig?.initialBalance ? +(bankrollConfig.initialBalance * 0.01).toFixed(2) : 10;
+        const stakeAmount = userStake;
         
         const pendingTrade: TradeRecord = {
           id: signalTradeId,
@@ -623,7 +644,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
       // Update trade in history & bankroll
       if (onSaveSignalTrade) {
         const expiryMins = Math.max(1, Math.round(candleLengthMs / 60000));
-        const stakeAmount = bankrollConfig?.initialBalance ? +(bankrollConfig.initialBalance * 0.01).toFixed(2) : 10;
+        const stakeAmount = userStake;
         const payout = 89;
         const pnl = outcome === "WIN" ? +((stakeAmount * payout) / 100).toFixed(2) : outcome === "LOSS" ? -stakeAmount : 0;
 
@@ -891,17 +912,27 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
               </p>
             </div>
 
-            <div className="bg-[#090D15] p-3.5 rounded-xl border border-[#1E293B] max-w-sm mx-auto flex items-center justify-between text-xs font-mono">
-              <div className="text-left">
-                <span className="text-slate-400 block text-[10px] uppercase">Gatilho / Direção</span>
+            <div className="grid grid-cols-3 gap-2 bg-[#090D15] p-3.5 rounded-xl border border-[#1E293B] max-w-sm mx-auto text-xs font-mono">
+              <div className="text-left space-y-0.5">
+                <span className="text-slate-400 block text-[10px] uppercase font-bold">Direção</span>
                 <strong className={isCall ? "text-emerald-400" : "text-rose-400"}>
-                  {isCall ? "COMPRA (CALL) ↗" : "VENDA (PUT) ↘"}
+                  {isCall ? "CALL ↗" : "PUT ↘"}
                 </strong>
               </div>
-              <div className="text-right">
-                <span className="text-slate-400 block text-[10px] uppercase">Resultado Real</span>
-                <strong className={predictionResult === "WIN" ? "text-emerald-400" : predictionResult === "LOSS" ? "text-rose-400" : "text-slate-300"}>
-                  {predictionResult === "WIN" ? "VENCEDOR" : predictionResult === "LOSS" ? "PERDEDOR" : "EMPATE"}
+              <div className="text-center space-y-0.5">
+                <span className="text-slate-400 block text-[10px] uppercase font-bold">Mão (Stake)</span>
+                <strong className="text-slate-200">
+                  R$ {userStake.toFixed(2)}
+                </strong>
+              </div>
+              <div className="text-right space-y-0.5">
+                <span className="text-slate-400 block text-[10px] uppercase font-bold">Resultado</span>
+                <strong className={predictionResult === "WIN" ? "text-emerald-400 font-black" : predictionResult === "LOSS" ? "text-rose-400 font-black" : "text-slate-300"}>
+                  {predictionResult === "WIN"
+                    ? `+R$ ${(userStake * 0.89).toFixed(2)}`
+                    : predictionResult === "LOSS"
+                    ? `-R$ ${userStake.toFixed(2)}`
+                    : "R$ 0.00"}
                 </strong>
               </div>
             </div>
@@ -1021,17 +1052,23 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
               </p>
             </div>
 
-            {/* Signal direction & entry price summary card */}
-            <div className="grid grid-cols-2 gap-2 bg-[#0D121F] p-3 rounded-xl border border-[#1E293B] max-w-sm mx-auto text-left font-mono">
+            {/* Signal direction, stake & entry price summary card */}
+            <div className="grid grid-cols-3 gap-2 bg-[#0D121F] p-3 rounded-xl border border-[#1E293B] max-w-sm mx-auto text-left font-mono">
               <div className="space-y-0.5">
                 <span className="text-[10px] text-slate-400 font-bold block">DIREÇÃO</span>
                 <span className={`text-sm font-black flex items-center gap-1 ${isCall ? "text-emerald-400" : "text-rose-400"}`}>
                   {isCall ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                  {isCall ? "COMPRA (CALL)" : "VENDA (PUT)"}
+                  {isCall ? "CALL" : "PUT"}
+                </span>
+              </div>
+              <div className="space-y-0.5 text-center">
+                <span className="text-[10px] text-slate-400 font-bold block">VALOR (MÃO)</span>
+                <span className="text-sm font-black text-emerald-400">
+                  R$ {userStake.toFixed(2)}
                 </span>
               </div>
               <div className="space-y-0.5 text-right">
-                <span className="text-[10px] text-slate-400 font-bold block">TAXA DE ENTRADA</span>
+                <span className="text-[10px] text-slate-400 font-bold block">TAXA</span>
                 <span className="text-sm font-black text-amber-300">
                   ${(lockedEntryPriceRef.current || analysis?.priceAtAnalysis || 0).toFixed(2)}
                 </span>
@@ -1340,6 +1377,49 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
                 </span>
               </div>
             </div>
+
+            {/* Interactive Stake Selector (Definir Valor da Entrada / Mão) */}
+            {!isRejected && (
+              <div className="bg-[#0E1524] p-3 rounded-xl border border-indigo-500/40 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono font-bold text-slate-200 flex items-center gap-1.5">
+                    <DollarSign className="w-4 h-4 text-emerald-400" />
+                    Valor da Entrada (Mão):
+                  </span>
+                  <span className="text-[11px] font-mono text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                    Lucro Estimado (+89%): +R$ {(userStake * 0.89).toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  {[10, 25, 50, 100, 250].map((val) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => handleUpdateUserStake(val)}
+                      className={`flex-1 py-1.5 px-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                        userStake === val
+                          ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/40 border border-indigo-400"
+                          : "bg-[#080C14] text-slate-400 hover:text-white hover:bg-[#141C2E] border border-[#1E293B]"
+                      }`}
+                    >
+                      R${val}
+                    </button>
+                  ))}
+                  <div className="relative w-24 shrink-0">
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-mono text-slate-400">R$</span>
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={userStake}
+                      onChange={(e) => handleUpdateUserStake(parseFloat(e.target.value) || 1)}
+                      className="w-full bg-[#080C14] border border-indigo-500/40 focus:border-indigo-400 rounded-lg py-1.5 pl-6 pr-2 text-xs font-mono font-bold text-white text-right outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* OB Professional Safety Rate Tip */}
             {!isRejected && (
