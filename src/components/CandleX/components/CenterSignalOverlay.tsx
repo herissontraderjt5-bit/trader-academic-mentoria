@@ -153,15 +153,11 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
 
     if (outcome === "WIN") {
       soundManager.playWin();
-      soundManager.speakAlert(`Vitória confirmada em ${activeTicker}!`);
       try {
         confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
       } catch {}
     } else if (outcome === "LOSS") {
       soundManager.playLoss();
-      soundManager.speakAlert(`Derrota registrada em ${activeTicker}.`);
-    } else {
-      soundManager.speakAlert(`Empate registrado em ${activeTicker}.`);
     }
 
     if (onSaveSignalTrade && analysis) {
@@ -424,7 +420,6 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         const rejectTxt = analysis.rationale || (isAlternating2 ? "Filtro Quadrante de Cores Ativado: As 2 últimas velas fecharam com cores alternadas (Positiva e Negativa)." : `Análise inconclusiva no momento (${analysis.confidenceScore}% de confluência).`);
         setRejectionReason(rejectTxt);
         soundManager.playRejectAlert();
-        soundManager.speakAlert("Sinal cancelado pelo Filtro Quadrante de Cores");
       } else {
         // Initial PENDING audit phase: displays analysis and confluences before final confirmation
         setDecision("PENDING");
@@ -446,7 +441,6 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
             hasAnnouncedDecisionRef.current = true;
             setRejectionReason("Filtro Quadrante de Cores Ativado: As 2 últimas velas fecharam com cores alternadas (Positiva e Negativa). Entrada cancelada.");
             soundManager.playRejectAlert();
-            soundManager.speakAlert("Sinal cancelado pelo Filtro Quadrante de Cores");
             if (onDeleteSignalTrade) {
               onDeleteSignalTrade(signalTradeId);
             }
@@ -459,10 +453,8 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
 
           if (analysis.direction === "CALL") {
             soundManager.playCallAlert();
-            soundManager.speakAlert(`Sinal confirmado: COMPRA em ${activeTicker}`);
           } else if (analysis.direction === "PUT") {
             soundManager.playPutAlert();
-            soundManager.speakAlert(`Sinal confirmado: VENDA em ${activeTicker}`);
           }
         }, 1800);
 
@@ -501,7 +493,6 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
           setResolvedDir("NEUTRAL");
           setRejectionReason("Filtro Quadrante de Cores Ativado: As 2 últimas velas fecharam com cores alternadas (Positiva e Negativa). Entrada cancelada.");
           soundManager.playRejectAlert();
-          soundManager.speakAlert("Sinal cancelado pelo Filtro Quadrante de Cores");
           if (onDeleteSignalTrade) {
             onDeleteSignalTrade(signalTradeId);
           }
@@ -513,7 +504,6 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
           setResolvedDir("NEUTRAL");
           setRejectionReason("Confluências técnicas insuficientes para confirmação.");
           soundManager.playRejectAlert();
-          soundManager.speakAlert("Sinal em aguardo");
           return;
         }
 
@@ -522,10 +512,8 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         setResolvedDir(dir);
         if (dir === "CALL") {
           soundManager.playCallAlert();
-          soundManager.speakAlert(`Sinal confirmado: COMPRA em ${activeTicker}`);
         } else {
           soundManager.playPutAlert();
-          soundManager.speakAlert(`Sinal confirmado: VENDA em ${activeTicker}`);
         }
       } catch (err) {
         console.error("Erro na auditoria de decisão do sinal:", err);
@@ -644,10 +632,9 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
 
       setPredictionResult(outcome);
 
-      // Sound, speech and celebratory effects
+      // Sound and celebratory effects
       if (outcome === "WIN") {
         soundManager.playWin();
-        soundManager.speakAlert(`Vitória confirmada! Operação em ${activeTicker} finalizada com WIN.`);
         try {
           confetti({
             particleCount: 90,
@@ -659,9 +646,6 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         }
       } else if (outcome === "LOSS") {
         soundManager.playLoss();
-        soundManager.speakAlert(`Derrota registrada em ${activeTicker}. Siga o gerenciamento de banca.`);
-      } else {
-        soundManager.speakAlert(`Operação encerrada em Empate (Doji) em ${activeTicker}. Capital protegido.`);
       }
 
       // Update trade in history & bankroll

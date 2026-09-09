@@ -7,7 +7,6 @@ import {
   ShieldAlert,
   Target,
   Zap,
-  Volume2,
   RefreshCw,
   Award,
   Layers,
@@ -15,7 +14,6 @@ import {
   Info,
 } from "lucide-react";
 import { AiAnalysisResult, TechnicalIndicators } from "../../../types";
-import { soundManager } from "../utils/soundEffects";
 
 interface AiAnalysisPanelProps {
   analysis: AiAnalysisResult | null;
@@ -34,14 +32,6 @@ export const AiAnalysisPanel: React.FC<AiAnalysisPanelProps> = ({
   activeTicker,
   currentPrice,
 }) => {
-  const handleSpeakAnalysis = () => {
-    if (!analysis) return;
-    const text = `Sinal CandleX AI para ${activeTicker}: ${
-      analysis.direction === "CALL" ? "Sinal de Compra e Alta" : analysis.direction === "PUT" ? "Sinal de Venda e Baixa" : "Aguardar confirmação"
-    }. Confluência de ${analysis.confidenceScore} por cento. Expiração recomendada: ${analysis.timeframeExpiry}. ${analysis.hioveQuickTip}`;
-    soundManager.speakAlert(text);
-  };
-
   const isCall = analysis?.direction === "CALL";
   const isPut = analysis?.direction === "PUT";
   const isNeutral = !isCall && !isPut;
@@ -66,15 +56,6 @@ export const AiAnalysisPanel: React.FC<AiAnalysisPanelProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5">
-          {analysis && (
-            <button
-              onClick={handleSpeakAnalysis}
-              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 hover:text-amber-300 transition-colors cursor-pointer"
-              title="Ouvir análise com Voz Neural da IA"
-            >
-              <Volume2 className="w-3.5 h-3.5" />
-            </button>
-          )}
           <button
             onClick={onManualAnalyze}
             disabled={isAnalyzing}

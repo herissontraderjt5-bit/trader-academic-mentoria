@@ -1,7 +1,7 @@
 class SoundEngine {
   private ctx: AudioContext | null = null;
   private soundEnabled = true;
-  private voiceEnabled = true;
+  private voiceEnabled = false;
 
   private getContext(): AudioContext | null {
     if (typeof window === "undefined") return null;
@@ -283,50 +283,14 @@ class SoundEngine {
     this.playLossChime();
   }
 
-  public speakAlert(text: string) {
-    if (!this.voiceEnabled || typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    try {
-      window.speechSynthesis.cancel();
-      
-      // Process text to speak ticker symbols clearly in Portuguese
-      let spokenText = text;
-      const tickersToReplace = [
-        { key: "ETHUSDT", val: "Ethereum" },
-        { key: "BTCUSDT", val: "Bitcoin" },
-        { key: "XRPUSDT", val: "X-R-P" },
-        { key: "SOLUSDT", val: "Solana" },
-        { key: "EURUSD", val: "Euro Dólar" },
-        { key: "GBPUSD", val: "Libra Dólar" },
-        { key: "AUDUSD", val: "Dólar Australiano" },
-        { key: "EURGBP", val: "Euro Libra" },
-        { key: "GBPCHF", val: "Libra Franco" },
-        { key: "GBPJPY", val: "Libra Iene" },
-        { key: "NZDUSD", val: "Dólar Neozelandês" },
-        { key: "USDCAD", val: "Dólar com Dólar Canadense" },
-        { key: "USDCHF", val: "Dólar Franco" },
-        { key: "USDJPY", val: "Dólar Iene" },
-      ];
-      
-      for (const item of tickersToReplace) {
-        const regex = new RegExp(item.key, "gi");
-        spokenText = spokenText.replace(regex, item.val);
-      }
-
-      // Small delay on speaking after cancel to prevent Chrome audio glitching
-      setTimeout(() => {
-        try {
-          const utterance = new SpeechSynthesisUtterance(spokenText);
-          utterance.lang = "pt-BR";
-          utterance.rate = 1.15;
-          utterance.pitch = 1.0;
-          window.speechSynthesis.speak(utterance);
-        } catch (err) {
-          console.warn("SpeechSynthesis play error:", err);
-        }
-      }, 20);
-    } catch (e) {
-      console.warn("Speech synthesis error:", e);
+  public speakAlert(_text: string) {
+    // Voz da IA desativada permanentemente conforme solicitação do usuário
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch {}
     }
+    return;
   }
 }
 
