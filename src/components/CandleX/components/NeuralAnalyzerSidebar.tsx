@@ -34,6 +34,7 @@ import {
   AiAnalysisResult,
   TechnicalIndicators,
 } from "../../../types";
+import candlexAiLogo from "../../../assets/candlex-ai-logo.png";
 
 interface NeuralAnalyzerSidebarProps {
   activeTicker: string;
@@ -112,28 +113,98 @@ export const NeuralAnalyzerSidebar: React.FC<NeuralAnalyzerSidebarProps> = ({
     <aside className="w-full md:w-[340px] xl:w-[360px] h-full flex flex-col bg-[#0B0E14] border-r border-[#1B2230] text-slate-200 select-none z-20 flex-shrink-0">
       {/* Main Controls Scroll Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* Title: ◆ CandleX & Auto Trader button */}
+        {/* Top Section: Centered CandleX-IA Emblem & Auto Trader button */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[#FF7A00] text-lg leading-none animate-pulse drop-shadow-[0_0_10px_#FF7A00]">
-                  ◆
-                </span>
-                <h1 className="font-black text-xl tracking-wide select-none">
-                  <span className="relative inline-block px-2.5 py-0.5 rounded-lg bg-gradient-to-r from-[#FF7A00]/20 via-amber-500/15 to-orange-600/20 border border-[#FF7A00]/40 shadow-[0_0_18px_rgba(255,122,0,0.35)]">
-                    <span className="bg-gradient-to-r from-amber-300 via-[#FF9500] to-[#FF7A00] bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(255,122,0,0.8)] font-black">
-                      Candle<span className="text-amber-200 drop-shadow-[0_0_14px_rgba(254,240,138,0.9)]">X</span>
-                    </span>
-                    <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
-                  </span>
-                </h1>
+          {/* Centered Futuristic Circular CandleX-IA Emblem with Border Effects */}
+          <div className="pt-1 pb-1 flex flex-col items-center justify-center w-full">
+          <div className="relative w-44 h-44 flex items-center justify-center">
+            {/* Ambient Expanding Neon Glow Aura */}
+            <div className="absolute inset-0 rounded-full bg-gradient-to-r from-amber-500/25 via-[#FF7A00]/30 to-orange-600/25 blur-xl pointer-events-none animate-pulse" />
+
+            {/* Outer Orbital Rotating Ring (Clockwise) */}
+            <svg
+              className="absolute inset-0 w-full h-full pointer-events-none animate-spin-slow"
+              viewBox="0 0 100 100"
+            >
+              <circle
+                cx="50"
+                cy="50"
+                r="47"
+                fill="none"
+                stroke="url(#emblem-cyber-grad)"
+                strokeWidth="1.5"
+                strokeDasharray="6 8 14 6"
+                className="opacity-80"
+              />
+              <circle
+                cx="50"
+                cy="50"
+                r="47"
+                fill="none"
+                stroke="#FFA500"
+                strokeWidth="2"
+                strokeDasharray="2 18"
+                className="opacity-90"
+              />
+              <defs>
+                <linearGradient id="emblem-cyber-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#FFA500" />
+                  <stop offset="50%" stopColor="#FF7A00" />
+                  <stop offset="100%" stopColor="#FF2E00" />
+                </linearGradient>
+              </defs>
+            </svg>
+
+            {/* Inner Counter-Rotating Tech Ring (Counter-Clockwise) */}
+            <svg
+              className="absolute inset-2 w-[calc(100%-16px)] h-[calc(100%-16px)] pointer-events-none animate-spin-reverse-slow"
+              viewBox="0 0 100 100"
+            >
+              <circle
+                cx="50"
+                cy="50"
+                r="44"
+                fill="none"
+                stroke="#FFB300"
+                strokeWidth="1"
+                strokeDasharray="2 6"
+                className="opacity-50"
+              />
+              <circle
+                cx="50"
+                cy="50"
+                r="42"
+                fill="none"
+                stroke="#FF5500"
+                strokeWidth="1.5"
+                strokeDasharray="12 16"
+                className="opacity-70"
+              />
+            </svg>
+
+            {/* Main Round Image - Exact same size as btn-analisar-mercado (w-36 h-36) */}
+            <div className="relative w-36 h-36 rounded-full p-[3px] bg-gradient-to-tr from-[#FF3D00] via-[#FFA500] to-[#FFD54F] shadow-[0_0_35px_rgba(255,122,0,0.75),inset_0_0_15px_rgba(255,122,0,0.5)] group cursor-pointer transition-transform duration-300 hover:scale-105">
+              {/* Inner Circle Clipping */}
+              <div className="w-full h-full rounded-full overflow-hidden bg-black flex items-center justify-center relative border-2 border-amber-400/50">
+                <img
+                  src={candlexAiLogo}
+                  alt="CandleX-IA"
+                  className="w-full h-full object-cover rounded-full select-none"
+                  draggable={false}
+                />
+                {/* Glossy highlight reflex on hover */}
+                <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/25 via-transparent to-black/30 pointer-events-none" />
               </div>
-              <p className="text-xs text-slate-400 mt-1 ml-5 font-medium">
-                Análise e confluência em tempo real
-              </p>
             </div>
           </div>
+
+          <div className="text-center mt-1">
+            <span className="text-[10px] font-mono font-bold tracking-widest text-amber-400/90 uppercase flex items-center justify-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+              ANÁLISE E CONFLUÊNCIA EM TEMPO REAL
+            </span>
+          </div>
+        </div>
 
           {/* ROBÔ AUTO TRADER BUTTON */}
           <button
