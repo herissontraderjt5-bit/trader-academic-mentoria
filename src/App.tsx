@@ -65,6 +65,7 @@ export default function App() {
 
   // View States
   const [activeView, setActiveView] = useState<'home' | 'player' | 'admin' | 'candlex' | 'gestao'>('home');
+  const [isGlobalHeaderVisible, setIsGlobalHeaderVisible] = useState<boolean>(false);
   const [selectedModuleForModal, setSelectedModuleForModal] = useState<Module | null>(null);
   
   // Video Player States
@@ -704,25 +705,27 @@ export default function App() {
             />
           ) : (
             <>
-              <Navbar
-                currentUser={currentUser}
-                onSwitchUser={handleSwitchUser}
-                allUsers={users}
-                onToggleRole={handleToggleRole}
-                activeView={activeView}
-                setActiveView={setActiveView}
-                modules={modules}
-                announcements={announcements}
-                onSelectLesson={handleSelectLesson}
-                settings={settings}
-                overallProgress={overallProgress}
-                onOpenCertificate={() => setIsCertificateOpen(true)}
-                onOpenCalendar={() => setIsCalendarOpen(true)}
-                onOpenReferral={() => setIsReferralOpen(true)}
-                onOpenEditProfile={() => setIsEditProfileOpen(true)}
-                onOpenUpgrade={() => handleOpenUpgrade()}
-                onLogout={handleLogout}
-              />
+              {(activeView !== 'candlex' || isGlobalHeaderVisible) && (
+                <Navbar
+                  currentUser={currentUser}
+                  onSwitchUser={handleSwitchUser}
+                  allUsers={users}
+                  onToggleRole={handleToggleRole}
+                  activeView={activeView}
+                  setActiveView={setActiveView}
+                  modules={modules}
+                  announcements={announcements}
+                  onSelectLesson={handleSelectLesson}
+                  settings={settings}
+                  overallProgress={overallProgress}
+                  onOpenCertificate={() => setIsCertificateOpen(true)}
+                  onOpenCalendar={() => setIsCalendarOpen(true)}
+                  onOpenReferral={() => setIsReferralOpen(true)}
+                  onOpenEditProfile={() => setIsEditProfileOpen(true)}
+                  onOpenUpgrade={() => handleOpenUpgrade()}
+                  onLogout={handleLogout}
+                />
+              )}
 
               {activeView === 'candlex' ? (
                 <CandleXWorkstation
@@ -731,6 +734,8 @@ export default function App() {
                   settings={settings}
                   onUpdateSettings={(sett) => { setSettings(sett); storageService.saveSettings(sett); }}
                   onOpenGestao={() => setActiveView('gestao')}
+                  isGlobalHeaderVisible={isGlobalHeaderVisible}
+                  onToggleGlobalHeader={() => setIsGlobalHeaderVisible(prev => !prev)}
                 />
               ) : (
                 <>

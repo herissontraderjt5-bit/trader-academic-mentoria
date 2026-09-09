@@ -62,6 +62,8 @@ interface CandleXWorkstationProps {
   settings?: PlatformSettings;
   onUpdateSettings?: (settings: PlatformSettings) => void;
   onOpenGestao?: () => void;
+  isGlobalHeaderVisible?: boolean;
+  onToggleGlobalHeader?: () => void;
 }
 
 const INITIAL_BANKROLL_CONFIG: BankrollConfig = {
@@ -115,6 +117,8 @@ export default function CandleXWorkstation({
   settings,
   onUpdateSettings,
   onOpenGestao,
+  isGlobalHeaderVisible,
+  onToggleGlobalHeader,
 }: CandleXWorkstationProps) {
   const isAdmin = currentUser.role === 'admin' || ['viniciussestremmm@gmail.com', 'herisson.trader.jt5@gmail.com'].includes(currentUser.email?.toLowerCase() || '');
   const [adminPreviewStudentMode, setAdminPreviewStudentMode] = useState(false);
@@ -1423,6 +1427,8 @@ export default function CandleXWorkstation({
         chartEngine={chartEngine}
         onSelectChartEngine={setChartEngine}
         timeframe={timeframe}
+        isGlobalHeaderVisible={isGlobalHeaderVisible}
+        onToggleGlobalHeader={onToggleGlobalHeader}
       />
 
       {/* Mobile Tab Selector */}

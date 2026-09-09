@@ -8,6 +8,7 @@ import {
   Wallet,
   User,
   ChevronDown,
+  ChevronUp,
   Sparkles,
   Bot,
   Scan,
@@ -45,6 +46,8 @@ interface HioveUnifiedTopBarProps {
   chartEngine: "HIOVE_REAL" | "TRADINGVIEW";
   onSelectChartEngine: (engine: "HIOVE_REAL" | "TRADINGVIEW") => void;
   timeframe: string;
+  isGlobalHeaderVisible?: boolean;
+  onToggleGlobalHeader?: () => void;
 }
 
 export const HioveUnifiedTopBar: React.FC<HioveUnifiedTopBarProps> = ({
@@ -70,6 +73,8 @@ export const HioveUnifiedTopBar: React.FC<HioveUnifiedTopBarProps> = ({
   chartEngine,
   onSelectChartEngine,
   timeframe,
+  isGlobalHeaderVisible,
+  onToggleGlobalHeader,
 }) => {
   const [hideBalance, setHideBalance] = useState(true);
   const balance = bankroll.currentBalance;
@@ -78,15 +83,28 @@ export const HioveUnifiedTopBar: React.FC<HioveUnifiedTopBarProps> = ({
     <header className="h-[52px] bg-[#0E121B] border-b border-[#1B2230] flex items-center justify-between px-3 select-none z-30 flex-shrink-0 text-slate-200">
       {/* Left: Logo & Chart Engine Selector */}
       <div className="flex items-center gap-4 h-full">
-        {/* Hiove Logo */}
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-[#FF7A00] to-amber-500 flex items-center justify-center font-black text-slate-950 text-xs shadow-[0_0_10px_rgba(255,122,0,0.4)]">
+        {/* Hiove Logo & Toggle Top Header Button */}
+        <button
+          type="button"
+          id="btn-toggle-global-topbar"
+          onClick={onToggleGlobalHeader}
+          className="flex items-center gap-1.5 flex-shrink-0 px-2 py-1 rounded-xl bg-gradient-to-r from-[#161C28] to-[#0E121B] hover:from-[#20293C] hover:to-[#141A26] border border-[#222E44] hover:border-[#FF7A00]/50 transition-all cursor-pointer group shadow-sm"
+          title={isGlobalHeaderVisible ? "Ocultar painel superior (Trader Academic)" : "Mostrar painel superior (Trader Academic)"}
+        >
+          <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-[#FF7A00] to-amber-500 flex items-center justify-center font-black text-slate-950 text-xs shadow-[0_0_10px_rgba(255,122,0,0.4)] group-hover:scale-105 transition-transform">
             H
           </div>
           <span className="font-black text-base text-white tracking-wider hidden sm:inline">
             hiove
           </span>
-        </div>
+          <span className="text-slate-400 group-hover:text-[#FF7A00] transition-colors ml-0.5">
+            {isGlobalHeaderVisible ? (
+              <ChevronUp className="w-3.5 h-3.5 text-amber-400" />
+            ) : (
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            )}
+          </span>
+        </button>
 
         <div className="w-[1px] h-5 bg-[#1B2230] hidden sm:block" />
 
