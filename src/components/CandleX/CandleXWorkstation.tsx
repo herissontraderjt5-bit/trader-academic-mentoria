@@ -1486,6 +1486,10 @@ export default function CandleXWorkstation({
               onDeleteSignalTrade={handleDeleteSignalTrade}
               onOpenOperations={() => setIsOperationsOpen(true)}
               bankrollConfig={bankrollConfig}
+              onOpenAutoTrader={() => setIsAutoTraderOpen(true)}
+              autoTraderConfig={autoTraderConfig}
+              onToggleAutoTrader={handleToggleAutoTrader}
+              onUpdateAutoTraderConfig={handleUpdateAutoTraderConfig}
             />
           </div>
         </main>

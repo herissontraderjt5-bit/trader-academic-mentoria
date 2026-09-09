@@ -25,8 +25,10 @@ import {
   BookOpen,
   AlertTriangle,
   DollarSign,
+  Bot,
+  Settings,
 } from "lucide-react";
-import { AiAnalysisResult, TechnicalIndicators, Candle, TradeRecord, BankrollConfig } from "../../../types";
+import { AiAnalysisResult, TechnicalIndicators, Candle, TradeRecord, BankrollConfig, AutoTraderConfig } from "../../../types";
 import { soundManager } from "../utils/soundEffects";
 import { candlexApiService } from "../services/apiService";
 import { getCandleTimeRemaining, getSynchronizedDate, getSynchronizedTimestamp, detectColorAlternation } from "../utils/technicalIndicators";
@@ -47,6 +49,10 @@ interface CenterSignalOverlayProps {
   onDeleteSignalTrade?: (id: string) => void;
   onOpenOperations?: () => void;
   bankrollConfig?: BankrollConfig;
+  onOpenAutoTrader?: () => void;
+  autoTraderConfig?: AutoTraderConfig;
+  onToggleAutoTrader?: () => void;
+  onUpdateAutoTraderConfig?: (newConfig: AutoTraderConfig) => void;
 }
 
 type SignalStatus = "PRE_WAITING" | "AUDITING_10S" | "CONFIRMED" | "REJECTED";
@@ -66,14 +72,22 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
   onDeleteSignalTrade,
   onOpenOperations,
   bankrollConfig,
+  onOpenAutoTrader,
+  autoTraderConfig,
+  onToggleAutoTrader,
+  onUpdateAutoTraderConfig,
 }) => {
   const [isVisible, setIsVisible] = useState<boolean>(true);
   const [isMinimized, setIsMinimized] = useState<boolean>(false);
+  const [showDetails, setShowDetails] = useState<boolean>(false);
   const [lastSignalTimestamp, setLastSignalTimestamp] = useState<number | null>(null);
   const [currentTime, setCurrentTime] = useState<Date>(getSynchronizedDate());
 
-  // User configurable entry stake (valor financeiro da mão em R$)
+  // User configurable entry stake (valor financeiro da mão em R$) - synchronizes with Auto Trader
   const [userStake, setUserStake] = useState<number>(() => {
+    if (autoTraderConfig?.stakeAmount && autoTraderConfig.stakeAmount > 0) {
+      return autoTraderConfig.stakeAmount;
+    }
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("candlex_custom_stake");
       if (saved) {
@@ -90,7 +104,19 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
     if (typeof window !== "undefined") {
       localStorage.setItem("candlex_custom_stake", clean.toString());
     }
+    if (autoTraderConfig && onUpdateAutoTraderConfig) {
+      onUpdateAutoTraderConfig({
+        ...autoTraderConfig,
+        stakeAmount: clean,
+      });
+    }
   };
+
+  useEffect(() => {
+    if (autoTraderConfig?.stakeAmount && autoTraderConfig.stakeAmount > 0 && autoTraderConfig.stakeAmount !== userStake) {
+      setUserStake(autoTraderConfig.stakeAmount);
+    }
+  }, [autoTraderConfig?.stakeAmount]);
   
   // Real technical decision states
   const [decision, setDecision] = useState<"PENDING" | "CONFIRMED" | "REJECTED">("PENDING");
@@ -677,7 +703,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         style={{
           transform: `translate(${position.x}px, ${position.y}px)`,
         }}
-        className={`pointer-events-auto transition-[border-color,background-color,box-shadow] duration-300 w-full max-w-lg bg-[#0C101A]/95 backdrop-blur-xl border-2 rounded-2xl shadow-[0_0_55px_rgba(0,0,0,0.85)] overflow-hidden select-none animate-in zoom-in-95 fade-in duration-300 ${
+        className={`pointer-events-auto transition-[border-color,background-color,box-shadow] duration-300 w-full max-w-md bg-[#0C101A]/95 backdrop-blur-xl border-2 rounded-2xl shadow-[0_0_55px_rgba(0,0,0,0.85)] overflow-hidden select-none animate-in zoom-in-95 fade-in duration-300 ${
           predictionResult !== null
             ? predictionResult === "WIN"
               ? "border-emerald-500 shadow-[0_0_50px_rgba(16,185,129,0.6)]"
@@ -1096,79 +1122,99 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
             </div>
           </div>
         ) : (
-          /* Full Expanded Central Display */
-          <div className="p-4 space-y-3.5">
-            {/* Top Triple Row: Par de Moeda | Horário de Entrada | Horário de Expiração */}
-            <div className="grid grid-cols-3 gap-2 bg-[#111726] p-3 rounded-xl border border-[#1E293B]">
-              {/* 1. Ativo / Par */}
-              <div>
-                <span className="text-xs font-mono text-slate-300 font-bold uppercase block tracking-wider truncate">
-                  Par / Ativo
-                </span>
-                <span className="text-lg font-black text-white tracking-wide font-mono block truncate">
-                  {activeTicker}
-                </span>
+          /* Ultra-Clean Summarized Central Display with AutoTrader IA Integration */
+          <div className="p-3.5 space-y-2.5">
+            {/* 1. Ativo, Direção Principal e Assertividade */}
+            <div
+              className={`p-3 rounded-xl border flex items-center justify-between relative overflow-hidden shadow-lg transition-all ${
+                isCall
+                  ? "bg-gradient-to-r from-emerald-950/70 via-[#0B151F] to-[#0A0E18] border-emerald-500/50 shadow-[0_0_25px_rgba(16,185,129,0.18)]"
+                  : "bg-gradient-to-r from-rose-950/70 via-[#1A0D15] to-[#0A0E18] border-rose-500/50 shadow-[0_0_25px_rgba(244,63,94,0.18)]"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-11 h-11 rounded-xl flex items-center justify-center font-black text-slate-950 shadow-md ${
+                    isCall ? "bg-emerald-400 shadow-emerald-500/40" : "bg-rose-500 shadow-rose-500/40"
+                  }`}
+                >
+                  {isCall ? (
+                    <TrendingUp className="w-6 h-6 stroke-[3]" />
+                  ) : (
+                    <TrendingDown className="w-6 h-6 stroke-[3]" />
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-white font-mono font-black text-base tracking-wide">
+                      {activeTicker}
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-slate-300 font-bold">
+                      {getExpirationLabel()}
+                    </span>
+                  </div>
+                  <h3
+                    className={`text-lg font-black uppercase tracking-wider font-mono ${
+                      isCall ? "text-emerald-400" : "text-rose-400"
+                    }`}
+                  >
+                    {isCall ? "COMPRA (CALL) ↗" : "VENDA (PUT) ↘"}
+                  </h3>
+                </div>
               </div>
 
-              {/* 2. Horário do Sinal / Entrada */}
-              <div className="border-x border-[#1E293B] px-2 text-center">
-                <span className="text-xs font-mono text-amber-400 uppercase tracking-wider flex items-center justify-center gap-1 font-bold">
-                  <Clock className="w-3.5 h-3.5 text-amber-400" />
-                  Entrada
-                </span>
-                <span className="text-lg font-black text-amber-400 tracking-wide font-mono block">
-                  {entryTimeStr}
-                </span>
-              </div>
-
-              {/* 3. Expiração */}
+              {/* Assertividade Badge */}
               <div className="text-right">
-                <span className="text-xs font-mono text-cyan-400 uppercase tracking-wider flex items-center gap-1 justify-end font-bold">
-                  <Timer className="w-3.5 h-3.5 text-cyan-400" />
-                  Expira às
+                <span className="text-[10px] font-mono text-slate-400 uppercase font-bold block">
+                  Assertividade
                 </span>
-                <span className="text-lg font-black text-cyan-400 tracking-wide font-mono block">
-                  {expiryTimeStr}
-                </span>
-                <span className="text-[11px] font-mono text-slate-300 font-bold block -mt-0.5">
-                  {getExpirationLabel()}
+                <span className="text-xl font-black font-mono text-[#00E5FF] tracking-tight">
+                  {confidenceScore}%
                 </span>
               </div>
             </div>
 
-            {/* Decision Window Timer Box & Progress */}
-            <div className="bg-[#111726] p-3 rounded-xl border border-[#1E293B] space-y-2">
+            {/* 2. Horários de Entrada e Expiração */}
+            <div className="grid grid-cols-2 gap-2 bg-[#0F1420] p-2.5 rounded-xl border border-[#1C2538] font-mono text-xs">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                  <Clock className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold block uppercase">Entrada</span>
+                  <span className="text-sm font-black text-amber-400">{entryTimeStr}</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-2 text-right">
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold block uppercase">Expiração</span>
+                  <span className="text-sm font-black text-cyan-400">{expiryTimeStr}</span>
+                </div>
+                <div className="p-1.5 rounded-lg bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">
+                  <Timer className="w-4 h-4" />
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Timer de Contagem Regressiva */}
+            <div className="bg-[#0F1420] p-2.5 rounded-xl border border-[#1C2538] space-y-1.5">
               <div className="flex items-center justify-between text-xs font-mono">
-                <span className="text-slate-200 flex items-center gap-1.5 font-medium">
-                  <Timer className={`w-4 h-4 ${secondsUntilEntry <= decisionThreshold ? "text-amber-400 animate-spin" : "text-slate-400"}`} />
-                  {secondsUntilEntry > decisionThreshold ? (
-                    <span className="text-slate-200 font-bold">Contagem até Janela de {decisionThreshold}s:</span>
-                  ) : secondsUntilEntry > 0 ? (
-                    <span className="text-amber-400 font-bold">Auditoria dos {decisionThreshold}s Finais:</span>
-                  ) : (
-                    <span className="text-emerald-400 font-bold">Horário de Entrada Atingido:</span>
-                  )}
+                <span className="text-slate-300 font-bold flex items-center gap-1.5">
+                  <Timer className={`w-3.5 h-3.5 ${secondsUntilEntry <= decisionThreshold ? "text-amber-400 animate-spin" : "text-slate-400"}`} />
+                  Contagem Regressiva:
                 </span>
-                <span
-                  className={`font-black text-xs px-2.5 py-1 rounded-lg ${
-                    secondsUntilEntry <= decisionThreshold
-                      ? "bg-amber-500/20 text-amber-400 border border-amber-500/40 animate-pulse"
-                      : "bg-[#182030] text-slate-200"
-                  }`}
-                >
+                <span className={`font-black text-xs px-2.5 py-0.5 rounded-md ${
+                  secondsUntilEntry <= decisionThreshold
+                    ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse"
+                    : "bg-[#161F30] text-slate-200"
+                }`}>
                   {secondsUntilEntry > 0 ? `${secondsUntilEntry}s para entrada` : "ENTRADA ATIVA"}
                 </span>
               </div>
-
-              {/* Visual Progress Bar */}
-              <div className="h-2 w-full bg-[#1A2234] rounded-full overflow-hidden">
+              <div className="h-1.5 w-full bg-[#1A2234] rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-1000 ${
-                    isRejected
-                      ? "bg-rose-500"
-                      : isConfirmed
-                      ? "bg-emerald-500"
-                      : "bg-gradient-to-r from-amber-500 to-orange-500"
+                    isConfirmed ? "bg-emerald-400" : "bg-gradient-to-r from-amber-500 to-orange-500"
                   }`}
                   style={{
                     width: `${Math.max(5, Math.min(100, ((decisionThreshold * 2 - secondsUntilEntry) / (decisionThreshold * 2)) * 100))}%`,
@@ -1177,211 +1223,122 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
               </div>
             </div>
 
-            {/* Main Action Block: PRE_WAITING vs CONFIRMED vs REJECTED */}
-            {isPreWaiting ? (
-              /* Case 1: Pre-Waiting */
-              <div className="p-3 rounded-xl border border-amber-500/30 bg-amber-950/20 text-center space-y-1">
-                <span className="text-[10px] font-mono font-bold text-amber-400 uppercase tracking-widest block">
-                  FASE 1 &bull; PRÉ-VALIDAÇÃO
-                </span>
-                <span className="text-sm font-black text-amber-300 block uppercase">
-                  AGUARDANDO CONFIRMAÇÃO DO ROBÔ
-                </span>
-                <p className="text-[10px] text-amber-200/70 font-mono leading-relaxed mt-1">
-                  Varredura em tempo real ativa. A auditoria final e confirmação ocorrerão estritamente entre {decisionThreshold}s a 1s da expiração da vela.
-                </p>
-              </div>
-            ) : isRejected ? (
-              /* Case 2: REJECTED by Anti-Loss Filter */
-              <div className="p-3.5 rounded-xl border border-rose-500 bg-rose-950/30 space-y-2 animate-in zoom-in-95 duration-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <ShieldAlert className="w-5 h-5 text-rose-500" />
-                    <div>
-                      <span className="text-[9px] font-mono font-bold text-rose-400 uppercase block">
-                        Filtro Anti-Loss Ativado
-                      </span>
-                      <h3 className="text-sm font-black text-rose-400 uppercase tracking-wider">
-                        ENTRADA REJEITADA PELA IA
-                      </h3>
-                    </div>
-                  </div>
-
-                  {onReScan && (
-                    <button
-                      type="button"
-                      onClick={onReScan}
-                      className="px-2 py-1 rounded bg-rose-600 hover:bg-rose-500 text-white text-[10px] font-mono font-bold flex items-center gap-1 cursor-pointer"
-                    >
-                      <RefreshCw className="w-2.5 h-2.5" />
-                      Re-escanear
-                    </button>
-                  )}
+            {/* 4. VALOR DA NEGOCIAÇÃO & CONFIGURAÇÃO DO ROBÔ AUTO TRADER IA */}
+            <div className="bg-[#0A0E18] p-3 rounded-xl border border-indigo-500/40 space-y-2.5 shadow-md">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <DollarSign className="w-4 h-4 text-emerald-400" />
+                  <span className="text-xs font-mono font-bold text-white">
+                    Valor da Negociação (Robô IA & Manual):
+                  </span>
                 </div>
-
-                <p className="bg-[#0C101A]/80 p-2 rounded border border-rose-500/20 text-[10px] font-mono text-rose-200 leading-relaxed">
-                  {rejectionReason || `Sinal cancelado por baixa confluência nos ${decisionThreshold}s finais.`}
-                </p>
+                <span className="text-[11px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                  Lucro (+89%): +R$ {(userStake * 0.89).toFixed(2)}
+                </span>
               </div>
-            ) : (
-              /* Case 3: CONFIRMED (CALL or PUT) */
-              <div
-                className={`p-3 rounded-xl border flex items-center justify-between relative overflow-hidden animate-in zoom-in-95 duration-200 ${
-                  isCall
-                    ? "bg-emerald-950/40 border-emerald-500/50"
-                    : "bg-rose-950/40 border-rose-500/50"
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <div
-                    className={`w-9 h-9 rounded-lg flex items-center justify-center ${
-                      isCall ? "bg-emerald-500 text-slate-950" : "bg-rose-500 text-slate-950"
+
+              {/* Seletor Rápido de Valores */}
+              <div className="flex items-center gap-1.5">
+                {[10, 25, 50, 100, 250].map((val) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => handleUpdateUserStake(val)}
+                    className={`flex-1 py-1.5 px-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                      userStake === val
+                        ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md shadow-indigo-600/40 border border-indigo-400"
+                        : "bg-[#141A26] text-slate-400 hover:text-white hover:bg-[#1E2638] border border-[#222E44]"
                     }`}
                   >
-                    {isCall ? (
-                      <TrendingUp className="w-5 h-5 stroke-[2.5]" />
-                    ) : (
-                      <TrendingDown className="w-5 h-5 stroke-[2.5]" />
-                    )}
-                  </div>
-
-                  <div>
-                    <span className="text-[9px] font-mono font-bold text-slate-400 uppercase block">
-                      Fase 2 &bull; Confirmado aos {decisionThreshold}s
-                    </span>
-                    <h3
-                      className={`text-base font-black uppercase tracking-wider ${
-                        isCall ? "text-emerald-400" : "text-rose-400"
-                      }`}
-                    >
-                      {isCall ? "ENTRADA CONFIRMADA: COMPRA (CALL) ↗" : "ENTRADA CONFIRMADA: VENDA (PUT) ↘"}
-                    </h3>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Metrics Bar: Assertividade & Confluências */}
-            <div className="flex items-center justify-between gap-4 bg-[#111726] p-3 rounded-xl border border-[#1E293B] text-xs font-mono">
-              <div className="flex items-center gap-1.5">
-                <Target className="w-4 h-4 text-emerald-400" />
-                <span className="text-slate-300">Assertividade:</span>
-                <strong className="text-emerald-400 font-bold">{confidenceScore}%</strong>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Zap className="w-4 h-4 text-amber-400" />
-                <span className="text-slate-300">Validações:</span>
-                <strong className="text-amber-400 font-bold">
-                  {analysis.detectedPatterns?.length || 4} Confluências
-                </strong>
-              </div>
-            </div>
-
-            {/* Real Confluences List */}
-            <div className="space-y-2 bg-[#090D15] p-3.5 rounded-xl border border-[#1E293B]">
-              <span className="text-xs font-mono text-slate-300 uppercase flex items-center gap-1.5 font-bold">
-                <ShieldCheck className="w-4 h-4 text-[#FF7A00]" />
-                Confluências Detectadas:
-              </span>
-              <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                {(analysis.detectedPatterns && analysis.detectedPatterns.length > 0
-                  ? analysis.detectedPatterns
-                  : [
-                      "Estrutura e Alinhamento de Médias Móveis",
-                      "RSI em Região Estratégica",
-                      "Rejeição de Preço em Zona Relevante"
-                    ]
-                ).map((pattern, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-start gap-2 text-xs text-slate-200 bg-[#121622] px-2.5 py-1.5 rounded-lg border border-[#1E2638]"
-                  >
-                    <span className="text-[#FF7A00] font-black">•</span>
-                    <span className="leading-snug">{pattern}</span>
-                  </div>
+                    R${val}
+                  </button>
                 ))}
-              </div>
-            </div>
-
-            {/* Entry Trigger & Invalidation Zone */}
-            <div className="bg-[#111726] p-3 rounded-xl border border-[#1E293B] flex items-center justify-between text-xs font-mono">
-              <div className="flex items-center gap-1.5">
-                <span className="text-slate-400">Gatilho:</span>
-                <span className="font-bold text-white">
-                  {isRejected ? "ABORTADO" : `Entrada às ${entryTimeStr} (${timeframe.toUpperCase()})`}
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 text-slate-400">
-                <span>Defesa Imediata:</span>
-                <span className={`font-bold ${isRejected ? "text-amber-400" : "text-rose-400"}`}>
-                  {isRejected ? "Loss Evitado" : analysis.defenseZone?.label || analysis.invalidationLevel || "Microestrutura Imediata"}
-                </span>
-              </div>
-            </div>
-
-            {/* Interactive Stake Selector (Definir Valor da Entrada / Mão) */}
-            {!isRejected && (
-              <div className="bg-[#0E1524] p-3 rounded-xl border border-indigo-500/40 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono font-bold text-slate-200 flex items-center gap-1.5">
-                    <DollarSign className="w-4 h-4 text-emerald-400" />
-                    Valor da Entrada (Mão):
-                  </span>
-                  <span className="text-[11px] font-mono text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                    Lucro Estimado (+89%): +R$ {(userStake * 0.89).toFixed(2)}
-                  </span>
+                <div className="relative w-24 shrink-0">
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-mono text-slate-400">R$</span>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={userStake}
+                    onChange={(e) => handleUpdateUserStake(parseFloat(e.target.value) || 1)}
+                    className="w-full bg-[#141A26] border border-indigo-500/50 focus:border-indigo-400 rounded-lg py-1.5 pl-6 pr-2 text-xs font-mono font-bold text-white text-right outline-none"
+                  />
                 </div>
+              </div>
 
-                <div className="flex items-center gap-1.5">
-                  {[10, 25, 50, 100, 250].map((val) => (
-                    <button
-                      key={val}
-                      type="button"
-                      onClick={() => handleUpdateUserStake(val)}
-                      className={`flex-1 py-1.5 px-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
-                        userStake === val
-                          ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/40 border border-indigo-400"
-                          : "bg-[#080C14] text-slate-400 hover:text-white hover:bg-[#141C2E] border border-[#1E293B]"
-                      }`}
+              {/* Integração Direta com o Robô Auto Trader IA */}
+              <div className="pt-1 flex items-center justify-between gap-2 border-t border-[#1C2538]">
+                <button
+                  type="button"
+                  onClick={onToggleAutoTrader}
+                  className={`flex-1 py-2 px-3 rounded-lg text-xs font-mono font-bold flex items-center justify-center gap-2 transition-all cursor-pointer border ${
+                    autoTraderConfig?.enabled
+                      ? "bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border-emerald-500/50 shadow-[0_0_12px_rgba(16,185,129,0.25)]"
+                      : "bg-[#141A26] hover:bg-[#1E2638] text-slate-300 border-[#222E44]"
+                  }`}
+                  title={autoTraderConfig?.enabled ? "Clique para pausar o Robô IA" : "Clique para ligar o Robô IA com este valor"}
+                >
+                  <Bot className={`w-4 h-4 ${autoTraderConfig?.enabled ? "text-emerald-400 animate-pulse" : "text-slate-400"}`} />
+                  <span>
+                    {autoTraderConfig?.enabled ? `Robô IA Ativo (Mão: R$ ${userStake})` : "Ligar Robô Auto Trader IA"}
+                  </span>
+                </button>
+
+                {onOpenAutoTrader && (
+                  <button
+                    type="button"
+                    onClick={onOpenAutoTrader}
+                    className="py-2 px-3 rounded-lg bg-[#141A26] hover:bg-[#1E2638] text-indigo-300 hover:text-white border border-indigo-500/30 hover:border-indigo-500/60 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                    title="Abrir configurações completas do Robô Auto Trader IA"
+                  >
+                    <Settings className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Configurar Robô</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* 5. Confluências Técnicas (RECOLHIDO POR PADRÃO - RESUMIDO) */}
+            <div className="border border-[#1C2538] rounded-xl overflow-hidden bg-[#0A0E17]">
+              <button
+                type="button"
+                onClick={() => setShowDetails(!showDetails)}
+                className="w-full py-2 px-3 flex items-center justify-between text-xs font-mono text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <span className="flex items-center gap-1.5 font-bold text-[11px]">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#FF7A00]" />
+                  {analysis.detectedPatterns?.length || 4} Confluências da IA
+                </span>
+                <span className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-[#FF7A00]">
+                  {showDetails ? "Ocultar Detalhes" : "Ver Detalhes"}
+                  {showDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                </span>
+              </button>
+
+              {showDetails && (
+                <div className="p-2.5 pt-0 space-y-1.5 border-t border-[#1C2538]/60 animate-in fade-in duration-200">
+                  {(analysis.detectedPatterns || []).map((pattern, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-start gap-1.5 text-[11px] text-slate-300 bg-[#101522] px-2 py-1 rounded border border-[#1A2234]"
                     >
-                      R${val}
-                    </button>
+                      <span className="text-[#FF7A00] font-black">•</span>
+                      <span className="leading-tight">{pattern}</span>
+                    </div>
                   ))}
-                  <div className="relative w-24 shrink-0">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-mono text-slate-400">R$</span>
-                    <input
-                      type="number"
-                      min="1"
-                      step="1"
-                      value={userStake}
-                      onChange={(e) => handleUpdateUserStake(parseFloat(e.target.value) || 1)}
-                      className="w-full bg-[#080C14] border border-indigo-500/40 focus:border-indigo-400 rounded-lg py-1.5 pl-6 pr-2 text-xs font-mono font-bold text-white text-right outline-none"
-                    />
-                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* OB Professional Safety Rate Tip */}
-            {!isRejected && (
-              <div className="bg-amber-500/10 border border-amber-500/30 p-2.5 rounded-xl flex items-start gap-2.5 text-xs">
-                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                <div className="text-[11px] text-amber-200/90 leading-tight">
-                  <strong className="text-amber-300 block mb-0.5">Dica de Ouro OB (Taxa de Proteção):</strong>
-                  NÃO clique na abertura seca aos 00s. Aguarde a vela dar uma esticada contrária nos primeiros 15s para garantir melhor taxa de retração!
-                </div>
-              </div>
-            )}
-
-            {/* Prominent Cancel Button in Full View */}
-            <div className="pt-1">
+            {/* Botão Cancelar Análise (Discreto no Rodapé) */}
+            <div className="pt-0.5">
               <button
                 type="button"
                 onClick={handleCancelAnalysis}
-                className="w-full py-2.5 px-4 rounded-xl bg-[#141A26] hover:bg-rose-950/40 border border-[#222E44] hover:border-rose-500/50 text-slate-300 hover:text-rose-300 font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md"
+                className="w-full py-2 px-3 rounded-xl bg-[#141A26]/80 hover:bg-rose-950/40 border border-[#222E44] hover:border-rose-500/40 text-slate-400 hover:text-rose-300 font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
               >
-                <Ban className="w-4 h-4 text-rose-400" />
-                <span>Cancelar Análise e Desativar IA</span>
+                <Ban className="w-3.5 h-3.5 text-rose-400" />
+                <span>Cancelar Análise</span>
               </button>
             </div>
           </div>
