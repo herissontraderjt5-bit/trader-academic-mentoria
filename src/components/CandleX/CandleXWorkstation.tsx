@@ -134,6 +134,8 @@ export default function CandleXWorkstation({
   const [indicators, setIndicators] = useState<TechnicalIndicators | null>(null);
   const [aiAnalysis, setAiAnalysis] = useState<AiAnalysisResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
+  const [isScanningModalOpen, setIsScanningModalOpen] = useState<boolean>(false);
+  const pendingAnalysisRef = useRef<AiAnalysisResult | null>(null);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [selectedTool, setSelectedTool] = useState<string>("crosshair");
 
@@ -603,44 +605,67 @@ export default function CandleXWorkstation({
 
   const lastAnalysisTimeRef = useRef<number>(0);
 
-  // Run AI Neural Analysis
-  const runAiAnalysis = useCallback(async (force = false) => {
-    const now = Date.now();
-    if (!force && now - lastAnalysisTimeRef.current < 3000) {
-      return; // Cooldown protection
-    }
-    if (candles.length === 0 || isAnalyzing) return;
+  // Manual Trigger: User clicks to analyze or re-scan -> runs visual 6-pillar scan then delivers signal
+  const runManualAiScan = useCallback(async () => {
+    if (candles.length === 0) return;
+    setAiAnalysis(null);
+    setIsScanningModalOpen(true);
     setIsAnalyzing(true);
-    lastAnalysisTimeRef.current = now;
+    lastAnalysisTimeRef.current = Date.now();
 
     try {
       const latestIndicators = indicators || calculateAllIndicators(candles);
-      
       const result = await candlexApiService.analyze(
         activeTicker,
         timeframe.toUpperCase(),
         candles,
         latestIndicators
       );
-
-      if (result) {
-        setAiAnalysis(result);
-
-        // Audio notifications on signals (chimes only to avoid blocking 10s decision voice)
-        if (result.confidenceScore >= 70) {
-          if (result.direction === "CALL") {
-            soundManager.playCallAlert();
-          } else if (result.direction === "PUT") {
-            soundManager.playPutAlert();
-          }
-        }
-      }
+      pendingAnalysisRef.current = result;
     } catch (e) {
       console.error("AI Analysis error:", e);
-    } finally {
+      setIsScanningModalOpen(false);
       setIsAnalyzing(false);
     }
-  }, [candles, indicators, activeTicker, timeframe, isAnalyzing]);
+  }, [candles, indicators, activeTicker, timeframe]);
+
+  // When visual 6-pillar scan completes, reveal signal card
+  const handleScanComplete = useCallback(() => {
+    setIsScanningModalOpen(false);
+    setIsAnalyzing(false);
+    if (pendingAnalysisRef.current) {
+      setAiAnalysis(pendingAnalysisRef.current);
+    }
+  }, []);
+
+  // When user closes or cancels scan
+  const handleCancelScan = useCallback(() => {
+    setIsScanningModalOpen(false);
+    setIsAnalyzing(false);
+    pendingAnalysisRef.current = null;
+  }, []);
+
+  // Silent background scan for AutoTrader - NEVER opens modal or interrupts user
+  const runSilentAiAnalysis = useCallback(async () => {
+    if (candles.length === 0) return;
+    try {
+      const latestIndicators = indicators || calculateAllIndicators(candles);
+      const result = await candlexApiService.analyze(
+        activeTicker,
+        timeframe.toUpperCase(),
+        candles,
+        latestIndicators
+      );
+      if (result) {
+        setAiAnalysis(result);
+      }
+    } catch (e) {
+      console.error("AutoTrader background analysis error:", e);
+    }
+  }, [candles, indicators, activeTicker, timeframe]);
+
+  // Keep compatibility for any general invocation
+  const runAiAnalysis = runManualAiScan;
 
   const prevSelectionRef = useRef<string>(`${activeTicker}_${timeframe}`);
 
@@ -864,16 +889,16 @@ export default function CandleXWorkstation({
 
   const lastExecutedSignalRef = useRef<string>("");
 
-  // Continuous Neural Scanner: Automatically runs AI Analysis every 3 seconds when AutoTrader is active
+  // Continuous Neural Scanner: Automatically runs silent AI Analysis every 3 seconds when AutoTrader is active
   useEffect(() => {
     if (!autoTraderConfig.enabled) return;
 
     const scanInterval = setInterval(() => {
-      runAiAnalysis(true);
+      runSilentAiAnalysis();
     }, 3000);
 
     return () => clearInterval(scanInterval);
-  }, [autoTraderConfig.enabled, runAiAnalysis]);
+  }, [autoTraderConfig.enabled, runSilentAiAnalysis]);
 
   // Automated Execution Engine: Triggers real Hiove broker trades continuously when AutoTrader is enabled
   useEffect(() => {
@@ -1438,7 +1463,7 @@ export default function CandleXWorkstation({
             onChangeTimeframe={setTimeframe}
             protectionEnabled={protectionEnabled}
             onToggleProtection={() => setProtectionEnabled(!protectionEnabled)}
-            onGenerateAnalysis={() => runAiAnalysis(true)}
+            onGenerateAnalysis={runManualAiScan}
             isAnalyzing={isAnalyzing}
             analysis={aiAnalysis}
             indicators={indicators}
@@ -1475,12 +1500,14 @@ export default function CandleXWorkstation({
             )}
 
             <AiNeuralScannerOverlay
-              isScanning={isAnalyzing}
+              isScanning={isScanningModalOpen}
               activeTicker={activeTicker}
               timeframe={timeframe}
               indicators={indicators}
               candles={candles}
               analysis={aiAnalysis}
+              onClose={handleCancelScan}
+              onComplete={handleScanComplete}
             />
 
             <CenterSignalOverlay
@@ -1490,7 +1517,7 @@ export default function CandleXWorkstation({
               indicators={indicators}
               candles={candles}
               isAnalyzing={isAnalyzing}
-              onReScan={() => runAiAnalysis(true)}
+              onReScan={runManualAiScan}
               onClose={handleClearCurrentSignal}
               onClearAnalysis={handleClearCurrentSignal}
               trades={trades}

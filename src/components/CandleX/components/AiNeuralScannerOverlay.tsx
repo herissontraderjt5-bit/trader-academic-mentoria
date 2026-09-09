@@ -31,6 +31,7 @@ interface AiNeuralScannerOverlayProps {
   candles?: Candle[];
   analysis?: AiAnalysisResult | null;
   onClose?: () => void;
+  onComplete?: () => void;
 }
 
 interface ScanPillar {
@@ -101,10 +102,12 @@ export const AiNeuralScannerOverlay: React.FC<AiNeuralScannerOverlayProps> = ({
   candles = [],
   analysis,
   onClose,
+  onComplete,
 }) => {
   const [activeStep, setActiveStep] = useState<number>(0);
   const [progressPercent, setProgressPercent] = useState<number>(0);
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
+  const [showOverlay, setShowOverlay] = useState<boolean>(false);
 
   // Live second-by-second clock
   useEffect(() => {
@@ -117,6 +120,7 @@ export const AiNeuralScannerOverlay: React.FC<AiNeuralScannerOverlayProps> = ({
     minute: "2-digit",
     second: "2-digit",
   });
+
   const [scannedMetrics, setScannedMetrics] = useState<{
     trendText: string;
     trendScore: number;
@@ -203,22 +207,26 @@ export const AiNeuralScannerOverlay: React.FC<AiNeuralScannerOverlayProps> = ({
     });
   }, [indicators, candles]);
 
-  const [showOverlay, setShowOverlay] = useState<boolean>(false);
-
   // Sync isScanning prop to internal showOverlay state
   useEffect(() => {
     if (isScanning) {
       setShowOverlay(true);
       setProgressPercent(0);
       setActiveStep(0);
+    } else {
+      setShowOverlay(false);
     }
   }, [isScanning]);
+
+  const handleManualClose = () => {
+    setShowOverlay(false);
+    if (onClose) onClose();
+  };
 
   // Stepped progression timer when scanning is triggered
   useEffect(() => {
     if (!showOverlay) return;
 
-    // Play initial telemetry scan sound
     soundManager.playTelemetryScan();
 
     const interval = setInterval(() => {
@@ -227,16 +235,29 @@ export const AiNeuralScannerOverlay: React.FC<AiNeuralScannerOverlayProps> = ({
           clearInterval(interval);
           return 100;
         }
-        // Increment by 2 every 50ms (takes 2.5 seconds to reach 100%)
+        // Increment smoothly: ~2.4 seconds total to reach 100%
         const next = prev + 2;
         return next > 100 ? 100 : next;
       });
-    }, 50);
+    }, 48);
 
-    return () => clearInterval(interval);
-  }, [showOverlay]);
+    // Watchdog safety fallback: never freeze on screen past 3.5 seconds
+    const watchdog = setTimeout(() => {
+      setShowOverlay(false);
+      if (onComplete) {
+        onComplete();
+      } else if (onClose) {
+        onClose();
+      }
+    }, 3500);
 
-  // Sync active step with progress and trigger close when done
+    return () => {
+      clearInterval(interval);
+      clearTimeout(watchdog);
+    };
+  }, [showOverlay, onComplete, onClose]);
+
+  // Sync active step with progress and trigger completion when done
   useEffect(() => {
     if (!showOverlay) return;
 
@@ -249,15 +270,19 @@ export const AiNeuralScannerOverlay: React.FC<AiNeuralScannerOverlayProps> = ({
     if (progressPercent >= 100) {
       soundManager.playConfluenceLocked();
 
-      // Remain open for 1.5 seconds so user can see "VALIDADO" on all indicators
+      // Brief pause of 450ms so user clearly sees all 6 validated pillars
       const closeTimer = setTimeout(() => {
         setShowOverlay(false);
-        if (onClose) onClose();
-      }, 1500);
+        if (onComplete) {
+          onComplete();
+        } else if (onClose) {
+          onClose();
+        }
+      }, 450);
 
       return () => clearTimeout(closeTimer);
     }
-  }, [progressPercent, showOverlay, activeStep, onClose]);
+  }, [progressPercent, showOverlay, activeStep, onComplete, onClose]);
 
   if (!showOverlay) return null;
 
@@ -311,13 +336,13 @@ export const AiNeuralScannerOverlay: React.FC<AiNeuralScannerOverlayProps> = ({
             </div>
           </div>
 
-          {/* Radar Speed Meter */}
+          {/* Radar Speed Meter & Close Button */}
           <div className="flex items-center gap-3">
             <div className="text-right font-mono">
-              <span className="text-[10px] text-slate-400 uppercase block">Varredura (10s)</span>
+              <span className="text-[10px] text-slate-400 uppercase block">Varredura Neural (3s)</span>
               <div className="flex items-center gap-1.5 justify-end">
                 <span className="text-sm font-bold text-amber-400">
-                  {Math.max(0, Math.ceil(10 - (progressPercent / 10)))}s
+                  {Math.max(0, Math.ceil(3 - (progressPercent / 33.3)))}s
                 </span>
                 <span className="text-slate-600">&bull;</span>
                 <span className="text-base font-black text-[#FF7A00]">{progressPercent}%</span>
@@ -326,6 +351,16 @@ export const AiNeuralScannerOverlay: React.FC<AiNeuralScannerOverlayProps> = ({
             <div className="w-9 h-9 rounded-full border-2 border-[#FF7A00]/40 border-t-[#FF7A00] animate-spin flex items-center justify-center">
               <Cpu className="w-4 h-4 text-[#FF7A00]" />
             </div>
+            {/* Top Close (X) Button */}
+            <button
+              type="button"
+              id="btn-close-scanner-overlay"
+              onClick={handleManualClose}
+              className="w-8 h-8 rounded-lg bg-[#151C2C] hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-700 hover:border-rose-500/40 flex items-center justify-center transition-colors cursor-pointer ml-1"
+              title="Fechar Escaneamento"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
@@ -336,7 +371,7 @@ export const AiNeuralScannerOverlay: React.FC<AiNeuralScannerOverlayProps> = ({
               <Sparkles className="w-3.5 h-3.5" />
               Validando 6 Pilares de Confluência Institucional...
             </span>
-            <span className="text-amber-400 font-bold">{activeStep + 1} de 6 Concluídos</span>
+            <span className="text-amber-400 font-bold">{Math.min(6, activeStep + 1)} de 6 Concluídos</span>
           </div>
 
           <div className="h-2.5 w-full bg-[#141A26] rounded-full overflow-hidden border border-[#222E44] relative">
@@ -441,9 +476,19 @@ export const AiNeuralScannerOverlay: React.FC<AiNeuralScannerOverlayProps> = ({
             </span>
           </div>
 
-          <div className="flex items-center gap-1.5 font-mono text-[10px] text-slate-400">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>Motor: CandleX AI Confluence Core</span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 font-mono text-[10px] text-slate-400">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Motor: CandleX AI Confluence Core</span>
+            </div>
+            <button
+              type="button"
+              id="btn-cancel-scanner-footer"
+              onClick={handleManualClose}
+              className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-slate-400 hover:text-white bg-[#151C2C] hover:bg-rose-900/40 border border-slate-700 hover:border-rose-500/40 transition-colors cursor-pointer"
+            >
+              Cancelar Varredura
+            </button>
           </div>
         </div>
       </div>

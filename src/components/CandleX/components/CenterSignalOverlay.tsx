@@ -426,17 +426,47 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         soundManager.playRejectAlert();
         soundManager.speakAlert("Sinal cancelado pelo Filtro Quadrante de Cores");
       } else {
-        // Valid signal confirmed immediately for execution
-        setDecision("CONFIRMED");
+        // Initial PENDING audit phase: displays analysis and confluences before final confirmation
+        setDecision("PENDING");
         setResolvedDir(analysis.direction);
-        hasAnnouncedDecisionRef.current = true;
-        if (analysis.direction === "CALL") {
-          soundManager.playCallAlert();
-          soundManager.speakAlert(`Sinal confirmado: COMPRA em ${activeTicker}`);
-        } else if (analysis.direction === "PUT") {
-          soundManager.playPutAlert();
-          soundManager.speakAlert(`Sinal confirmado: VENDA em ${activeTicker}`);
-        }
+        hasAnnouncedDecisionRef.current = false;
+
+        // Transition from Analysis Audit to Confirmation after brief validation (1.8s)
+        const confirmTimer = setTimeout(() => {
+          if (isCancelledByUserRef.current) return;
+
+          // Re-verify Filtro Quadrante de Cores before confirming
+          const curC1 = candles.length >= 1 ? candles[candles.length - 1] : null;
+          const curC2 = candles.length >= 2 ? candles[candles.length - 2] : null;
+          const curAlt2 = curC1 && curC2 ? (curC1.close >= curC1.open) !== (curC2.close >= curC2.open) : false;
+
+          if (curAlt2) {
+            setDecision("REJECTED");
+            setResolvedDir("NEUTRAL");
+            hasAnnouncedDecisionRef.current = true;
+            setRejectionReason("Filtro Quadrante de Cores Ativado: As 2 últimas velas fecharam com cores alternadas (Positiva e Negativa). Entrada cancelada.");
+            soundManager.playRejectAlert();
+            soundManager.speakAlert("Sinal cancelado pelo Filtro Quadrante de Cores");
+            if (onDeleteSignalTrade) {
+              onDeleteSignalTrade(signalTradeId);
+            }
+            return;
+          }
+
+          setDecision("CONFIRMED");
+          setResolvedDir(analysis.direction);
+          hasAnnouncedDecisionRef.current = true;
+
+          if (analysis.direction === "CALL") {
+            soundManager.playCallAlert();
+            soundManager.speakAlert(`Sinal confirmado: COMPRA em ${activeTicker}`);
+          } else if (analysis.direction === "PUT") {
+            soundManager.playPutAlert();
+            soundManager.speakAlert(`Sinal confirmado: VENDA em ${activeTicker}`);
+          }
+        }, 1800);
+
+        return () => clearTimeout(confirmTimer);
       }
     }
   }, [analysis, lastSignalTimestamp, activeTicker, onDeleteSignalTrade, signalTradeId, candles]);
