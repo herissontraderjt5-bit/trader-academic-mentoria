@@ -589,11 +589,8 @@ export function detectColorAlternation(candles: Candle[]): { isAlternating: bool
     if (effectiveClosed4[i] !== effectiveClosed4[i - 1]) flipsClosed4++;
   }
 
-  // An alternating quadrant is present if:
-  // - 3 flips out of 3 in last 4 candles (e.g. G-R-G-R or R-G-R-G)
-  // - 3 flips out of 3 in last 4 closed candles
-  // - 3 or 4 flips in last 5 candles (e.g. G-R-G-R-G, R-G-R-G-R, G-R-G-R-x, x-G-R-G-R)
-  const isAlternating = flipsLast4 >= 3 || flipsClosed4 >= 3 || flips5 >= 3;
+  // An alternating quadrant is present only on strict ping-pong alternation (e.g. 4 flips in 5 candles or 3/3 flips)
+  const isAlternating = flips5 >= 4 || (flipsLast4 >= 3 && flipsClosed4 >= 3);
   const flipsCount = Math.max(flips5, flipsLast4, flipsClosed4);
 
   return { isAlternating, flipsCount, colorSequence };

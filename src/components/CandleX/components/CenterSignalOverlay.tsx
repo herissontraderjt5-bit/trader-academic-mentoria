@@ -372,19 +372,13 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
       setResolvedDir("NEUTRAL");
       setRejectionReason("");
 
-      // Check if this analysis is cancelled at generation time (Quadrant, < 5 confluences, < 80% assertiveness)
+      // Check if this analysis is valid (direction !== NEUTRAL, confidence >= 60, confluences >= 2)
       const patterns = analysis.detectedPatterns || [];
-      const hasQuadrantWarning = patterns.some((p) =>
-        p.toLowerCase().includes("quadrante") ||
-        p.toLowerCase().includes("mercado xadrez") ||
-        p.toLowerCase().includes("sem fluxo direcional")
-      );
-
       const isNeutral = analysis.direction === "NEUTRAL";
-      const isLowConfidence = (analysis.confidenceScore || 0) < 70;
-      const isLowConfluence = patterns.length < 5;
+      const isLowConfidence = (analysis.confidenceScore || 0) < 60;
+      const isLowConfluence = patterns.length < 2;
 
-      if (isNeutral || isLowConfidence || isLowConfluence || hasQuadrantWarning) {
+      if (isNeutral || isLowConfidence || isLowConfluence) {
         setDecision("REJECTED");
         setResolvedDir("NEUTRAL");
         hasAnnouncedDecisionRef.current = true;
@@ -392,15 +386,22 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
           onDeleteSignalTrade(signalTradeId);
           hasRegisteredPendingRef.current = false;
         }
-        const rejectTxt = analysis.rationale ||
-          (hasQuadrantWarning
-            ? "Filtro Anti-Loss Ativado: Quadrante de cores alternadas (mercado xadrez sem fluxo direcional)."
-            : isLowConfluence
-            ? `Filtro Anti-Loss Ativado: Apenas ${patterns.length} confluência(s) detectada(s). O CandleX exige no mínimo 5 confluências.`
-            : `Assertividade insuficiente (${analysis.confidenceScore}% < 70%).`);
+        const rejectTxt = analysis.rationale || `Análise inconclusiva no momento (${analysis.confidenceScore}% de confluência).`;
         setRejectionReason(rejectTxt);
         soundManager.playRejectAlert();
-        soundManager.speakAlert("Sinal cancelado pelo Filtro Anti-Loss");
+        soundManager.speakAlert("Sinal em aguardo");
+      } else {
+        // Valid signal confirmed immediately for execution
+        setDecision("CONFIRMED");
+        setResolvedDir(analysis.direction);
+        hasAnnouncedDecisionRef.current = true;
+        if (analysis.direction === "CALL") {
+          soundManager.playCallAlert();
+          soundManager.speakAlert(`Sinal confirmado: COMPRA em ${activeTicker}`);
+        } else if (analysis.direction === "PUT") {
+          soundManager.playPutAlert();
+          soundManager.speakAlert(`Sinal confirmado: VENDA em ${activeTicker}`);
+        }
       }
     }
   }, [analysis, lastSignalTimestamp, activeTicker, onDeleteSignalTrade, signalTradeId]);
@@ -425,76 +426,16 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         const confidence = analysis.confidenceScore || 0;
         const dir = analysis.direction;
 
-        // RULE 0: PREVIOUS / PREPARATION CANDLE COLOR ALIGNMENT
-        const lastClosedCandle = candles.length > 0 ? candles[candles.length - 1] : null;
-        if (lastClosedCandle) {
-          const isCandleGreen = lastClosedCandle.close > lastClosedCandle.open;
-          const isCandleRed = lastClosedCandle.close < lastClosedCandle.open;
-          const isPriceActionReversal = patterns.some((p) =>
-            p.toLowerCase().includes("martelo") ||
-            p.toLowerCase().includes("estrela cadente") ||
-            p.toLowerCase().includes("rejeição") ||
-            p.toLowerCase().includes("rejeicao")
-          );
-
-          if (dir === "CALL" && isCandleRed && !isPriceActionReversal) {
-            setDecision("REJECTED");
-            setResolvedDir("NEUTRAL");
-            setRejectionReason("Filtro Anti-Loss Ativado: A vela anterior fechou negativa (Vermelha), contrariando o gatilho de Compra (CALL). O CandleX exige vela a favor do fluxo para confirmação.");
-            soundManager.playRejectAlert();
-            soundManager.speakAlert("Sinal cancelado: Vela anterior fechou negativa");
-            return;
-          }
-
-          if (dir === "PUT" && isCandleGreen && !isPriceActionReversal) {
-            setDecision("REJECTED");
-            setResolvedDir("NEUTRAL");
-            setRejectionReason("Filtro Anti-Loss Ativado: A vela anterior fechou positiva (Verde), contrariando o gatilho de Venda (PUT). O CandleX exige vela a favor do fluxo para confirmação.");
-            soundManager.playRejectAlert();
-            soundManager.speakAlert("Sinal cancelado: Vela anterior fechou positiva");
-            return;
-          }
-        }
-
-        // RULE 1: QUADRANT COLOR ALTERNATION CHECK
-        const hasQuadrantWarning = patterns.some((p) =>
-          p.toLowerCase().includes("quadrante") ||
-          p.toLowerCase().includes("mercado xadrez") ||
-          p.toLowerCase().includes("sem fluxo direcional") ||
-          p.toLowerCase().includes("alternância") ||
-          p.toLowerCase().includes("alternancia")
-        );
-
-        if (indicators?.isAlternatingQuadrant || hasQuadrantWarning || detectColorAlternation(candles).isAlternating) {
+        if (dir === "NEUTRAL" || confidence < 60 || confluenceCount < 2) {
           setDecision("REJECTED");
           setResolvedDir("NEUTRAL");
-          setRejectionReason("Filtro Anti-Loss Ativado: Quadrante de cores alternadas (mercado xadrez sem fluxo direcional). Entrada cancelada para proteger seu capital contra falso rompimento.");
+          setRejectionReason("Confluências técnicas insuficientes para confirmação.");
           soundManager.playRejectAlert();
-          soundManager.speakAlert("Sinal cancelado: Quadrante de cores alternadas detectado");
+          soundManager.speakAlert("Sinal em aguardo");
           return;
         }
 
-        // RULE 2: LOW CONFLUENCES CHECK (< 5 CONFLUENCES)
-        if (confluenceCount < 5) {
-          setDecision("REJECTED");
-          setResolvedDir(dir);
-          setRejectionReason(`Filtro Anti-Loss Ativado: Confluências insuficientes (${confluenceCount} < 5 confluências). O CandleX exige no mínimo 5 confluências institucionais para validar a entrada com segurança.`);
-          soundManager.playRejectAlert();
-          soundManager.speakAlert("Sinal cancelado por confluências insuficientes");
-          return;
-        }
-
-        // RULE 3: LOW ACCURACY CHECK (< 70%)
-        if (confidence < 70 || dir === "NEUTRAL") {
-          setDecision("REJECTED");
-          setResolvedDir(dir);
-          setRejectionReason(`Assertividade insuficiente (${confidence}% < 70%). O CandleX exige no mínimo 70% de assertividade real para validar a entrada com segurança.`);
-          soundManager.playRejectAlert();
-          soundManager.speakAlert("Sinal cancelado: Assertividade abaixo de 70%");
-          return;
-        }
-
-        // ALL RULES PASSED -> CONFIRM SIGNAL!
+        // CONFIRM SIGNAL!
         setDecision("CONFIRMED");
         setResolvedDir(dir);
         if (dir === "CALL") {
