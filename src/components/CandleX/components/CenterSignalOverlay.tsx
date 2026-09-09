@@ -127,6 +127,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
   const hasRegisteredPendingRef = useRef<boolean>(false);
   const lockedEntryPriceRef = useRef<number | null>(null);
   const isResolvingRef = useRef<boolean>(false);
+  const isCancelledByUserRef = useRef<boolean>(false);
 
   const [predictionResult, setPredictionResult] = useState<"WIN" | "LOSS" | "DRAW" | null>(null);
   const [hasResolvedOutcome, setHasResolvedOutcome] = useState<boolean>(false);
@@ -190,6 +191,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
   };
 
   const handleCloseModal = () => {
+    isCancelledByUserRef.current = true;
     setIsVisible(false);
     if (onClearAnalysis) {
       onClearAnalysis();
@@ -200,21 +202,22 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
   };
 
   const handleCancelAnalysis = () => {
-    // 1. ONLY remove trade from operations if the operation was NOT already finalized (e.g. while still pending/in-progress)
-    const isAlreadyFinalized = predictionResult !== null || hasResolvedOutcome;
-    if (!isAlreadyFinalized && hasRegisteredPendingRef.current && onDeleteSignalTrade) {
+    // 1. Mark definitively as cancelled by user so outcome resolution NEVER runs afterwards
+    isCancelledByUserRef.current = true;
+    isResolvingRef.current = true;
+    setHasResolvedOutcome(true);
+    setDecision("REJECTED");
+    setRejectionReason("Operação cancelada pelo usuário. Análise descartada.");
+    hasRegisteredPendingRef.current = false;
+    lockedEntryPriceRef.current = null;
+    setIsVisible(false);
+
+    // 2. Delete trade from operations and pending trades
+    if (onDeleteSignalTrade) {
       onDeleteSignalTrade(signalTradeId);
     }
     
-    // 2. Reset internal state
-    setIsVisible(false);
-    setPredictionResult(null);
-    setHasResolvedOutcome(false);
-    isResolvingRef.current = false;
-    hasRegisteredPendingRef.current = false;
-    lockedEntryPriceRef.current = null;
-    
-    // 3. Clear analysis on parent workstation (deactivating AI until next click on Analisar Mercado)
+    // 3. Clear analysis and purge any pending trades on parent workstation
     if (onClearAnalysis) {
       onClearAnalysis();
     }
@@ -384,6 +387,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
       setLastSignalTimestamp(analysis.timestamp);
       setIsVisible(true);
       setIsMinimized(false);
+      isCancelledByUserRef.current = false;
       lastDecisionCandleStartRef.current = null;
       hasAnnouncedDecisionRef.current = false;
       hasRegisteredPendingRef.current = false;
@@ -404,7 +408,12 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
       const isLowConfidence = (analysis.confidenceScore || 0) < 60;
       const isLowConfluence = patterns.length < 2;
 
-      if (isNeutral || isLowConfidence || isLowConfluence) {
+      // EXACT USER RULE: Filtro Quadrante de Cores nas 2 últimas velas
+      const c1 = candles.length >= 1 ? candles[candles.length - 1] : null;
+      const c2 = candles.length >= 2 ? candles[candles.length - 2] : null;
+      const isAlternating2 = c1 && c2 ? (c1.close >= c1.open) !== (c2.close >= c2.open) : false;
+
+      if (isNeutral || isAlternating2 || isLowConfidence || isLowConfluence) {
         setDecision("REJECTED");
         setResolvedDir("NEUTRAL");
         hasAnnouncedDecisionRef.current = true;
@@ -412,10 +421,10 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
           onDeleteSignalTrade(signalTradeId);
           hasRegisteredPendingRef.current = false;
         }
-        const rejectTxt = analysis.rationale || `Análise inconclusiva no momento (${analysis.confidenceScore}% de confluência).`;
+        const rejectTxt = analysis.rationale || (isAlternating2 ? "Filtro Quadrante de Cores Ativado: As 2 últimas velas fecharam com cores alternadas (Positiva e Negativa)." : `Análise inconclusiva no momento (${analysis.confidenceScore}% de confluência).`);
         setRejectionReason(rejectTxt);
         soundManager.playRejectAlert();
-        soundManager.speakAlert("Sinal em aguardo");
+        soundManager.speakAlert("Sinal cancelado pelo Filtro Quadrante de Cores");
       } else {
         // Valid signal confirmed immediately for execution
         setDecision("CONFIRMED");
@@ -430,7 +439,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         }
       }
     }
-  }, [analysis, lastSignalTimestamp, activeTicker, onDeleteSignalTrade, signalTradeId]);
+  }, [analysis, lastSignalTimestamp, activeTicker, onDeleteSignalTrade, signalTradeId, candles]);
 
   // Active Decision Engine when entering the decision window (only during preparation candle!)
   useEffect(() => {
@@ -451,6 +460,23 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         const confluenceCount = patterns.length;
         const confidence = analysis.confidenceScore || 0;
         const dir = analysis.direction;
+
+        // EXACT USER RULE: Filtro Quadrante de Cores nas 2 últimas velas
+        const c1 = candles.length >= 1 ? candles[candles.length - 1] : null;
+        const c2 = candles.length >= 2 ? candles[candles.length - 2] : null;
+        const isAlternating2 = c1 && c2 ? (c1.close >= c1.open) !== (c2.close >= c2.open) : false;
+
+        if (isAlternating2) {
+          setDecision("REJECTED");
+          setResolvedDir("NEUTRAL");
+          setRejectionReason("Filtro Quadrante de Cores Ativado: As 2 últimas velas fecharam com cores alternadas (Positiva e Negativa). Entrada cancelada.");
+          soundManager.playRejectAlert();
+          soundManager.speakAlert("Sinal cancelado pelo Filtro Quadrante de Cores");
+          if (onDeleteSignalTrade) {
+            onDeleteSignalTrade(signalTradeId);
+          }
+          return;
+        }
 
         if (dir === "NEUTRAL" || confidence < 60 || confluenceCount < 2) {
           setDecision("REJECTED");
@@ -494,7 +520,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
 
   // Lock entry price and register pending trade when entry candle starts
   useEffect(() => {
-    if (!analysis || isAnalyzing || !isVisible || decision === "REJECTED") return;
+    if (!analysis || isAnalyzing || !isVisible || decision === "REJECTED" || isCancelledByUserRef.current) return;
 
     const nowMs = currentTime.getTime();
     if (nowMs >= entryDate.getTime()) {
@@ -504,7 +530,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         return;
       }
 
-      if (decision === "CONFIRMED" && lockedEntryPriceRef.current === null) {
+      if (decision === "CONFIRMED" && lockedEntryPriceRef.current === null && !isCancelledByUserRef.current) {
         const entryCandleSecs = Math.floor(entryDate.getTime() / 1000);
         
         // Search exact candle starting at entryDate
@@ -523,7 +549,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         }
       }
 
-      if (decision === "CONFIRMED" && !hasRegisteredPendingRef.current && onSaveSignalTrade) {
+      if (decision === "CONFIRMED" && !isCancelledByUserRef.current && !hasRegisteredPendingRef.current && onSaveSignalTrade) {
         hasRegisteredPendingRef.current = true;
         const expiryMins = Math.max(1, Math.round(candleLengthMs / 60000));
         const stakeAmount = userStake;
@@ -550,10 +576,10 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
 
   // AUTOMATIC OUTCOME RESOLUTION (WIN / LOSS / DOJI) WHEN EXPIRY TIME IS REACHED
   useEffect(() => {
-    if (!analysis || isAnalyzing || !isVisible || decision !== "CONFIRMED") return;
+    if (!analysis || isAnalyzing || !isVisible || decision !== "CONFIRMED" || isCancelledByUserRef.current) return;
 
     const nowMs = currentTime.getTime();
-    if (nowMs >= expiryDate.getTime() && !hasResolvedOutcome && !isResolvingRef.current) {
+    if (nowMs >= expiryDate.getTime() && !hasResolvedOutcome && !isResolvingRef.current && !isCancelledByUserRef.current) {
       isResolvingRef.current = true;
       setHasResolvedOutcome(true);
 

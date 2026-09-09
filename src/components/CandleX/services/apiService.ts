@@ -205,13 +205,12 @@ export function generateAlgorithmicAnalysis(
     ? recentCandles.reduce((acc, c) => acc + (c.volume || 0), 0) / recentCandles.length 
     : lastCandle.volume || 1;
 
-  // 0. QUADRANT AND CANDLE QUALITY FLAGS (Anti-Loss Shield Variables)
-  const recentLast5 = candles.slice(-5);
-  const colorsArray = recentLast5.map((c) => (c.close >= c.open ? "G" : "R"));
-  const alternation = detectColorAlternation(candles);
-  const isAlternatingQuadrant = Boolean(fullIndicators.isAlternatingQuadrant) || alternation.isAlternating;
-  const colorEmojiSeq = colorsArray.map((c) => (c === "G" ? "🟢" : "🔴")).join(" ");
-  const isExhaustionCandle = atr > 0 && candleRange >= atr * 2.5 && candleBody >= candleRange * 0.70;
+  // 0. EXACT USER RULE: FILTRO QUADRANTE DE CORES NAS 2 ÚLTIMAS VELAS
+  // "se nas 2 ultimas velas estiver positivo e negativo ou negativo e positivo vai cancelar o sinal"
+  const prevCandle = candles.length >= 2 ? candles[candles.length - 2] : null;
+  const isLastGreen = lastCandle.close >= lastCandle.open;
+  const isPrevGreen = prevCandle ? prevCandle.close >= prevCandle.open : isLastGreen;
+  const isLast2Alternating = prevCandle ? (isLastGreen !== isPrevGreen) : false;
 
   const timeframeLabel = tf.includes("5m") || tf === "5"
     ? "M5 (5 Minutos)"
@@ -220,6 +219,40 @@ export function generateAlgorithmicAnalysis(
     : tf.includes("15m") || tf === "15"
     ? "M15 (15 Minutos)"
     : "M1 (1 Minuto)";
+
+  if (isLast2Alternating) {
+    const seqEmoji = isPrevGreen ? "🟢 Positiva ➔ 🔴 Negativa" : "🔴 Negativa ➔ 🟢 Positiva";
+    return {
+      direction: "NEUTRAL",
+      confidenceScore: 50.0,
+      confluenceCount: 0,
+      timeframeExpiry: timeframeLabel,
+      triggerZone: `Aguardar confirmação de fluxo (Últimas 2 velas alternadas: ${seqEmoji})`,
+      invalidationLevel: `Faixa $${nearSupport} - $${nearResistance}`,
+      detectedPatterns: [
+        `⚠️ Filtro Quadrante de Cores: ${seqEmoji}`,
+        "Mercado em alternância de cores nas 2 últimas velas (sem fluxo direcional contínuo)",
+        "Proteção de Capital: Entrada cancelada pela IA contra falso rompimento",
+        "Aguarde o mercado formar 2 velas consecutivas da mesma cor para confirmação"
+      ],
+      strategyName: "Cancelado: Filtro Quadrante de Cores (2 Velas Alternadas)",
+      marketSentiment: "LATERAL",
+      rationale: `Filtro Quadrante de Cores Ativado: As 2 últimas velas fecharam alternadas (${seqEmoji}). Mercado sem fluxo direcional. Entrada cancelada.`,
+      hioveQuickTip: "SINAL CANCELADO (QUADRANTE DE CORES): As 2 últimas velas alternaram de cor. Aguarde fluxo de 2 velas da mesma cor.",
+      keyLevels: { support: nearSupport, resistance: nearResistance, pivot },
+      defenseZone: { entryTrigger: currentPrice, defensePrice: currentPrice, distancePercent: 0, label: "Cancelado: Quadrante de Cores" },
+      ticker,
+      priceAtAnalysis: currentPrice,
+      timestamp: Date.now(),
+    };
+  }
+
+  // Quality Flags for confluences
+  const recentLast5 = candles.slice(-5);
+  const colorsArray = recentLast5.map((c) => (c.close >= c.open ? "G" : "R"));
+  const alternation = detectColorAlternation(candles);
+  const isAlternatingQuadrant = Boolean(fullIndicators.isAlternatingQuadrant) || alternation.isAlternating;
+  const isExhaustionCandle = atr > 0 && candleRange >= atr * 2.5 && candleBody >= candleRange * 0.70;
 
 
   // 1. STRICT INSTITUTIONAL TREND IDENTIFICATION

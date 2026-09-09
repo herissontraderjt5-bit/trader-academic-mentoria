@@ -767,12 +767,24 @@ export default function CandleXWorkstation({
   };
 
   const handleDeleteSignalTrade = async (tradeId: string) => {
-    const updatedTrades = trades.filter((t) => t.id !== tradeId);
+    const updatedTrades = trades.filter((t) => t.id !== tradeId && !(t.result === "PENDING" && t.ticker === activeTicker));
     setTrades(updatedTrades);
     if (currentUser && currentUser.id !== 'usr-guest') {
       localStorage.setItem(`candlex_trades_${currentUser.id}`, JSON.stringify(updatedTrades));
       await supabaseService.deleteCandleXTrade(currentUser.id, tradeId);
     }
+  };
+
+  const handleClearCurrentSignal = () => {
+    setAiAnalysis(null);
+    // User cancelled signal: Purge all PENDING trades for this ticker so it NEVER evaluates WIN or LOSS
+    setTrades((prev) => {
+      const filtered = prev.filter((t) => !(t.result === "PENDING" && t.ticker === activeTicker));
+      if (currentUser && currentUser.id !== 'usr-guest') {
+        localStorage.setItem(`candlex_trades_${currentUser.id}`, JSON.stringify(filtered));
+      }
+      return filtered;
+    });
   };
 
   const handleClearTrades = async () => {
@@ -1479,8 +1491,8 @@ export default function CandleXWorkstation({
               candles={candles}
               isAnalyzing={isAnalyzing}
               onReScan={() => runAiAnalysis(true)}
-              onClose={() => setAiAnalysis(null)}
-              onClearAnalysis={() => setAiAnalysis(null)}
+              onClose={handleClearCurrentSignal}
+              onClearAnalysis={handleClearCurrentSignal}
               trades={trades}
               onSaveSignalTrade={handleSaveSignalTrade}
               onDeleteSignalTrade={handleDeleteSignalTrade}
