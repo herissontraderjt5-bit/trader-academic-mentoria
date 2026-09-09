@@ -121,6 +121,44 @@ export const HioveUnifiedTopBar: React.FC<HioveUnifiedTopBarProps> = ({
         </div>
       </div>
 
+      {/* Middle: Open Asset Tabs (SOL, ETH, BTC, etc.) */}
+      <div className="hidden lg:flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 max-w-md">
+        {openTabs.map((tab) => (
+          <div
+            key={tab.id}
+            onClick={() => onSelectTicker(tab.id)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer border ${
+              activeTicker === tab.id
+                ? "bg-[#181D26] text-[#FF7A00] border-[#FF7A00]/60 shadow-[0_0_10px_rgba(255,122,0,0.25)]"
+                : "bg-[#121622] text-slate-400 hover:text-white border-[#1E2638]"
+            }`}
+          >
+            <div className={`w-1.5 h-1.5 rounded-full ${activeTicker === tab.id ? "bg-emerald-400 animate-pulse" : "bg-slate-600"}`} />
+            <span>{tab.label}</span>
+            {openTabs.length > 1 && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCloseTab(tab.id);
+                }}
+                className="p-0.5 hover:text-rose-400 rounded transition-colors"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={onAddTab}
+          className="p-1 rounded-lg bg-[#121622] hover:bg-[#1C2538] text-slate-400 hover:text-white border border-[#1E2638] transition-colors cursor-pointer"
+          title="Adicionar Par de Moeda"
+        >
+          <Plus className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
       {/* Right: Ticker, Trade button & Tool Actions */}
       <div className="flex items-center gap-3.5 flex-shrink-0">
         {/* Ativo details */}

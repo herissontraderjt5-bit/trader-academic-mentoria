@@ -103,6 +103,7 @@ const INITIAL_AUTOTRADER_SESSION: AutoTraderSession = {
 };
 
 const INITIAL_TABS = [
+  { id: "SOLUSDT", label: "SOL/USDT", type: "CRYPTO" },
   { id: "ETHUSDT", label: "ETH/USDT", type: "CRYPTO" },
   { id: "BTCUSDT", label: "BTC/USDT", type: "CRYPTO" },
   { id: "GBPUSD", label: "GBP/USD", type: "FOREX" },

@@ -56,6 +56,7 @@ interface NeuralAnalyzerSidebarProps {
 }
 
 const AVAILABLE_ASSETS = [
+  { id: "SOLUSDT", label: "SOL/USDT", type: "CRYPTO", payout: 89 },
   { id: "ETHUSDT", label: "ETH/USDT", type: "CRYPTO", payout: 89 },
   { id: "BTCUSDT", label: "BTC/USDT", type: "CRYPTO", payout: 90 },
   { id: "XRPUSDT", label: "XRP/USDT", type: "CRYPTO", payout: 89 },
