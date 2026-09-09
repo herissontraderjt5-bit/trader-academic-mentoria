@@ -23,6 +23,7 @@ import {
   Radio,
   RefreshCw,
   BookOpen,
+  AlertTriangle,
 } from "lucide-react";
 import { AiAnalysisResult, TechnicalIndicators, Candle, TradeRecord, BankrollConfig } from "../../../types";
 import { soundManager } from "../utils/soundEffects";
@@ -359,7 +360,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
       );
 
       const isNeutral = analysis.direction === "NEUTRAL";
-      const isLowConfidence = (analysis.confidenceScore || 0) < 80;
+      const isLowConfidence = (analysis.confidenceScore || 0) < 70;
       const isLowConfluence = patterns.length < 5;
 
       if (isNeutral || isLowConfidence || isLowConfluence || hasQuadrantWarning) {
@@ -375,7 +376,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
             ? "Filtro Anti-Loss Ativado: Quadrante de cores alternadas (mercado xadrez sem fluxo direcional)."
             : isLowConfluence
             ? `Filtro Anti-Loss Ativado: Apenas ${patterns.length} confluência(s) detectada(s). O CandleX exige no mínimo 5 confluências.`
-            : `Assertividade insuficiente (${analysis.confidenceScore}% < 80%).`);
+            : `Assertividade insuficiente (${analysis.confidenceScore}% < 70%).`);
         setRejectionReason(rejectTxt);
         soundManager.playRejectAlert();
         soundManager.speakAlert("Sinal cancelado pelo Filtro Anti-Loss");
@@ -408,8 +409,14 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         if (lastClosedCandle) {
           const isCandleGreen = lastClosedCandle.close > lastClosedCandle.open;
           const isCandleRed = lastClosedCandle.close < lastClosedCandle.open;
+          const isPriceActionReversal = patterns.some((p) =>
+            p.toLowerCase().includes("martelo") ||
+            p.toLowerCase().includes("estrela cadente") ||
+            p.toLowerCase().includes("rejeição") ||
+            p.toLowerCase().includes("rejeicao")
+          );
 
-          if (dir === "CALL" && isCandleRed) {
+          if (dir === "CALL" && isCandleRed && !isPriceActionReversal) {
             setDecision("REJECTED");
             setResolvedDir("NEUTRAL");
             setRejectionReason("Filtro Anti-Loss Ativado: A vela anterior fechou negativa (Vermelha), contrariando o gatilho de Compra (CALL). O CandleX exige vela a favor do fluxo para confirmação.");
@@ -418,7 +425,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
             return;
           }
 
-          if (dir === "PUT" && isCandleGreen) {
+          if (dir === "PUT" && isCandleGreen && !isPriceActionReversal) {
             setDecision("REJECTED");
             setResolvedDir("NEUTRAL");
             setRejectionReason("Filtro Anti-Loss Ativado: A vela anterior fechou positiva (Verde), contrariando o gatilho de Venda (PUT). O CandleX exige vela a favor do fluxo para confirmação.");
@@ -456,13 +463,13 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
           return;
         }
 
-        // RULE 3: LOW ACCURACY CHECK (< 80%)
-        if (confidence < 80 || dir === "NEUTRAL") {
+        // RULE 3: LOW ACCURACY CHECK (< 70%)
+        if (confidence < 70 || dir === "NEUTRAL") {
           setDecision("REJECTED");
           setResolvedDir(dir);
-          setRejectionReason(`Assertividade insuficiente (${confidence}% < 80%). O CandleX exige no mínimo 80% de assertividade institucional para validar a entrada com segurança.`);
+          setRejectionReason(`Assertividade insuficiente (${confidence}% < 70%). O CandleX exige no mínimo 70% de assertividade real para validar a entrada com segurança.`);
           soundManager.playRejectAlert();
-          soundManager.speakAlert("Sinal cancelado: Assertividade abaixo de 80%");
+          soundManager.speakAlert("Sinal cancelado: Assertividade abaixo de 70%");
           return;
         }
 
@@ -1333,6 +1340,17 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
                 </span>
               </div>
             </div>
+
+            {/* OB Professional Safety Rate Tip */}
+            {!isRejected && (
+              <div className="bg-amber-500/10 border border-amber-500/30 p-2.5 rounded-xl flex items-start gap-2.5 text-xs">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div className="text-[11px] text-amber-200/90 leading-tight">
+                  <strong className="text-amber-300 block mb-0.5">Dica de Ouro OB (Taxa de Proteção):</strong>
+                  NÃO clique na abertura seca aos 00s. Aguarde a vela dar uma esticada contrária nos primeiros 15s para garantir melhor taxa de retração!
+                </div>
+              </div>
+            )}
 
             {/* Prominent Cancel Button in Full View */}
             <div className="pt-1">

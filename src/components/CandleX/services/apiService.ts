@@ -300,6 +300,42 @@ export function generateAlgorithmicAnalysis(
     };
   }
 
+  // ANTI-LOSS FILTER: Vela de Exaustão (Clímax de Volume / Range Anormal)
+  if (atr > 0 && candleRange >= atr * 2.2 && candleBody >= candleRange * 0.65) {
+    return {
+      direction: "NEUTRAL",
+      confidenceScore: 50.0,
+      confluenceCount: 0,
+      timeframeExpiry: timeframeLabel,
+      triggerZone: `Aguardar correção após vela de exaustão em $${currentPrice.toFixed(2)}`,
+      invalidationLevel: `Faixa $${nearSupport} - $${nearResistance}`,
+      detectedPatterns: [
+        `⚠️ Alerta Anti-Loss: Vela de Exaustão Anormal (${(candleRange / atr).toFixed(1)}x ATR)`,
+        "Clímax de movimento: Alta probabilidade de retração ou correção contrária na próxima vela",
+        "Risco de Topo/Fundo Falso: Operação na abertura seguinte tem alto índice de LOSS",
+        "Ação Recomendada: Aguardar vela de correção ou estabilização"
+      ],
+      strategyName: "Bloqueio Anti-Loss: Vela de Exaustão (Clímax)",
+      marketSentiment: "LATERAL",
+      rationale: `Filtro Anti-Loss OB: Vela de exaustão anormal detectada (${(candleRange / atr).toFixed(1)}x ATR). Não opere na abertura após exaustão extrema devido ao risco de retração reversa imediata.`,
+      hioveQuickTip: "NÃO OPERE: Vela de exaustão extrema detectada. O mercado costuma retrair na vela seguinte. Aguarde estabilização.",
+      keyLevels: {
+        support: nearSupport,
+        resistance: nearResistance,
+        pivot,
+      },
+      defenseZone: {
+        entryTrigger: currentPrice,
+        defensePrice: currentPrice,
+        distancePercent: 0,
+        label: "Bloqueio Anti-Loss: Exaustão",
+      },
+      ticker,
+      priceAtAnalysis: currentPrice,
+      timestamp: Date.now(),
+    };
+  }
+
   // 1. STRICT INSTITUTIONAL TREND IDENTIFICATION
   const recent6 = candles.slice(-6);
   const greenCount = recent6.filter((c) => c.close >= c.open).length;
@@ -474,59 +510,183 @@ export function generateAlgorithmicAnalysis(
   }
 
   // 3. DETERMINISTIC DIRECTION & CONFLUENCE SELECTION
-  // The direction corresponds directly to current candle color and flow
-  let direction: "CALL" | "PUT" = isLastCandleGreen ? "CALL" : "PUT";
-  let detectedPatterns: string[] = isLastCandleGreen
+  // Price Action Reversal Check vs Flow Continuation
+  const isShootingStarRejection = (pattern.includes("Estrela Cadente") || pattern.includes("Shooting Star") || upperWick >= candleRange * 0.45) && (lastCandle.high >= nearResistance - atr * 0.8);
+  const isHammerRejection = (pattern.includes("Martelo") || pattern.includes("Hammer") || lowerWick >= candleRange * 0.45) && (lastCandle.low <= nearSupport + atr * 0.8);
+
+  let direction: "CALL" | "PUT";
+  if (isShootingStarRejection && !isHammerRejection) {
+    direction = "PUT";
+  } else if (isHammerRejection && !isShootingStarRejection) {
+    direction = "CALL";
+  } else {
+    direction = isLastCandleGreen ? "CALL" : "PUT";
+  }
+
+  // ANTI-LOSS FILTER 1: Anti-Topo (Bloqueio de CALL colado em Resistência ou Sobrecompra)
+  if (direction === "CALL") {
+    const distToResistance = nearResistance - currentPrice;
+    const isNearResistance = distToResistance >= 0 && distToResistance <= atr * 0.35;
+    const isOverbought = rsi >= 68;
+    const hasRejectionWick = upperWick >= candleRange * 0.35;
+
+    if (isNearResistance || isOverbought || hasRejectionWick) {
+      const rejectReason = isNearResistance
+        ? `Cotação encostada na Resistência Imediata ($${nearResistance.toFixed(2)})`
+        : isOverbought
+        ? `RSI Sobrecomprado (${rsi.toFixed(1)} >= 68)`
+        : `Vela anterior com rejeição de topo (Pavio superior de ${((upperWick / candleRange) * 100).toFixed(0)}%)`;
+
+      return {
+        direction: "NEUTRAL",
+        confidenceScore: 50.0,
+        confluenceCount: 0,
+        timeframeExpiry: timeframeLabel,
+        triggerZone: `Aguardar rompimento ou retração em $${currentPrice.toFixed(2)}`,
+        invalidationLevel: `Resistência em $${nearResistance.toFixed(2)}`,
+        detectedPatterns: [
+          `⚠️ Filtro Anti-Loss OB: Bloqueio de Compra no Topo`,
+          rejectReason,
+          "Risco de Retração Baixista: Alta probabilidade de vela vermelha contrária",
+          "Proteção de Capital: Entrada de CALL bloqueada para evitar comprar no topo",
+        ],
+        strategyName: "Bloqueio Anti-Loss: Compra no Topo / Resistência",
+        marketSentiment: "LATERAL",
+        rationale: `Filtro Anti-Loss OB Ativado: ${rejectReason}. Em Opções Binárias, comprar no topo colado na resistência tem alto índice de LOSS por retração imediata.`,
+        hioveQuickTip: `NÃO COMPRE NO TOPO: ${rejectReason}. Aguarde rompimento com volume ou retração nas médias antes de operar CALL.`,
+        keyLevels: { support: nearSupport, resistance: nearResistance, pivot },
+        defenseZone: { entryTrigger: currentPrice, defensePrice: currentPrice, distancePercent: 0, label: "Cancelado: Risco no Topo" },
+        ticker,
+        priceAtAnalysis: currentPrice,
+        timestamp: Date.now(),
+      };
+    }
+  }
+
+  // ANTI-LOSS FILTER 2: Anti-Fundo (Bloqueio de PUT colado em Suporte ou Sobrevenda)
+  if (direction === "PUT") {
+    const distToSupport = currentPrice - nearSupport;
+    const isNearSupport = distToSupport >= 0 && distToSupport <= atr * 0.35;
+    const isOversold = rsi <= 32;
+    const hasRejectionWick = lowerWick >= candleRange * 0.35;
+
+    if (isNearSupport || isOversold || hasRejectionWick) {
+      const rejectReason = isNearSupport
+        ? `Cotação encostada no Suporte Imediato ($${nearSupport.toFixed(2)})`
+        : isOversold
+        ? `RSI Sobrevendido (${rsi.toFixed(1)} <= 32)`
+        : `Vela anterior com rejeição de fundo (Pavio inferior de ${((lowerWick / candleRange) * 100).toFixed(0)}%)`;
+
+      return {
+        direction: "NEUTRAL",
+        confidenceScore: 50.0,
+        confluenceCount: 0,
+        timeframeExpiry: timeframeLabel,
+        triggerZone: `Aguardar rompimento ou repique em $${currentPrice.toFixed(2)}`,
+        invalidationLevel: `Suporte em $${nearSupport.toFixed(2)}`,
+        detectedPatterns: [
+          `⚠️ Filtro Anti-Loss OB: Bloqueio de Venda no Fundo`,
+          rejectReason,
+          "Risco de Repique Altista: Alta probabilidade de vela verde contrária",
+          "Proteção de Capital: Entrada de PUT bloqueada para evitar vender no fundo",
+        ],
+        strategyName: "Bloqueio Anti-Loss: Venda no Fundo / Suporte",
+        marketSentiment: "LATERAL",
+        rationale: `Filtro Anti-Loss OB Ativado: ${rejectReason}. Em Opções Binárias, vender no fundo colado no suporte tem alto índice de LOSS por repique imediato.`,
+        hioveQuickTip: `NÃO VENDA NO FUNDO: ${rejectReason}. Aguarde rompimento com volume ou repique nas médias antes de operar PUT.`,
+        keyLevels: { support: nearSupport, resistance: nearResistance, pivot },
+        defenseZone: { entryTrigger: currentPrice, defensePrice: currentPrice, distancePercent: 0, label: "Cancelado: Risco no Fundo" },
+        ticker,
+        priceAtAnalysis: currentPrice,
+        timestamp: Date.now(),
+      };
+    }
+  }
+
+  // ANTI-LOSS FILTER 3: Alinhamento com a Macro-Tendência Institucional (SMA 50)
+  if (direction === "CALL" && currentPrice < sma50 && ema9 < ema20) {
+    return {
+      direction: "NEUTRAL",
+      confidenceScore: 50.0,
+      confluenceCount: 0,
+      timeframeExpiry: timeframeLabel,
+      triggerZone: `Aguardar alinhamento com a tendência em $${currentPrice.toFixed(2)}`,
+      invalidationLevel: `Faixa $${nearSupport} - $${nearResistance}`,
+      detectedPatterns: [
+        "⚠️ Filtro Anti-Loss OB: CALL contra Macro-Tendência Dominante",
+        `Cotação ($${currentPrice.toFixed(2)}) abaixo da SMA 50 institucional ($${sma50.toFixed(2)})`,
+        "Médias rápidas em leque vendedor (EMA 9 < EMA 20)",
+        "Proteção de Capital: Operação contra o fluxo dominante gera loss frequente em OB"
+      ],
+      strategyName: "Bloqueio: Contra-Tendência Macro",
+      marketSentiment: "BAIXA",
+      rationale: "Filtro Anti-Loss OB: Proibido operar CALL abaixo da SMA 50 com médias em baixa no gráfico.",
+      hioveQuickTip: "NÃO COMPRE CONTRA A TENDÊNCIA: A macro-tendência é vendedora. Aguarde oportunidades de PUT a favor do fluxo.",
+      keyLevels: { support: nearSupport, resistance: nearResistance, pivot },
+      defenseZone: { entryTrigger: currentPrice, defensePrice: currentPrice, distancePercent: 0, label: "Bloqueio: Contra-Tendência" },
+      ticker,
+      priceAtAnalysis: currentPrice,
+      timestamp: Date.now(),
+    };
+  }
+
+  if (direction === "PUT" && currentPrice > sma50 && ema9 > ema20) {
+    return {
+      direction: "NEUTRAL",
+      confidenceScore: 50.0,
+      confluenceCount: 0,
+      timeframeExpiry: timeframeLabel,
+      triggerZone: `Aguardar alinhamento com a tendência em $${currentPrice.toFixed(2)}`,
+      invalidationLevel: `Faixa $${nearSupport} - $${nearResistance}`,
+      detectedPatterns: [
+        "⚠️ Filtro Anti-Loss OB: PUT contra Macro-Tendência Dominante",
+        `Cotação ($${currentPrice.toFixed(2)}) acima da SMA 50 institucional ($${sma50.toFixed(2)})`,
+        "Médias rápidas em leque comprador (EMA 9 > EMA 20)",
+        "Proteção de Capital: Operação contra o fluxo dominante gera loss frequente em OB"
+      ],
+      strategyName: "Bloqueio: Contra-Tendência Macro",
+      marketSentiment: "ALTA",
+      rationale: "Filtro Anti-Loss OB: Proibido operar PUT acima da SMA 50 com médias em alta no gráfico.",
+      hioveQuickTip: "NÃO VENDA CONTRA A TENDÊNCIA: A macro-tendência é compradora. Aguarde oportunidades de CALL a favor do fluxo.",
+      keyLevels: { support: nearSupport, resistance: nearResistance, pivot },
+      defenseZone: { entryTrigger: currentPrice, defensePrice: currentPrice, distancePercent: 0, label: "Bloqueio: Contra-Tendência" },
+      ticker,
+      priceAtAnalysis: currentPrice,
+      timestamp: Date.now(),
+    };
+  }
+
+  // 4. CONFLUÊNCIA GENUÍNA (SEM INJEÇÃO DE PADRÕES FALSOS)
+  let detectedPatterns: string[] = direction === "CALL"
     ? Array.from(new Set(callConfluences))
     : Array.from(new Set(putConfluences));
 
-  // Add confirmed candle color and momentum confluences
   if (direction === "CALL" && isLastCandleGreen) {
-    detectedPatterns.unshift("Fluxo Comprador: Vela atual fechou positiva (Verde)");
+    detectedPatterns.unshift("Fluxo Comprador: Vela anterior fechou com pressão compradora");
   } else if (direction === "PUT" && isLastCandleRed) {
-    detectedPatterns.unshift("Fluxo Vendedor: Vela atual fechou negativa (Vermelha)");
-  }
-
-  // Baseline confluences
-  if (detectedPatterns.length < 5) {
-    if (direction === "CALL") {
-      if (ema9 > ema20) detectedPatterns.push(`Alinhamento de Médias: EMA 9 ($${ema9.toFixed(2)}) > EMA 20 ($${ema20.toFixed(2)})`);
-      if (currentPrice > nearSupport) detectedPatterns.push(`Suporte Dinâmico: Cotação sustentada acima de $${nearSupport.toFixed(2)}`);
-      if (rsi >= 40 && rsi <= 70) detectedPatterns.push(`RSI Momentum (${rsi.toFixed(1)}): Zona de tração compradora`);
-      if (macdHist >= 0) detectedPatterns.push(`MACD Momentum: Histograma positivo a favor da compra`);
-      if (volumeDelta >= 0) detectedPatterns.push(`Volume Delta: Pressão compradora confirmada (+${volumeDelta.toFixed(1)}%)`);
-      if (detectedPatterns.length < 5) detectedPatterns.push(`Microestrutura: Sustentação de mínimas ascendentes`);
-    } else {
-      if (ema9 < ema20) detectedPatterns.push(`Alinhamento de Médias: EMA 9 ($${ema9.toFixed(2)}) < EMA 20 ($${ema20.toFixed(2)})`);
-      if (currentPrice < nearResistance) detectedPatterns.push(`Resistência Dinâmica: Cotação pressionada abaixo de $${nearResistance.toFixed(2)}`);
-      if (rsi <= 60 && rsi >= 30) detectedPatterns.push(`RSI Momentum (${rsi.toFixed(1)}): Zona de tração vendedora`);
-      if (macdHist <= 0) detectedPatterns.push(`MACD Momentum: Histograma negativo a favor da venda`);
-      if (volumeDelta <= 0) detectedPatterns.push(`Volume Delta: Pressão vendedora confirmada (${volumeDelta.toFixed(1)}%)`);
-      if (detectedPatterns.length < 5) detectedPatterns.push(`Microestrutura: Rejeição de máximas descendentes`);
-    }
-    detectedPatterns = Array.from(new Set(detectedPatterns));
+    detectedPatterns.unshift("Fluxo Vendedor: Vela anterior fechou com pressão vendedora");
   }
 
   const N = detectedPatterns.length;
 
-  // RULE: Cancel if less than 5 confluences
+  // RULE: Cancel if less than 5 genuine confluences
   if (N < 5) {
     return {
       direction: "NEUTRAL",
       confidenceScore: 50.0,
       confluenceCount: N,
       timeframeExpiry: timeframeLabel,
-      triggerZone: `Aguardar confluências adicionais em $${currentPrice.toFixed(2)}`,
+      triggerZone: `Aguardar confluências legítimas em $${currentPrice.toFixed(2)}`,
       invalidationLevel: `Faixa $${nearSupport} - $${nearResistance}`,
       detectedPatterns: [
-        `⚠️ Confluências Insuficientes (${N} de no mínimo 5 exigidas)`,
-        "Assertividade abaixo do limite mínimo institucional de 80%",
+        `⚠️ Confluências Reais Insuficientes (${N} de no mínimo 5 exigidas)`,
+        "Mercado sem validação institucional completa para Opções Binárias",
         ...detectedPatterns,
       ],
-      strategyName: "Aguardando Confluências (Mínimo 5)",
+      strategyName: "Aguardando Confluências Legítimas (Mínimo 5)",
       marketSentiment: trend,
-      rationale: `Apenas ${N} confluência(s) detectada(s). O CandleX exige no mínimo 5 confluências com assertividade >= 80% para confirmar a entrada com segurança.`,
-      hioveQuickTip: "AGUARDE: Confluências insuficientes no momento. Aguarde alinhamento de pelo menos 5 fatores analíticos.",
+      rationale: `Apenas ${N} confluência(s) real(is) detectada(s). O CandleX exige no mínimo 5 confluências técnicas verdadeiras sem filtros forçados para validar a entrada com segurança.`,
+      hioveQuickTip: "AGUARDE: Menos de 5 confluências reais no momento. Preservar o capital é melhor do que forçar operação.",
       keyLevels: {
         support: nearSupport,
         resistance: nearResistance,
@@ -544,19 +704,19 @@ export function generateAlgorithmicAnalysis(
     };
   }
 
-  // Calculate strict accuracy >= 80% for 5+ confluences
-  let rawConfidence = 82.0;
-  if (N === 5) rawConfidence = 85.0;
-  else if (N === 6) rawConfidence = 88.5;
-  else if (N === 7) rawConfidence = 91.5;
-  else if (N === 8) rawConfidence = 94.0;
-  else rawConfidence = Math.min(98.5, 95.0 + (N - 8) * 0.5);
+  // Realistic statistical probability calibration for Binary Options (M1/M5)
+  // In real professional trading, true single-candle directional probability tops out at 72-82%
+  let rawConfidence = 70.0;
+  if (N === 5) rawConfidence = 72.5;
+  else if (N === 6) rawConfidence = 75.0;
+  else if (N === 7) rawConfidence = 78.5;
+  else rawConfidence = Math.min(84.0, 80.0 + (N - 7) * 0.8);
 
   const confidenceScore = parseFloat(rawConfidence.toFixed(1));
   const isCall = direction === "CALL";
   const marketSentiment = isCall
-    ? confidenceScore >= 88 ? "FORTE_ALTA" : "ALTA"
-    : confidenceScore >= 88 ? "FORTE_BAIXA" : "BAIXA";
+    ? confidenceScore >= 78 ? "FORTE_ALTA" : "ALTA"
+    : confidenceScore >= 78 ? "FORTE_BAIXA" : "BAIXA";
 
   const defenseOffset = Math.max(currentPrice * 0.0006, +(atr * 1.1).toFixed(2));
   const defensePrice = isCall
@@ -565,8 +725,8 @@ export function generateAlgorithmicAnalysis(
   const distancePercent = +((defenseOffset / currentPrice) * 100).toFixed(2);
 
   const triggerZone = isCall
-    ? `Entrada em COMPRA (CALL) na taxa $${currentPrice.toFixed(2)} (Suporte em $${nearSupport.toFixed(2)})`
-    : `Entrada em VENDA (PUT) na taxa $${currentPrice.toFixed(2)} (Resistência em $${nearResistance.toFixed(2)})`;
+    ? `Entrada em COMPRA (CALL) na taxa $${currentPrice.toFixed(2)} (Taxa de Retração ideal: $${defensePrice.toFixed(2)})`
+    : `Entrada em VENDA (PUT) na taxa $${currentPrice.toFixed(2)} (Taxa de Retração ideal: $${defensePrice.toFixed(2)})`;
 
   const invalidationLevel = isCall
     ? `Abaixo de $${defensePrice.toFixed(2)} (-${distancePercent}%)`
@@ -577,12 +737,12 @@ export function generateAlgorithmicAnalysis(
     : "SMC Liquidity Sweep + Continuação de Baixa (PUT)";
 
   const rationale = isCall
-    ? `Sinal de COMPRA (CALL) confirmado com ${N} confluências institucionais (${confidenceScore}% de assertividade).`
-    : `Sinal de VENDA (PUT) confirmado com ${N} confluências institucionais (${confidenceScore}% de assertividade).`;
+    ? `Sinal de COMPRA (CALL) validado com ${N} confluências reais (${confidenceScore}% de assertividade estatística).`
+    : `Sinal de VENDA (PUT) validado com ${N} confluências reais (${confidenceScore}% de assertividade estatística).`;
 
   const hioveQuickTip = isCall
-    ? "ENTRADA COMPRA: Opere CALL na abertura da próxima vela. Alvo de vitória fixado com alta assertividade."
-    : "ENTRADA VENDA: Opere PUT na abertura da próxima vela. Alvo de vitória fixado com alta assertividade.";
+    ? `🎯 ENTRADA COMPRA (CALL): NÃO entre na abertura seca. Aguarde a vela dar um pulo corretivo para baixo (taxa de retração em ~$${defensePrice.toFixed(2)}) nos primeiros 15s para entrar com margem de segurança!`
+    : `🎯 ENTRADA VENDA (PUT): NÃO entre na abertura seca. Aguarde a vela dar um pulo corretivo para cima (taxa de retração em ~$${defensePrice.toFixed(2)}) nos primeiros 15s para entrar com margem de segurança!`;
 
   return {
     direction,
@@ -735,7 +895,7 @@ export const candlexApiService = {
         if (data.success && data.result) {
           const resDir = data.result.direction;
           const isColorMismatch = (resDir === "CALL" && isLastCandleRed) || (resDir === "PUT" && isLastCandleGreen);
-          if (resDir === "NEUTRAL" || (data.result.confidenceScore || 0) < 80 || isColorMismatch) {
+          if (resDir === "NEUTRAL" || (data.result.confidenceScore || 0) < 70 || isColorMismatch) {
             return algorithmicCheck;
           }
           return {
@@ -782,12 +942,12 @@ ${candleContext}
 REGRAS INSTITUCIONAIS CRÍTICAS:
 1. SEM CONFLUÊNCIAS FALSAS: Inclua na lista "detectedPatterns" APENAS confluências técnicas verdadeiras que realmente existem nos dados.
 2. ALINHAMENTO DE TENDÊNCIA E GATILHO DE RETRAÇÃO: Opere a favor da tendência primária e identifique gatilhos de retração em médias ou suporte/resistência.
-3. ALTA PRECISÃO: Calcule a assertividade (confidenceScore) com base no número de confluências comprovadas.
+3. ALTA PRECISÃO: Calcule a assertividade (confidenceScore) com base no número de confluências comprovadas (máximo 82%).
 
 Retorne EXCLUSIVAMENTE em formato JSON:
 {
   "direction": "CALL" | "PUT" | "NEUTRAL",
-  "confidenceScore": number (75 a 98),
+  "confidenceScore": number (68 a 82),
   "timeframeExpiry": string,
   "triggerZone": string,
   "invalidationLevel": string,
@@ -797,7 +957,7 @@ Retorne EXCLUSIVAMENTE em formato JSON:
   "rationale": string,
   "hioveQuickTip": string,
   "keyLevels": { "support": number, "resistance": number, "pivot": number }
-}`;
+} `;
 
         const response = await clientAi.models.generateContent({
           model: 'gemini-2.5-flash',
@@ -818,15 +978,14 @@ Retorne EXCLUSIVAMENTE em formato JSON:
             }
 
             const N = parsed.detectedPatterns.length;
-            let rawConfidence = 78.0;
-            if (N <= 2) rawConfidence = 72.0 + N * 3.0;
-            else if (N === 3) rawConfidence = 80.5;
-            else if (N === 4) rawConfidence = 84.5;
-            else if (N === 5) rawConfidence = 88.0;
-            else if (N === 6) rawConfidence = 91.5;
-            else if (N === 7) rawConfidence = 94.0;
-            else if (N === 8) rawConfidence = 96.0;
-            else rawConfidence = Math.min(98.5, 96.0 + (N - 8) * 0.4);
+            let rawConfidence = 68.0;
+            if (N <= 2) rawConfidence = 50.0 + N * 5.0;
+            else if (N === 3) rawConfidence = 65.0;
+            else if (N === 4) rawConfidence = 69.0;
+            else if (N === 5) rawConfidence = 73.0;
+            else if (N === 6) rawConfidence = 76.5;
+            else if (N === 7) rawConfidence = 79.5;
+            else rawConfidence = Math.min(84.0, 81.0 + (N - 7) * 0.5);
 
             parsed.confidenceScore = parseFloat(rawConfidence.toFixed(1));
             parsed.confluenceCount = N;
