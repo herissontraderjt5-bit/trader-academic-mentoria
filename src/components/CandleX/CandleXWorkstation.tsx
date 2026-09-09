@@ -1369,7 +1369,7 @@ export default function CandleXWorkstation({
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-120px)] md:h-[calc(100vh-64px)] w-full bg-[#0B0E14] text-slate-100 overflow-hidden font-sans select-none relative">
+    <div className={`flex flex-col ${isGlobalHeaderVisible ? "h-[calc(100vh-120px)] md:h-[calc(100vh-64px)]" : "h-screen"} w-full bg-[#0B0E14] text-slate-100 overflow-hidden font-sans select-none relative`}>
       
       {/* Admin Maintenance Bypass Notice Banner */}
       {isMaintenanceActive && isAdmin && (

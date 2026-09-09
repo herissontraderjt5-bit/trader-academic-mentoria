@@ -65,7 +65,7 @@ export default function App() {
 
   // View States
   const [activeView, setActiveView] = useState<'home' | 'player' | 'admin' | 'candlex' | 'gestao'>('home');
-  const [isGlobalHeaderVisible, setIsGlobalHeaderVisible] = useState<boolean>(false);
+  const [isGlobalHeaderVisible, setIsGlobalHeaderVisible] = useState<boolean>(true);
   const [selectedModuleForModal, setSelectedModuleForModal] = useState<Module | null>(null);
   
   // Video Player States
