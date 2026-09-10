@@ -482,7 +482,7 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
                     className="text-lg md:text-xl font-black uppercase tracking-wider"
                     style={{ color: "#d4af37" }}
                   >
-                    {currentBot.trader_nome || "BOT IA HIOVE"}
+                    BOT IA HIOVE
                   </h4>
                   <p className="text-xs text-amber-200/60 mt-1">
                     ID: {currentBot.id} • Criado em:{" "}
