@@ -57,14 +57,46 @@ interface NeuralAnalyzerSidebarProps {
 }
 
 const AVAILABLE_ASSETS = [
-  { id: "SOLUSDT", label: "SOL/USDT", type: "CRYPTO", payout: 89 },
-  { id: "ETHUSDT", label: "ETH/USDT", type: "CRYPTO", payout: 89 },
+  // Criptoativos (Mercado Aberto)
   { id: "BTCUSDT", label: "BTC/USDT", type: "CRYPTO", payout: 90 },
+  { id: "ETHUSDT", label: "ETH/USDT", type: "CRYPTO", payout: 89 },
+  { id: "SOLUSDT", label: "SOL/USDT", type: "CRYPTO", payout: 89 },
   { id: "XRPUSDT", label: "XRP/USDT", type: "CRYPTO", payout: 89 },
   { id: "DOGEUSDT", label: "DOGE/USDT", type: "CRYPTO", payout: 88 },
+  { id: "ADAUSDT", label: "ADA/USDT", type: "CRYPTO", payout: 88 },
+  { id: "BNBUSDT", label: "BNB/USDT", type: "CRYPTO", payout: 88 },
+
+  // Forex & Commodities (Mercado Aberto)
   { id: "EURUSD", label: "EUR/USD", type: "FOREX", payout: 92 },
   { id: "GBPUSD", label: "GBP/USD", type: "FOREX", payout: 91 },
   { id: "USDJPY", label: "USD/JPY", type: "FOREX", payout: 89 },
+  { id: "AUDUSD", label: "AUD/USD", type: "FOREX", payout: 88 },
+  { id: "USDCAD", label: "USD/CAD", type: "FOREX", payout: 88 },
+  { id: "EURJPY", label: "EUR/JPY", type: "FOREX", payout: 90 },
+  { id: "GBPJPY", label: "GBP/JPY", type: "FOREX", payout: 90 },
+  { id: "XAUUSD", label: "XAU/USD (Ouro)", type: "COMMODITY", payout: 90 },
+
+  // Forex (Mercado OTC Hiove)
+  { id: "EURUSD_OTC", label: "EUR/USD (OTC)", type: "OTC_FOREX", payout: 95 },
+  { id: "GBPUSD_OTC", label: "GBP/USD (OTC)", type: "OTC_FOREX", payout: 95 },
+  { id: "USDJPY_OTC", label: "USD/JPY (OTC)", type: "OTC_FOREX", payout: 95 },
+  { id: "EURJPY_OTC", label: "EUR/JPY (OTC)", type: "OTC_FOREX", payout: 95 },
+  { id: "AUDCAD_OTC", label: "AUD/CAD (OTC)", type: "OTC_FOREX", payout: 95 },
+  { id: "GBPJPY_OTC", label: "GBP/JPY (OTC)", type: "OTC_FOREX", payout: 95 },
+  { id: "USDCAD_OTC", label: "USD/CAD (OTC)", type: "OTC_FOREX", payout: 95 },
+  { id: "AUDUSD_OTC", label: "AUD/USD (OTC)", type: "OTC_FOREX", payout: 95 },
+  { id: "NZDUSD_OTC", label: "NZD/USD (OTC)", type: "OTC_FOREX", payout: 94 },
+  { id: "USDCHF_OTC", label: "USD/CHF (OTC)", type: "OTC_FOREX", payout: 94 },
+
+  // Ações & Criptos (Mercado OTC Hiove)
+  { id: "AAPL_OTC", label: "Apple (OTC)", type: "OTC_STOCK", payout: 95 },
+  { id: "TSLA_OTC", label: "Tesla (OTC)", type: "OTC_STOCK", payout: 95 },
+  { id: "BA_OTC", label: "Boeing (OTC)", type: "OTC_STOCK", payout: 95 },
+  { id: "INTC_OTC", label: "Intel (OTC)", type: "OTC_STOCK", payout: 95 },
+  { id: "MSFT_OTC", label: "Microsoft (OTC)", type: "OTC_STOCK", payout: 95 },
+  { id: "GOOGL_OTC", label: "Google (OTC)", type: "OTC_STOCK", payout: 95 },
+  { id: "AMZN_OTC", label: "Amazon (OTC)", type: "OTC_STOCK", payout: 95 },
+  { id: "DYDX_OTC", label: "DYDX (OTC)", type: "OTC_CRYPTO", payout: 95 },
 ];
 
 export const NeuralAnalyzerSidebar: React.FC<NeuralAnalyzerSidebarProps> = ({

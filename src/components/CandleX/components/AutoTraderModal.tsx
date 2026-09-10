@@ -22,6 +22,7 @@ import {
   Key,
   Save,
   RefreshCw,
+  Search,
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { AutoTraderConfig, AutoTraderSession, AutoTradeLogItem } from "../../../types";
@@ -172,16 +173,52 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
   };
 
 
+  const [assetFilterTab, setAssetFilterTab] = React.useState<"ALL" | "OPEN" | "OTC">("ALL");
+  const [assetSearchQuery, setAssetSearchQuery] = React.useState<string>("");
+
   const AVAILABLE_PAIRS = [
-    { id: "CURRENT", label: `📌 Ativo Atual (${activeTicker})`, sub: "Segue o gráfico aberto" },
-    { id: "EURUSD_OTC", label: "EUR/USD (OTC)", sub: "Paridade Forex" },
-    { id: "GBPUSD_OTC", label: "GBP/USD (OTC)", sub: "Paridade Forex" },
-    { id: "USDJPY_OTC", label: "USD/JPY (OTC)", sub: "Paridade Forex" },
-    { id: "EURJPY_OTC", label: "EUR/JPY (OTC)", sub: "Paridade Forex" },
-    { id: "AUDCAD_OTC", label: "AUD/CAD (OTC)", sub: "Paridade Forex" },
-    { id: "BTCUSDT", label: "BTC/USDT", sub: "Criptoativo" },
-    { id: "ETHUSDT", label: "ETH/USDT", sub: "Criptoativo" },
-    { id: "SOLUSDT", label: "SOL/USDT", sub: "Criptoativo" },
+    { id: "CURRENT", label: `📌 Ativo Atual (${activeTicker})`, sub: "Segue o gráfico aberto", category: "SPECIAL", payout: 92 },
+
+    // Mercado Aberto - Criptomoedas
+    { id: "BTCUSDT", label: "BTC/USDT", sub: "Bitcoin • Cripto Aberto", category: "OPEN_CRYPTO", payout: 90 },
+    { id: "ETHUSDT", label: "ETH/USDT", sub: "Ethereum • Cripto Aberto", category: "OPEN_CRYPTO", payout: 89 },
+    { id: "SOLUSDT", label: "SOL/USDT", sub: "Solana • Cripto Aberto", category: "OPEN_CRYPTO", payout: 89 },
+    { id: "XRPUSDT", label: "XRP/USDT", sub: "Ripple • Cripto Aberto", category: "OPEN_CRYPTO", payout: 89 },
+    { id: "DOGEUSDT", label: "DOGE/USDT", sub: "Dogecoin • Cripto Aberto", category: "OPEN_CRYPTO", payout: 88 },
+    { id: "ADAUSDT", label: "ADA/USDT", sub: "Cardano • Cripto Aberto", category: "OPEN_CRYPTO", payout: 88 },
+    { id: "BNBUSDT", label: "BNB/USDT", sub: "Binance Coin • Cripto Aberto", category: "OPEN_CRYPTO", payout: 88 },
+
+    // Mercado Aberto - Forex & Commodities
+    { id: "EURUSD", label: "EUR/USD", sub: "Euro / Dólar Aberto", category: "OPEN_FOREX", payout: 92 },
+    { id: "GBPUSD", label: "GBP/USD", sub: "Libra / Dólar Aberto", category: "OPEN_FOREX", payout: 91 },
+    { id: "USDJPY", label: "USD/JPY", sub: "Dólar / Iene Aberto", category: "OPEN_FOREX", payout: 89 },
+    { id: "AUDUSD", label: "AUD/USD", sub: "Dólar Australiano Aberto", category: "OPEN_FOREX", payout: 88 },
+    { id: "USDCAD", label: "USD/CAD", sub: "Dólar / Dólar Canadense", category: "OPEN_FOREX", payout: 88 },
+    { id: "EURJPY", label: "EUR/JPY", sub: "Euro / Iene Aberto", category: "OPEN_FOREX", payout: 90 },
+    { id: "GBPJPY", label: "GBP/JPY", sub: "Libra / Iene Aberto", category: "OPEN_FOREX", payout: 90 },
+    { id: "XAUUSD", label: "XAU/USD (Ouro)", sub: "Ouro / Dólar Aberto", category: "OPEN_FOREX", payout: 90 },
+
+    // Mercado OTC - Forex
+    { id: "EURUSD_OTC", label: "EUR/USD (OTC)", sub: "Euro / Dólar OTC", category: "OTC_FOREX", payout: 95 },
+    { id: "GBPUSD_OTC", label: "GBP/USD (OTC)", sub: "Libra / Dólar OTC", category: "OTC_FOREX", payout: 95 },
+    { id: "USDJPY_OTC", label: "USD/JPY (OTC)", sub: "Dólar / Iene OTC", category: "OTC_FOREX", payout: 95 },
+    { id: "EURJPY_OTC", label: "EUR/JPY (OTC)", sub: "Euro / Iene OTC", category: "OTC_FOREX", payout: 95 },
+    { id: "AUDCAD_OTC", label: "AUD/CAD (OTC)", sub: "Dólar Aust. / CAD OTC", category: "OTC_FOREX", payout: 95 },
+    { id: "GBPJPY_OTC", label: "GBP/JPY (OTC)", sub: "Libra / Iene OTC", category: "OTC_FOREX", payout: 95 },
+    { id: "USDCAD_OTC", label: "USD/CAD (OTC)", sub: "Dólar / CAD OTC", category: "OTC_FOREX", payout: 95 },
+    { id: "AUDUSD_OTC", label: "AUD/USD (OTC)", sub: "Dólar Aust. / Dólar OTC", category: "OTC_FOREX", payout: 95 },
+    { id: "NZDUSD_OTC", label: "NZD/USD (OTC)", sub: "Dólar Neozel. / Dólar OTC", category: "OTC_FOREX", payout: 94 },
+    { id: "USDCHF_OTC", label: "USD/CHF (OTC)", sub: "Dólar / Franco Suíço OTC", category: "OTC_FOREX", payout: 94 },
+
+    // Mercado OTC - Ações & Criptos
+    { id: "AAPL_OTC", label: "Apple (OTC)", sub: "Ação Apple Inc. OTC", category: "OTC_STOCK", payout: 95 },
+    { id: "TSLA_OTC", label: "Tesla (OTC)", sub: "Ação Tesla Inc. OTC", category: "OTC_STOCK", payout: 95 },
+    { id: "BA_OTC", label: "Boeing (OTC)", sub: "Ação Boeing Co. OTC", category: "OTC_STOCK", payout: 95 },
+    { id: "INTC_OTC", label: "Intel (OTC)", sub: "Ação Intel Corp. OTC", category: "OTC_STOCK", payout: 95 },
+    { id: "MSFT_OTC", label: "Microsoft (OTC)", sub: "Ação Microsoft Corp. OTC", category: "OTC_STOCK", payout: 95 },
+    { id: "GOOGL_OTC", label: "Google (OTC)", sub: "Ação Alphabet Inc. OTC", category: "OTC_STOCK", payout: 95 },
+    { id: "AMZN_OTC", label: "Amazon (OTC)", sub: "Ação Amazon.com OTC", category: "OTC_STOCK", payout: 95 },
+    { id: "DYDX_OTC", label: "DYDX (OTC)", sub: "Protocolo DeFi OTC", category: "OTC_STOCK", payout: 95 },
   ];
 
   const selectedAssets = config.selectedAssets && config.selectedAssets.length > 0 
@@ -207,6 +244,16 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
   const handleSelectAllAssets = () => {
     const all = AVAILABLE_PAIRS.filter((p) => p.id !== "CURRENT").map((p) => p.id);
     onChangeConfig({ ...config, selectedAssets: all });
+  };
+
+  const handleSelectOtcAssets = () => {
+    const otcs = AVAILABLE_PAIRS.filter((p) => p.category?.startsWith("OTC")).map((p) => p.id);
+    onChangeConfig({ ...config, selectedAssets: otcs });
+  };
+
+  const handleSelectOpenAssets = () => {
+    const opens = AVAILABLE_PAIRS.filter((p) => p.category?.startsWith("OPEN")).map((p) => p.id);
+    onChangeConfig({ ...config, selectedAssets: opens });
   };
 
   const handleResetToCurrent = () => {
@@ -664,7 +711,7 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
                 <div>
                   <label className="text-[11px] font-bold text-[#FF7A00] flex items-center gap-1.5 uppercase">
                     <Activity className="w-3.5 h-3.5" />
-                    <span>ATIVOS QUE O AUTO TRADER DEVE MONITORAR & OPERAR:</span>
+                    <span>TODOS OS ATIVOS DA HIOVE (MERCADO ABERTO & OTC):</span>
                   </label>
                   <p className="text-[10px] text-slate-400">
                     {selectedAssets.includes("CURRENT")
@@ -673,7 +720,7 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
                   </p>
                 </div>
 
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <button
                     type="button"
                     onClick={handleResetToCurrent}
@@ -684,6 +731,20 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
                     }`}
                   >
                     Ativo Atual
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSelectOpenAssets}
+                    className="px-2 py-1 rounded-lg text-[10px] font-bold border border-[#1E2638] bg-[#0B0E14] text-emerald-400 hover:border-emerald-500/50 cursor-pointer"
+                  >
+                    Apenas Aberto
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSelectOtcAssets}
+                    className="px-2 py-1 rounded-lg text-[10px] font-bold border border-[#1E2638] bg-[#0B0E14] text-amber-400 hover:border-amber-500/50 cursor-pointer"
+                  >
+                    Apenas OTCs
                   </button>
                   <button
                     type="button"
@@ -699,9 +760,74 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
                 </div>
               </div>
 
-              {/* Grid de Ativos */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {AVAILABLE_PAIRS.map((pair) => {
+              {/* Filter Tabs & Search Bar */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-1">
+                {/* Tabs */}
+                <div className="flex items-center gap-1 bg-[#090C13] p-1 rounded-lg border border-[#1E2638] w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={() => setAssetFilterTab("ALL")}
+                    className={`px-2.5 py-1 rounded text-[10px] font-bold transition-all cursor-pointer ${
+                      assetFilterTab === "ALL"
+                        ? "bg-[#1E2638] text-white font-black"
+                        : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    Todos ({AVAILABLE_PAIRS.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAssetFilterTab("OPEN")}
+                    className={`px-2.5 py-1 rounded text-[10px] font-bold transition-all cursor-pointer ${
+                      assetFilterTab === "OPEN"
+                        ? "bg-emerald-600/30 text-emerald-400 border border-emerald-500/40 font-black"
+                        : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    Mercado Aberto ({AVAILABLE_PAIRS.filter((p) => p.category?.startsWith("OPEN")).length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAssetFilterTab("OTC")}
+                    className={`px-2.5 py-1 rounded text-[10px] font-bold transition-all cursor-pointer ${
+                      assetFilterTab === "OTC"
+                        ? "bg-amber-600/30 text-amber-400 border border-amber-500/40 font-black"
+                        : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    Mercado OTC ({AVAILABLE_PAIRS.filter((p) => p.category?.startsWith("OTC")).length})
+                  </button>
+                </div>
+
+                {/* Search Box */}
+                <div className="relative w-full sm:w-56">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={assetSearchQuery}
+                    onChange={(e) => setAssetSearchQuery(e.target.value)}
+                    placeholder="Filtrar (Apple, EUR, BTC...)"
+                    className="w-full bg-[#090C13] border border-[#1E2638] focus:border-[#FF7A00] rounded-lg pl-8 pr-2.5 py-1 text-[11px] text-white outline-none placeholder:text-slate-500 font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Grid de Ativos com Scroll */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-60 overflow-y-auto pr-1">
+                {AVAILABLE_PAIRS.filter((pair) => {
+                  if (pair.id === "CURRENT") return true;
+                  if (assetFilterTab === "OPEN" && !pair.category?.startsWith("OPEN")) return false;
+                  if (assetFilterTab === "OTC" && !pair.category?.startsWith("OTC")) return false;
+                  if (assetSearchQuery) {
+                    const q = assetSearchQuery.toLowerCase();
+                    return (
+                      pair.label.toLowerCase().includes(q) ||
+                      pair.id.toLowerCase().includes(q) ||
+                      (pair.sub && pair.sub.toLowerCase().includes(q))
+                    );
+                  }
+                  return true;
+                }).map((pair) => {
                   const isSelected = selectedAssets.includes(pair.id);
                   return (
                     <button
@@ -715,8 +841,13 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
                       }`}
                     >
                       <div>
-                        <div className={`text-xs font-black font-mono ${isSelected ? "text-amber-400" : "text-slate-300"}`}>
-                          {pair.label}
+                        <div className={`text-xs font-black font-mono flex items-center gap-1.5 ${isSelected ? "text-amber-400" : "text-slate-300"}`}>
+                          <span>{pair.label}</span>
+                          {pair.payout && (
+                            <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-950/60 text-emerald-400 border border-emerald-500/30 font-mono">
+                              {pair.payout}%
+                            </span>
+                          )}
                         </div>
                         <div className="text-[9px] text-slate-500">{pair.sub}</div>
                       </div>

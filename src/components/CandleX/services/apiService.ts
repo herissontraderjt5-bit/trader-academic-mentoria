@@ -68,16 +68,26 @@ async function fetchPublicCandles(ticker: string, interval: string, limit: numbe
   const fetchInterval = isCustomTimeframe ? "1m" : normInterval;
   const fetchLimit = isCustomTimeframe ? limit * 2 + 10 : limit;
 
-  let symbol = ticker.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const cleanTicker = ticker.toUpperCase().replace(/_OTC$/i, "").replace(/OTC$/i, "");
+  let symbol = cleanTicker.replace(/[^A-Z0-9]/g, "");
   const forexToCryptoMap: Record<string, string> = {
     EURUSD: "EURUSDT",
     GBPUSD: "GBPUSDT",
     AUDUSD: "AUDUSDT",
-    USDJPY: "BTCUSDT",
+    USDJPY: "EURUSDT",
     EURGBP: "EURUSDT",
     USDCAD: "USDCAD",
     USDCHF: "EURUSDT",
     NZDUSD: "NZDUSDT",
+    EURJPY: "EURUSDT",
+    GBPJPY: "GBPUSDT",
+    AUDCAD: "AUDUSDT",
+    XAUUSD: "PAXGUSDT",
+    DYDX: "DYDXUSDT",
+    DOGE: "DOGEUSDT",
+    XRP: "XRPUSDT",
+    ADA: "ADAUSDT",
+    BNB: "BNBUSDT",
   };
   if (forexToCryptoMap[symbol]) {
     symbol = forexToCryptoMap[symbol];
@@ -589,8 +599,35 @@ export const candlexApiService = {
 
     // Client-side synthetic kline generator if internet fails or rate limited
     const now = Math.floor(Date.now() / 1000);
-    const cleanTicker = ticker.toUpperCase();
-    let basePrice = cleanTicker.includes("ETH") ? 2680 : cleanTicker.includes("BTC") ? 93400 : cleanTicker.includes("SOL") ? 188 : 100;
+    const cleanTicker = ticker.toUpperCase().replace(/_OTC$/i, "").replace(/OTC$/i, "");
+    let basePrice = 100;
+    if (cleanTicker.includes("BTC")) basePrice = 93400;
+    else if (cleanTicker.includes("ETH")) basePrice = 2680;
+    else if (cleanTicker.includes("SOL")) basePrice = 188;
+    else if (cleanTicker.includes("XRP")) basePrice = 2.45;
+    else if (cleanTicker.includes("DOGE")) basePrice = 0.28;
+    else if (cleanTicker.includes("ADA")) basePrice = 0.85;
+    else if (cleanTicker.includes("BNB")) basePrice = 640;
+    else if (cleanTicker.includes("DYDX")) basePrice = 1.35;
+    else if (cleanTicker.includes("XAU") || cleanTicker.includes("GOLD")) basePrice = 2500;
+    else if (cleanTicker === "AAPL") basePrice = 225.50;
+    else if (cleanTicker === "TSLA") basePrice = 215.30;
+    else if (cleanTicker === "BA") basePrice = 162.40;
+    else if (cleanTicker === "INTC") basePrice = 21.80;
+    else if (cleanTicker === "MSFT") basePrice = 425.20;
+    else if (cleanTicker === "GOOGL" || cleanTicker === "GOOG") basePrice = 166.70;
+    else if (cleanTicker === "AMZN") basePrice = 186.40;
+    else if (cleanTicker === "EURUSD") basePrice = 1.0845;
+    else if (cleanTicker === "GBPUSD") basePrice = 1.2960;
+    else if (cleanTicker === "USDJPY") basePrice = 145.20;
+    else if (cleanTicker === "AUDUSD") basePrice = 0.6540;
+    else if (cleanTicker === "USDCAD") basePrice = 1.3620;
+    else if (cleanTicker === "EURJPY") basePrice = 158.40;
+    else if (cleanTicker === "GBPJPY") basePrice = 189.60;
+    else if (cleanTicker === "AUDCAD") basePrice = 0.8950;
+    else if (cleanTicker === "NZDUSD") basePrice = 0.5920;
+    else if (cleanTicker === "USDCHF") basePrice = 0.8980;
+
     if (localPriceCache[ticker]?.lastPrice) {
       basePrice = localPriceCache[ticker].lastPrice;
     }
