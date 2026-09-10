@@ -80,7 +80,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onBackToHome, onOpenCandleX }) 
       />
 
       {/* Main Body */}
-      <div className="flex-1 flex max-w-7xl w-full mx-auto">
+      <div className="flex-1 flex w-full max-w-[1680px] 2xl:max-w-[1820px] mx-auto">
         {/* Sidebar */}
         <Sidebar
           activeTab={activeTab}

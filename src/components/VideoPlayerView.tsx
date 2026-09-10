@@ -117,7 +117,7 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
       
       {/* Top Header Bar */}
       <div className="sticky top-0 z-30 bg-[#0c0c12]/95 backdrop-blur-md border-b border-[#20202e] px-4 py-3">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+        <div className="w-full max-w-[1680px] 2xl:max-w-[1820px] mx-auto px-2 sm:px-4 flex items-center justify-between gap-4">
           
           {/* Back & Breadcrumb */}
           <div className="flex items-center gap-3 overflow-hidden">
@@ -169,7 +169,7 @@ export const VideoPlayerView: React.FC<VideoPlayerViewProps> = ({
       </div>
 
       {/* Main Layout Area */}
-      <div className={`flex-1 max-w-7xl mx-auto w-full p-4 sm:p-6 grid gap-6 ${
+      <div className={`flex-1 w-full max-w-[1680px] 2xl:max-w-[1820px] mx-auto p-4 sm:p-6 lg:p-8 grid gap-6 ${
         isTheaterMode ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-12'
       }`}>
         

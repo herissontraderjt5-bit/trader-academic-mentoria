@@ -51,7 +51,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
       <div className="relative z-10 p-6 sm:p-10 lg:p-12 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
         
         {/* Left: Mentor Brand & Headlines */}
-        <div className="max-w-2xl">
+        <div className="flex-1 max-w-3xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-600/10 border border-orange-600/20 text-orange-400 text-xs font-bold uppercase tracking-wider mb-4">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Plataforma Oficial de Mentoria</span>

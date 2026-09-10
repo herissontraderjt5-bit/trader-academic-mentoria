@@ -740,7 +740,7 @@ export default function App() {
               ) : (
                 <>
                   {/* Main Dashboard */}
-                  <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
+                  <main className="flex-1 w-full max-w-[1680px] 2xl:max-w-[1820px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-8 space-y-10">
                 
                 {/* Top Announcement Banner */}
                 <AnnouncementBanner announcements={announcements} />
@@ -807,7 +807,7 @@ export default function App() {
 
               {/* Footer */}
               <footer className="border-t border-orange-900/20 bg-[#0a0a0a] py-10 px-4 sm:px-6 lg:px-8 text-xs text-zinc-400">
-                <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="w-full max-w-[1680px] 2xl:max-w-[1820px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 flex flex-col md:flex-row items-center justify-between gap-6">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-xl bg-orange-600 flex items-center justify-center text-white font-bold shadow-md shadow-orange-600/30">
                       <Flame className="w-5 h-5 fill-current" />

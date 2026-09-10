@@ -76,7 +76,7 @@ export const Header: React.FC<HeaderProps> = ({
       id="app-header"
       className="sticky top-0 z-30 bg-[#0c1017]/95 backdrop-blur-md border-b border-slate-800/80 px-4 lg:px-6 py-3 transition-all"
     >
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+      <div className="w-full max-w-[1680px] 2xl:max-w-[1820px] mx-auto flex items-center justify-between gap-3">
         {/* Left Side: Mobile Menu Button & Brand */}
         <div className="flex items-center space-x-3">
           <button

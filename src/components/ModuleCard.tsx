@@ -67,7 +67,10 @@ export const ModuleCard: React.FC<ModuleCardProps> = ({
         {/* Top Badges */}
         <div className="absolute top-3 left-3 right-3 flex items-center justify-between z-10">
           {module.badgeText ? (
-            <span className="px-2 py-0.5 rounded bg-orange-600 text-white font-bold text-[10px] uppercase tracking-wider shadow-md">
+            <span 
+              title={module.badgeText}
+              className="px-2 py-0.5 rounded bg-orange-600 text-white font-bold text-[10px] uppercase tracking-wider shadow-md truncate max-w-[65%]"
+            >
               {module.badgeText}
             </span>
           ) : (
