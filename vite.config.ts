@@ -21,6 +21,20 @@ export default defineConfig(({ mode }) => {
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      proxy: {
+        '/api/hiove-broker': {
+          target: 'https://broker-api.mybrokerdev.com',
+          changeOrigin: true,
+          secure: false,
+          rewrite: (p) => p.replace(/^\/api\/hiove-broker/, ''),
+        },
+        '/api/hiove-userbots': {
+          target: 'https://userbots.hiove.io',
+          changeOrigin: true,
+          secure: false,
+          rewrite: (p) => p.replace(/^\/api\/hiove-userbots/, ''),
+        },
+      },
     },
   };
 });

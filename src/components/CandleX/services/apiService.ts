@@ -597,54 +597,111 @@ export const candlexApiService = {
       return publicCandles;
     }
 
-    // Client-side synthetic kline generator if internet fails or rate limited
+    // Client-side persistent kline progression for OTC & simulated assets
     const now = Math.floor(Date.now() / 1000);
     const cleanTicker = ticker.toUpperCase().replace(/_OTC$/i, "").replace(/OTC$/i, "");
+    
+    // Determine precision and base price
+    let decimals = 2;
     let basePrice = 100;
-    if (cleanTicker.includes("BTC")) basePrice = 93400;
-    else if (cleanTicker.includes("ETH")) basePrice = 2680;
-    else if (cleanTicker.includes("SOL")) basePrice = 188;
-    else if (cleanTicker.includes("XRP")) basePrice = 2.45;
-    else if (cleanTicker.includes("DOGE")) basePrice = 0.28;
-    else if (cleanTicker.includes("ADA")) basePrice = 0.85;
-    else if (cleanTicker.includes("BNB")) basePrice = 640;
-    else if (cleanTicker.includes("DYDX")) basePrice = 1.35;
-    else if (cleanTicker.includes("XAU") || cleanTicker.includes("GOLD")) basePrice = 2500;
-    else if (cleanTicker === "AAPL") basePrice = 225.50;
-    else if (cleanTicker === "TSLA") basePrice = 215.30;
-    else if (cleanTicker === "BA") basePrice = 162.40;
-    else if (cleanTicker === "INTC") basePrice = 21.80;
-    else if (cleanTicker === "MSFT") basePrice = 425.20;
-    else if (cleanTicker === "GOOGL" || cleanTicker === "GOOG") basePrice = 166.70;
-    else if (cleanTicker === "AMZN") basePrice = 186.40;
-    else if (cleanTicker === "EURUSD") basePrice = 1.0845;
-    else if (cleanTicker === "GBPUSD") basePrice = 1.2960;
-    else if (cleanTicker === "USDJPY") basePrice = 145.20;
-    else if (cleanTicker === "AUDUSD") basePrice = 0.6540;
-    else if (cleanTicker === "USDCAD") basePrice = 1.3620;
-    else if (cleanTicker === "EURJPY") basePrice = 158.40;
-    else if (cleanTicker === "GBPJPY") basePrice = 189.60;
-    else if (cleanTicker === "AUDCAD") basePrice = 0.8950;
-    else if (cleanTicker === "NZDUSD") basePrice = 0.5920;
-    else if (cleanTicker === "USDCHF") basePrice = 0.8980;
+    if (cleanTicker.includes("BTC")) { basePrice = 93400; decimals = 2; }
+    else if (cleanTicker.includes("ETH")) { basePrice = 2680; decimals = 2; }
+    else if (cleanTicker.includes("SOL")) { basePrice = 188; decimals = 2; }
+    else if (cleanTicker.includes("XRP")) { basePrice = 2.45; decimals = 4; }
+    else if (cleanTicker.includes("DOGE")) { basePrice = 0.28; decimals = 5; }
+    else if (cleanTicker.includes("ADA")) { basePrice = 0.85; decimals = 4; }
+    else if (cleanTicker.includes("BNB")) { basePrice = 640; decimals = 2; }
+    else if (cleanTicker.includes("DYDX")) { basePrice = 1.35; decimals = 4; }
+    else if (cleanTicker.includes("XAU") || cleanTicker.includes("GOLD")) { basePrice = 2500; decimals = 2; }
+    else if (cleanTicker === "AAPL") { basePrice = 225.50; decimals = 2; }
+    else if (cleanTicker === "TSLA") { basePrice = 215.30; decimals = 2; }
+    else if (cleanTicker === "BA") { basePrice = 162.40; decimals = 2; }
+    else if (cleanTicker === "INTC") { basePrice = 21.80; decimals = 2; }
+    else if (cleanTicker === "MSFT") { basePrice = 425.20; decimals = 2; }
+    else if (cleanTicker === "GOOGL" || cleanTicker === "GOOG") { basePrice = 166.70; decimals = 2; }
+    else if (cleanTicker === "AMZN") { basePrice = 186.40; decimals = 2; }
+    else if (cleanTicker === "EURUSD") { basePrice = 1.08450; decimals = 5; }
+    else if (cleanTicker === "GBPUSD") { basePrice = 1.29600; decimals = 5; }
+    else if (cleanTicker === "USDJPY") { basePrice = 145.200; decimals = 3; }
+    else if (cleanTicker === "AUDUSD") { basePrice = 0.65400; decimals = 5; }
+    else if (cleanTicker === "USDCAD") { basePrice = 1.36200; decimals = 5; }
+    else if (cleanTicker === "EURJPY") { basePrice = 158.400; decimals = 3; }
+    else if (cleanTicker === "GBPJPY") { basePrice = 189.600; decimals = 3; }
+    else if (cleanTicker === "AUDCAD") { basePrice = 0.89500; decimals = 5; }
+    else if (cleanTicker === "NZDUSD") { basePrice = 0.59200; decimals = 5; }
+    else if (cleanTicker === "USDCHF") { basePrice = 0.89800; decimals = 5; }
 
-    if (localPriceCache[ticker]?.lastPrice) {
-      basePrice = localPriceCache[ticker].lastPrice;
-    }
-
-    const candles: Candle[] = [];
     const seconds = normInterval === "5m" ? 300 : normInterval === "2m" ? 120 : normInterval === "3m" ? 180 : normInterval === "15m" ? 900 : normInterval === "30m" ? 1800 : normInterval === "1h" ? 3600 : 60;
     const currentCandleTime = Math.floor(now / seconds) * seconds;
+
+    const cached = localPriceCache[ticker];
+    if (cached && cached.candles && cached.candles.length > 0) {
+      const existing = [...cached.candles];
+      const lastCandle = existing[existing.length - 1];
+
+      if (lastCandle.time === currentCandleTime) {
+        // Current candle is in progress: update close, high, low with realistic micro-movement
+        const microStep = (Math.random() - 0.495) * (lastCandle.close * 0.00015);
+        const newClose = +(lastCandle.close + microStep).toFixed(decimals);
+        const newHigh = +Math.max(lastCandle.high, newClose).toFixed(decimals);
+        const newLow = +Math.min(lastCandle.low, newClose).toFixed(decimals);
+        const newVolume = +(lastCandle.volume + Math.random() * 0.5).toFixed(2);
+
+        existing[existing.length - 1] = {
+          ...lastCandle,
+          close: newClose,
+          high: newHigh,
+          low: newLow,
+          volume: newVolume,
+        };
+
+        localPriceCache[ticker] = {
+          lastPrice: newClose,
+          lastUpdate: Date.now(),
+          candles: existing,
+        };
+        return existing;
+      } else if (currentCandleTime > lastCandle.time) {
+        // New candle interval reached: close previous candle and start new one
+        const prevClose = lastCandle.close;
+        const delta = (Math.random() - 0.495) * (prevClose * 0.0004);
+        const close = +(prevClose + delta).toFixed(decimals);
+        const high = +Math.max(prevClose, close, +(prevClose + Math.abs(delta) * 1.5).toFixed(decimals)).toFixed(decimals);
+        const low = +Math.min(prevClose, close, +(prevClose - Math.abs(delta) * 1.5).toFixed(decimals)).toFixed(decimals);
+        const newCandle: Candle = {
+          time: currentCandleTime,
+          open: prevClose,
+          high,
+          low,
+          close,
+          volume: +(Math.random() * 20 + 10).toFixed(2),
+        };
+
+        existing.push(newCandle);
+        const trimmed = existing.slice(-limit);
+
+        localPriceCache[ticker] = {
+          lastPrice: close,
+          lastUpdate: Date.now(),
+          candles: trimmed,
+        };
+        return trimmed;
+      }
+    }
+
+    // Initial population of historical candles (only runs ONCE per asset)
+    const candles: Candle[] = [];
     let currentClose = basePrice;
+    const volatility = cleanTicker.includes("BTC") || cleanTicker.includes("ETH") ? 0.001 : 0.0003;
 
     for (let i = limit - 1; i >= 0; i--) {
       const time = currentCandleTime - i * seconds;
-      const delta = (Math.random() - 0.495) * (basePrice * 0.002);
+      const delta = (Math.random() - 0.498) * (currentClose * volatility);
       const open = currentClose;
-      const close = +(open + delta).toFixed(2);
+      const close = +(open + delta).toFixed(decimals);
       const spread = Math.abs(close - open);
-      const high = +(Math.max(open, close) + Math.random() * (spread + basePrice * 0.0005)).toFixed(2);
-      const low = +(Math.min(open, close) - Math.random() * (spread + basePrice * 0.0005)).toFixed(2);
+      const high = +(Math.max(open, close) + Math.random() * (spread + currentClose * volatility * 0.5)).toFixed(decimals);
+      const low = +(Math.min(open, close) - Math.random() * (spread + currentClose * volatility * 0.5)).toFixed(decimals);
       const volume = +(Math.random() * 30 + 10).toFixed(2);
       candles.push({ time, open, high, low, close, volume });
       currentClose = close;

@@ -29,6 +29,21 @@ async function safeFetch(
   url: string,
   options: RequestInit = {}
 ): Promise<Response> {
+  // 1. Try local dev server proxy if targeting userbots.hiove.io
+  if (url.includes("userbots.hiove.io")) {
+    try {
+      const parsedUrl = new URL(url);
+      const proxyUrl = `/api/hiove-userbots${parsedUrl.pathname}${parsedUrl.search}`;
+      const proxyRes = await fetch(proxyUrl, options);
+      if (proxyRes.ok || proxyRes.status < 500) {
+        return proxyRes;
+      }
+    } catch {
+      // Fall through to direct fetch
+    }
+  }
+
+  // 2. Direct fetch fallback
   try {
     const res = await fetch(url, options);
     if (res.ok || res.status < 500) {

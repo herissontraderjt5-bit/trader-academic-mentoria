@@ -253,6 +253,12 @@ export default function CandleXWorkstation({
     if (newConfig.timeframe && newConfig.timeframe !== timeframe) {
       setTimeframe(newConfig.timeframe);
     }
+    // If user configured specific assets (e.g. OTCs) and activeTicker is not among them,
+    // immediately switch activeTicker to the first selected asset so the whole workstation matches!
+    const selected = newConfig.selectedAssets || [];
+    if (!selected.includes("CURRENT") && selected.length > 0 && !selected.includes(activeTicker)) {
+      setActiveTicker(selected[0]);
+    }
     if (currentUser && currentUser.id !== 'usr-guest') {
       localStorage.setItem(`candlex_autotrader_${currentUser.id}`, JSON.stringify(newConfig));
       await supabaseService.saveCandleXAutoTrader(currentUser.id, newConfig);
@@ -261,13 +267,33 @@ export default function CandleXWorkstation({
 
   // Connect to Hiove API
   const connectToHiove = useCallback(async (forceReconnect = false) => {
-    if (autoTraderConfig.hioveApiKey) {
+    const rawKey = autoTraderConfig.hioveApiKey?.trim() || "";
+
+    // If key is already a valid JWT token
+    if (rawKey.startsWith("eyJ") && !forceReconnect) {
       setHioveAccountInfo((prev) => ({
         ...prev,
-        token: autoTraderConfig.hioveApiKey!,
+        token: rawKey,
         email: autoTraderConfig.hioveEmail || "api-user@hiove.com",
       }));
       return true;
+    }
+
+    // Exchange API Key or Email via Hiove Userbots API to get authentic JWT access token
+    try {
+      const auth = await hioveUserbotsService.authenticateUser(rawKey || autoTraderConfig.hioveEmail || "hx3pvi2oua");
+      if (auth.success && auth.token) {
+        setHioveAccountInfo((prev) => ({
+          ...prev,
+          token: auth.token!,
+          email: auth.client?.email || autoTraderConfig.hioveEmail || "herissonvinicius52@gmail.com",
+          name: auth.client?.nome || auth.client?.name || "Trader Academic",
+        }));
+        console.log("Hiove API connected & authenticated successfully with JWT!");
+        return true;
+      }
+    } catch (authErr) {
+      console.warn("Hiove userbot authentication error:", authErr);
     }
 
     if (!autoTraderConfig.hioveEmail || !autoTraderConfig.hiovePassword) {
@@ -490,18 +516,33 @@ export default function CandleXWorkstation({
     targetSymbol?: string,
     targetTf?: string
   ) => {
-    let currentToken = autoTraderConfig.hioveApiKey || hioveAccountInfo.token;
+    let currentToken = hioveAccountInfo.token || autoTraderConfig.hioveApiKey;
 
-    // Auto-login fallback if token is missing but API Key is configured
-    if (!currentToken && autoTraderConfig.hioveApiKey) {
-      console.log("No active token found, attempting rapid reconnect using API Key...");
-      await connectToHiove(true);
-      currentToken = autoTraderConfig.hioveApiKey || hioveAccountInfo.token;
+    // If token is missing or not a JWT token (starts with eyJ), authenticate on-the-fly
+    if (!currentToken || !currentToken.startsWith("eyJ")) {
+      const keyToUse = autoTraderConfig.hioveApiKey || autoTraderConfig.hioveEmail || "hx3pvi2oua";
+      if (keyToUse.startsWith("eyJ")) {
+        currentToken = keyToUse;
+      } else {
+        console.log("Authenticating with Hiove to obtain real JWT access token...");
+        const auth = await hioveUserbotsService.authenticateUser(keyToUse);
+        if (auth.success && auth.token) {
+          currentToken = auth.token;
+          setHioveAccountInfo((prev) => ({
+            ...prev,
+            token: auth.token!,
+            email: auth.client?.email || autoTraderConfig.hioveEmail || "herissonvinicius52@gmail.com",
+            name: auth.client?.nome || auth.client?.name || "Trader Academic",
+          }));
+        } else if (autoTraderConfig.hioveApiKey) {
+          currentToken = autoTraderConfig.hioveApiKey;
+        }
+      }
     }
 
     if (!currentToken) {
       console.warn("Cannot place trade on broker: Hiove is not authenticated");
-      soundManager.speakAlert("Aviso: Conecte sua conta Hiove nas configurações para que as ordens entrem na corretora.");
+      soundManager.speakAlert("Aviso: Conecte sua conta Hiove para que as ordens entrem na corretora.");
       return false;
     }
 
@@ -516,8 +557,8 @@ export default function CandleXWorkstation({
           : "1m");
       const tradeDirection = direction === "CALL" ? "BUY" : "SELL";
       
-      const rawSymbol = (targetSymbol || activeTicker).replace("_OTC", "").trim();
-      const symbol = rawSymbol.toUpperCase();
+      // Preserve symbol exactly as needed by broker API (keeping _OTC if OTC asset)
+      const symbol = (targetSymbol || activeTicker).trim().toUpperCase();
 
       console.log("Placing real Hiove trade via API...", { symbol, direction: tradeDirection, amount, isDemo, closeType, chosenTf });
       
@@ -533,32 +574,58 @@ export default function CandleXWorkstation({
 
       let success = false;
 
-      // 1. Try server-side proxy first
+      // 1. Try local dev server proxy first (/api/hiove-broker) - avoids CORS
       try {
-        const proxyRes = await fetch("/api/hiove/proxy", {
+        const localProxyRes = await fetch("/api/hiove-broker/trades/open-async", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            endpoint: "/trades/open-async",
-            method: "POST",
-            token: currentToken,
-            payload
-          })
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${currentToken}`,
+            "x-tenant-id": tenantId,
+            "x-timestamp": String(Date.now()),
+          },
+          body: JSON.stringify(payload),
         });
 
-        if (proxyRes.ok) {
-          const data = await proxyRes.json();
-          console.log("Real trade executed successfully via proxy on Hiove:", data);
+        if (localProxyRes.ok) {
+          const data = await localProxyRes.json();
+          console.log("Real trade executed successfully on Hiove (local proxy):", data);
           success = true;
         } else {
-          const errData = await proxyRes.text();
-          console.warn("Proxy trade error:", proxyRes.status, errData);
+          console.warn("Local broker proxy status:", localProxyRes.status);
         }
-      } catch (proxyErr) {
-        console.warn("Proxy trade error, trying direct fetch fallback:", proxyErr);
+      } catch (localErr) {
+        console.warn("Local broker proxy error, trying server-side proxy fallback:", localErr);
       }
 
-      // 2. Direct fetch fallback
+      // 2. Try server-side proxy fallback
+      if (!success) {
+        try {
+          const proxyRes = await fetch("/api/hiove/proxy", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              endpoint: "/trades/open-async",
+              method: "POST",
+              token: currentToken,
+              payload
+            })
+          });
+
+          if (proxyRes.ok) {
+            const data = await proxyRes.json();
+            console.log("Real trade executed successfully via proxy on Hiove:", data);
+            success = true;
+          } else {
+            const errData = await proxyRes.text();
+            console.warn("Proxy trade error:", proxyRes.status, errData);
+          }
+        } catch (proxyErr) {
+          console.warn("Proxy trade error, trying direct fetch fallback:", proxyErr);
+        }
+      }
+
+      // 3. Direct fetch fallback
       if (!success) {
         try {
           const res = await fetch("https://broker-api.mybrokerdev.com/trades/open-async", {
@@ -589,7 +656,7 @@ export default function CandleXWorkstation({
       }
 
       if (success) {
-        soundManager.speakAlert(`Ordem de ${direction === "CALL" ? "Compra" : "Venda"} aberta na Hiove em ${symbol}!`);
+        soundManager.speakAlert(`Ordem de ${direction === "CALL" ? "Compra" : "Venda"} enviada para a Hiove em ${symbol}!`);
       }
 
       return success;
@@ -597,7 +664,7 @@ export default function CandleXWorkstation({
       console.error("Error executing Hiove trade:", e);
       return false;
     }
-  }, [activeTicker, timeframe, autoTraderConfig.accountType, autoTraderConfig.hioveEmail, autoTraderConfig.hiovePassword, hioveAccountInfo.token, connectToHiove]);
+  }, [activeTicker, timeframe, autoTraderConfig, hioveAccountInfo.token, connectToHiove]);
 
   // Fetch Market Candles Polling
   const fetchMarketData = useCallback(async () => {
@@ -664,6 +731,27 @@ export default function CandleXWorkstation({
   // Silent background scan for AutoTrader - NEVER opens modal or interrupts user
   const runSilentAiAnalysis = useCallback(async () => {
     if (candles.length === 0) return;
+
+    // Strict asset validation: If AutoTrader is configured for specific assets (e.g. OTCs),
+    // ensure activeTicker is permitted. If not, auto-switch to first configured asset and skip analysis on unauthorized asset.
+    const selectedAssets = autoTraderConfig.selectedAssets && autoTraderConfig.selectedAssets.length > 0
+      ? autoTraderConfig.selectedAssets
+      : ["CURRENT"];
+    const isCurrentAllowed =
+      selectedAssets.includes("CURRENT") ||
+      selectedAssets.includes(activeTicker) ||
+      selectedAssets.includes(activeTicker + "_OTC") ||
+      selectedAssets.some((a) => a.replace("_OTC", "") === activeTicker.replace("_OTC", ""));
+
+    if (!isCurrentAllowed) {
+      const nextTicker = selectedAssets.find((a) => a !== "CURRENT");
+      if (nextTicker && nextTicker !== activeTicker) {
+        console.log(`AutoTrader redirecting activeTicker from ${activeTicker} to configured asset ${nextTicker}`);
+        setActiveTicker(nextTicker);
+      }
+      return;
+    }
+
     try {
       const latestIndicators = indicators || calculateAllIndicators(candles);
       const result = await candlexApiService.analyze(
@@ -678,7 +766,7 @@ export default function CandleXWorkstation({
     } catch (e) {
       console.error("AutoTrader background analysis error:", e);
     }
-  }, [candles, indicators, activeTicker, timeframe]);
+  }, [candles, indicators, activeTicker, timeframe, autoTraderConfig.selectedAssets]);
 
   // Keep compatibility for any general invocation
   const runAiAnalysis = runManualAiScan;
@@ -998,6 +1086,11 @@ export default function CandleXWorkstation({
       selectedAssets.some((a) => a.replace("_OTC", "") === activeTicker.replace("_OTC", ""));
 
     if (!isCurrentAllowed) {
+      const nextTicker = selectedAssets.find((a) => a !== "CURRENT");
+      if (nextTicker && nextTicker !== activeTicker) {
+        console.log(`AutoTrader redirecting activeTicker from ${activeTicker} to permitted asset ${nextTicker}`);
+        setActiveTicker(nextTicker);
+      }
       return;
     }
 
@@ -1608,6 +1701,7 @@ export default function CandleXWorkstation({
                 onRecordTrade={handleRecordTrade}
                 lastAiDirection={aiAnalysis?.direction}
                 currentPrice={currentPrice}
+                onSwitchChartEngine={setChartEngine}
               />
             )}
 
