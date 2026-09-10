@@ -935,18 +935,11 @@ export default function CandleXWorkstation({
     if (!targetDirection) return;
 
     const signalKey = `${activeTicker}_${targetDirection}_${Math.floor(Date.now() / 10000)}`;
-    if (lastExecutedSignalRef.current === signalKey) return;
-
-    // Cooldown check: prevent placing multiple auto-trades within 12 seconds on the same asset
-    const recentAutoTrade = trades.find(
-      (t) =>
-        t.ticker === activeTicker &&
-        (t.strategyUsed?.includes("AutoTrader") || t.strategyUsed?.includes("Robô")) &&
-        Date.now() - t.timestamp < 12000
+    // 1. Impedir abertura de ordens simultâneas no mesmo ativo enquanto houver ordem PENDING em andamento
+    const hasPendingTradeOnAsset = trades.some(
+      (t) => t.ticker === activeTicker && t.result === "PENDING"
     );
-    if (recentAutoTrade) return;
-
-    lastExecutedSignalRef.current = signalKey;
+    if (hasPendingTradeOnAsset) return;
 
     const effectiveTf = (autoTraderConfig.timeframe || timeframe || "1m").toString().toLowerCase();
     const expiryMins = effectiveTf.includes("2m") || effectiveTf === "2" || effectiveTf === "m2"
@@ -954,6 +947,19 @@ export default function CandleXWorkstation({
       : (effectiveTf.includes("5m") || effectiveTf === "5" || effectiveTf === "m5"
         ? 5
         : 1);
+
+    // 2. Cooldown: aguardar ao menos a duração da expiração antes de cogitar nova entrada automatizada
+    const expiryMs = expiryMins * 60000;
+    const recentAutoTrade = trades.find(
+      (t) =>
+        t.ticker === activeTicker &&
+        (t.strategyUsed?.includes("AutoTrader") || t.strategyUsed?.includes("Robô")) &&
+        Date.now() - t.timestamp < expiryMs
+    );
+    if (recentAutoTrade) return;
+
+    lastExecutedSignalRef.current = signalKey;
+
     const currentPriceVal = candles[candles.length - 1]?.close || 0;
 
     console.log("🤖 AutoTrader Triggering Automated Trade:", {
@@ -1043,56 +1049,47 @@ export default function CandleXWorkstation({
 
     const now = Date.now();
     let updated = false;
+    const currentPriceVal = candles[candles.length - 1]?.close || 0;
     const nextTrades = trades.map((t) => {
       if (t.result !== "PENDING") return t;
 
-      const stepMs = Math.max(1, t.expiryMinutes || 1) * 60000;
+      // 1. Só resolver ordens do ativo atualmente carregado (evita avaliar ETH/USDT com velas de SOL/USDT)
+      if (t.ticker !== activeTicker) {
+        return t;
+      }
 
-      // FIX: Only resolve AFTER the trade duration has finished
-      const expiryTimestamp = t.timestamp + (t.expiryMinutes * 60 * 1000);
+      const expiryDurationMs = Math.max(1, t.expiryMinutes || 1) * 60 * 1000;
+      const expiryTimestamp = t.timestamp + expiryDurationMs;
+
+      // 2. Aguardar obrigatoriamente a finalização completa do tempo da ordem
       if (now < expiryTimestamp) {
-        return t; // Trade still running
+        return t; // Ordem ainda em andamento
       }
 
-      // Calculate start time of entry candle
-      const entryCandleStartMs = Math.floor(t.timestamp / stepMs) * stepMs;
-      const entryCandleTimeSecs = entryCandleStartMs / 1000;
-      const stepSecs = stepMs / 1000;
+      // 3. Preço de entrada real da ordem e preço final de mercado no momento do fechamento
+      const entryPrice = t.entryPrice && t.entryPrice > 0 ? t.entryPrice : currentPriceVal;
+      const expiryPrice = currentPriceVal;
+      const priceDiff = +(expiryPrice - entryPrice).toFixed(6);
 
-      // Find if this operational candle exists in loaded candles
-      let candle = candles.find((c) => c.time === entryCandleTimeSecs);
-      if (!candle) {
-        candle = candles.find((c) => Math.abs(c.time - entryCandleTimeSecs) < (stepSecs / 2));
+      let outcome: "WIN" | "LOSS" | "DRAW" = "DRAW";
+      if (Math.abs(priceDiff) <= 0.000001) {
+        outcome = "DRAW";
+      } else if (t.direction === "CALL") {
+        // COMPRA (CALL): Win se preço final for maior que a entrada
+        outcome = expiryPrice > entryPrice ? "WIN" : "LOSS";
+      } else { // PUT
+        // VENDA (PUT): Win se preço final for menor que a entrada
+        outcome = expiryPrice < entryPrice ? "WIN" : "LOSS";
       }
-      if (!candle && candles.length > 0) {
-        const pastCandles = candles.filter((c) => c.time <= entryCandleTimeSecs);
-        candle = pastCandles.length > 0 ? pastCandles[pastCandles.length - 1] : candles[candles.length - 1];
+
+      let pnl = 0;
+      if (outcome === "WIN") {
+        pnl = +((t.stake * (t.payoutPercent || 85)) / 100).toFixed(2);
+      } else if (outcome === "LOSS") {
+        pnl = -t.stake;
       }
 
-      if (candle) {
-        const entryPrice = candle.open || t.entryPrice;
-        const expiryPrice = candle.close;
-        const priceDiff = +(expiryPrice - entryPrice).toFixed(6);
-
-        let outcome: "WIN" | "LOSS" | "DRAW" = "DRAW";
-        if (Math.abs(priceDiff) <= 0.000001) {
-          outcome = "DRAW";
-        } else if (t.direction === "CALL") {
-          // COMPRA (CALL): Win se preço final for maior que a entrada (subiu / verde)
-          outcome = expiryPrice > entryPrice ? "WIN" : "LOSS";
-        } else { // PUT
-          // VENDA (PUT): Win se preço final for menor que a entrada (caiu / vermelha)
-          outcome = expiryPrice < entryPrice ? "WIN" : "LOSS";
-        }
-
-        let pnl = 0;
-        if (outcome === "WIN") {
-          pnl = +((t.stake * t.payoutPercent) / 100).toFixed(2);
-        } else if (outcome === "LOSS") {
-          pnl = -t.stake;
-        }
-
-        updated = true;
+      updated = true;
 
         // Speak outcome and play audio
         if (outcome === "WIN") {
@@ -1168,7 +1165,6 @@ export default function CandleXWorkstation({
         }
 
         return resolvedTrade;
-      }
 
       return t;
     });
@@ -1179,7 +1175,7 @@ export default function CandleXWorkstation({
         localStorage.setItem(`candlex_trades_${currentUser.id}`, JSON.stringify(nextTrades));
       }
     }
-  }, [candles, trades, autoTraderConfig.enabled, currentUser]);
+  }, [candles, trades, activeTicker, autoTraderConfig.enabled, currentUser]);
 
   const currentPrice = candles[candles.length - 1]?.close || 0;
 
