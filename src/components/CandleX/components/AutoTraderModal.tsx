@@ -13,6 +13,7 @@ import {
   ExternalLink,
   Eye,
   EyeOff,
+  Edit3,
 } from "lucide-react";
 import { AutoTraderConfig, AutoTraderSession } from "../../../types";
 import {
@@ -52,9 +53,11 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
 
   // Submodals
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [isEditingBot, setIsEditingBot] = useState(false);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
 
-  // Form states for Create Bot
+  // Form states for Create / Edit Bot
   const [entryValue, setEntryValue] = useState("50.00");
   const [stopLoss, setStopLoss] = useState("200.00");
   const [stopWin, setStopWin] = useState("500.00");
@@ -128,6 +131,29 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
     }
   }, [isOpen, loadData]);
 
+  // Open Create Bot Modal
+  const handleOpenCreateModal = () => {
+    setEntryValue(String(config.stakeAmount || 50));
+    setStopLoss(String(config.dailyStopLoss || 200));
+    setStopWin(String(config.dailyStopWin || 500));
+    setGale1(Boolean(config.gale1));
+    setGale2(Boolean(config.gale2 && config.gale1));
+    setIsEditingBot(false);
+    setShowCreateModal(true);
+  };
+
+  // Open Edit Bot Modal
+  const handleOpenEditModal = () => {
+    if (!currentBot) return;
+    setEntryValue(String(currentBot.valor_entrada || 50));
+    setStopLoss(String(currentBot.stop_loss || 200));
+    setStopWin(String(currentBot.stop_win || 500));
+    setGale1(Boolean(currentBot.usar_gale_1));
+    setGale2(Boolean(currentBot.usar_gale_2 && currentBot.usar_gale_1));
+    setIsEditingBot(true);
+    setShowCreateModal(true);
+  };
+
   // Toggle Bot Status (Start / Pause)
   const handleToggleBot = async () => {
     if (!currentBot?.id) return;
@@ -151,10 +177,9 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
     }
   };
 
-  // Delete Bot
-  const handleDeleteBot = async () => {
+  // Confirm Delete Bot
+  const handleConfirmDeleteBot = async () => {
     if (!currentBot?.id) return;
-    if (!window.confirm("Tem certeza que deseja deletar este bot da nuvem Hiove?")) return;
 
     setActionLoading(true);
     setFeedback(null);
@@ -164,9 +189,10 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
 
       const success = await hioveUserbotsService.deleteBot(token, currentBot.id);
       if (success) {
+        setShowDeleteConfirmModal(false);
         setCurrentBot(null);
         onChangeConfig({ ...config, enabled: false });
-        setFeedback({ type: "success", text: "Bot deletado com sucesso!" });
+        setFeedback({ type: "success", text: "Bot deletado com sucesso da nuvem Hiove!" });
         await loadData();
       } else {
         setFeedback({ type: "error", text: "Erro ao deletar o bot na Hiove." });
@@ -210,8 +236,8 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
     }
   };
 
-  // Create New Bot
-  const handleCreateBot = async () => {
+  // Save Bot (Handles both Create and Edit)
+  const handleSaveBot = async () => {
     const entryNum = parseFloat(entryValue);
     const stopLossNum = parseFloat(stopLoss);
     const stopWinNum = parseFloat(stopWin);
@@ -227,21 +253,41 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
       const token = await getEffectiveToken();
       if (!token) throw new Error("Token não autenticado.");
 
-      const res = await hioveUserbotsService.createBot(token, {
-        valor_entrada: entryNum,
-        stop_loss: stopLossNum,
-        stop_win: stopWinNum,
-        usar_gale_1: gale1,
-        usar_gale_2: gale2,
-        status: "ativo",
-      });
+      if (isEditingBot && currentBot?.id) {
+        // UPDATE existing bot
+        const res = await hioveUserbotsService.updateBot(token, currentBot.id, {
+          valor_entrada: entryNum,
+          stop_loss: stopLossNum,
+          stop_win: stopWinNum,
+          usar_gale_1: gale1,
+          usar_gale_2: gale2,
+        });
 
-      if (res.success) {
-        setShowCreateModal(false);
-        setFeedback({ type: "success", text: "Bot criado e ativado com sucesso na Hiove!" });
-        await loadData();
+        if (res.success) {
+          setShowCreateModal(false);
+          setFeedback({ type: "success", text: "Configurações do bot atualizadas com sucesso na Hiove!" });
+          await loadData();
+        } else {
+          setFeedback({ type: "error", text: res.message || "Erro ao atualizar bot na Hiove." });
+        }
       } else {
-        setFeedback({ type: "error", text: res.message || "Erro ao criar bot na Hiove." });
+        // CREATE new bot
+        const res = await hioveUserbotsService.createBot(token, {
+          valor_entrada: entryNum,
+          stop_loss: stopLossNum,
+          stop_win: stopWinNum,
+          usar_gale_1: gale1,
+          usar_gale_2: gale2,
+          status: "ativo",
+        });
+
+        if (res.success) {
+          setShowCreateModal(false);
+          setFeedback({ type: "success", text: "Bot criado e ativado com sucesso na Hiove!" });
+          await loadData();
+        } else {
+          setFeedback({ type: "error", text: res.message || "Erro ao criar bot na Hiove." });
+        }
       }
     } catch (err: any) {
       setFeedback({ type: "error", text: err?.message || "Falha na conexão com a Hiove." });
@@ -402,7 +448,7 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
                     setApiKeyInput(config.hioveApiKey || "");
                     setShowApiKeyModal(true);
                   }}
-                  className="px-5 py-2.5 rounded-lg text-xs md:text-sm font-bold tracking-wider uppercase transition-all shadow-md flex-shrink-0"
+                  className="px-5 py-2.5 rounded-lg text-xs md:text-sm font-bold tracking-wider uppercase transition-all shadow-md flex-shrink-0 cursor-pointer"
                   style={{
                     background: "linear-gradient(135deg, #d97706 0%, #b45309 100%)",
                     color: "#ffffff",
@@ -449,7 +495,7 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
                     setApiKeyInput("");
                     setShowApiKeyModal(true);
                   }}
-                  className="px-5 py-2.5 rounded-lg text-xs md:text-sm font-bold tracking-wider uppercase transition-all shadow-md flex-shrink-0"
+                  className="px-5 py-2.5 rounded-lg text-xs md:text-sm font-bold tracking-wider uppercase transition-all shadow-md flex-shrink-0 cursor-pointer"
                   style={{
                     background: "linear-gradient(135deg, #d4af37 0%, #996515 100%)",
                     color: "#000000",
@@ -571,12 +617,12 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
                 </div>
               </div>
 
-              {/* Bot Action Buttons */}
+              {/* Bot Action Buttons (Start/Pause, Edit, Delete) */}
               <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={handleToggleBot}
                   disabled={actionLoading}
-                  className="flex-1 py-3.5 px-6 rounded-xl font-black text-sm tracking-wider uppercase transition-all shadow-lg flex items-center justify-center gap-2"
+                  className="flex-1 py-3.5 px-6 rounded-xl font-black text-sm tracking-wider uppercase transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
                   style={{
                     background: isRunning
                       ? "linear-gradient(135deg, #d97706 0%, #b45309 100%)"
@@ -592,9 +638,19 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
                 </button>
 
                 <button
-                  onClick={handleDeleteBot}
+                  onClick={handleOpenEditModal}
                   disabled={actionLoading}
-                  className="py-3.5 px-6 rounded-xl font-bold text-sm tracking-wider uppercase transition-all bg-rose-900/30 hover:bg-rose-900/50 text-rose-300 border border-rose-600/40 flex items-center justify-center gap-2"
+                  className="py-3.5 px-6 rounded-xl font-bold text-sm tracking-wider uppercase transition-all bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 flex items-center justify-center gap-2 cursor-pointer"
+                  title="Editar valores de entrada, stop loss, stop win e gales"
+                >
+                  <Edit3 className="w-4 h-4" />
+                  <span>EDITAR BOT</span>
+                </button>
+
+                <button
+                  onClick={() => setShowDeleteConfirmModal(true)}
+                  disabled={actionLoading}
+                  className="py-3.5 px-6 rounded-xl font-bold text-sm tracking-wider uppercase transition-all bg-rose-900/30 hover:bg-rose-900/50 text-rose-300 border border-rose-600/40 flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Trash2 className="w-4 h-4" />
                   <span>DELETAR BOT</span>
@@ -622,15 +678,8 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
               </p>
 
               <button
-                onClick={() => {
-                  setEntryValue(String(config.stakeAmount || 50));
-                  setStopLoss(String(config.dailyStopLoss || 200));
-                  setStopWin(String(config.dailyStopWin || 500));
-                  setGale1(Boolean(config.gale1));
-                  setGale2(Boolean(config.gale2 && config.gale1));
-                  setShowCreateModal(true);
-                }}
-                className="px-8 py-3.5 rounded-xl font-black text-sm tracking-wider uppercase shadow-xl transition-all inline-flex items-center gap-2 transform hover:scale-105 active:scale-95"
+                onClick={handleOpenCreateModal}
+                className="px-8 py-3.5 rounded-xl font-black text-sm tracking-wider uppercase shadow-xl transition-all inline-flex items-center gap-2 transform hover:scale-105 active:scale-95 cursor-pointer"
                 style={{
                   background: "linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%)",
                   color: "#0d1410",
@@ -667,7 +716,7 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* SUBMODAL: CRIAR NOVO BOT (Pixel Identical to Billion Trading - Image 2)    */}
+      {/* SUBMODAL: CRIAR OU EDITAR BOT                                             */}
       {/* ========================================================================= */}
       {showCreateModal && (
         <div
@@ -690,7 +739,7 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
               className="text-2xl font-black tracking-wider uppercase mb-6"
               style={{ color: "#d4af37", fontFamily: "'Space Grotesk', system-ui, sans-serif" }}
             >
-              CRIAR NOVO BOT
+              {isEditingBot ? "EDITAR CONFIGURAÇÕES DO BOT" : "CRIAR NOVO BOT"}
             </h3>
 
             {/* Inputs */}
@@ -769,7 +818,7 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
                     setGale1(next);
                     if (!next) setGale2(false);
                   }}
-                  className={`w-12 h-6 rounded-full transition-colors relative p-0.5 focus:outline-none ${
+                  className={`w-12 h-6 rounded-full transition-colors relative p-0.5 focus:outline-none cursor-pointer ${
                     gale1 ? "bg-amber-400" : "bg-zinc-700"
                   }`}
                 >
@@ -799,7 +848,7 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
                   type="button"
                   disabled={!gale1}
                   onClick={() => setGale2(!gale2)}
-                  className={`w-12 h-6 rounded-full transition-colors relative p-0.5 focus:outline-none ${
+                  className={`w-12 h-6 rounded-full transition-colors relative p-0.5 focus:outline-none cursor-pointer ${
                     gale2 && gale1 ? "bg-amber-400" : "bg-zinc-700"
                   }`}
                 >
@@ -832,22 +881,95 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
               <button
                 type="button"
                 onClick={() => setShowCreateModal(false)}
-                className="px-6 py-3 rounded-xl font-bold text-sm tracking-wider uppercase transition-all text-amber-200/80 hover:text-white hover:bg-white/5"
+                className="px-6 py-3 rounded-xl font-bold text-sm tracking-wider uppercase transition-all text-amber-200/80 hover:text-white hover:bg-white/5 cursor-pointer"
               >
                 CANCELAR
               </button>
               <button
                 type="button"
-                onClick={handleCreateBot}
+                onClick={handleSaveBot}
                 disabled={actionLoading}
-                className="px-7 py-3 rounded-xl font-black text-sm tracking-wider uppercase transition-all shadow-lg"
+                className="px-7 py-3 rounded-xl font-black text-sm tracking-wider uppercase transition-all shadow-lg cursor-pointer"
                 style={{
-                  background: "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)",
+                  background: isEditingBot
+                    ? "linear-gradient(135deg, #d4af37 0%, #b45309 100%)"
+                    : "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)",
                   color: "#ffffff",
-                  border: "1px solid rgba(239, 68, 68, 0.5)",
+                  border: isEditingBot
+                    ? "1px solid rgba(212, 175, 55, 0.5)"
+                    : "1px solid rgba(239, 68, 68, 0.5)",
                 }}
               >
-                {actionLoading ? "CRIANDO..." : "CRIAR BOT"}
+                {actionLoading
+                  ? "SALVANDO..."
+                  : isEditingBot
+                  ? "SALVAR ALTERAÇÕES"
+                  : "CRIAR BOT"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SUBMODAL: CONFIRMAR EXCLUSÃO DO BOT (Elimina bloqueios de popup do browser)*/}
+      {/* ========================================================================= */}
+      {showDeleteConfirmModal && (
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center p-4"
+          style={{
+            backgroundColor: "rgba(0, 0, 0, 0.9)",
+            backdropFilter: "blur(14px)",
+          }}
+        >
+          <div
+            className="relative w-full max-w-md rounded-2xl p-6 md:p-7 overflow-hidden shadow-2xl text-center"
+            style={{
+              backgroundColor: "#0d1410",
+              border: "2px solid rgba(239, 68, 68, 0.5)",
+              boxShadow: "0 25px 50px rgba(0, 0, 0, 0.95), 0 0 35px rgba(239, 68, 68, 0.25)",
+            }}
+          >
+            <div
+              className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+              style={{
+                backgroundColor: "rgba(239, 68, 68, 0.15)",
+                border: "2px solid rgba(239, 68, 68, 0.4)",
+                color: "#ef4444",
+              }}
+            >
+              <Trash2 className="w-8 h-8" />
+            </div>
+
+            <h4
+              className="text-xl font-black uppercase tracking-wider mb-2"
+              style={{ color: "#ffffff", fontFamily: "'Space Grotesk', system-ui, sans-serif" }}
+            >
+              DELETAR BOT DA HIOVE?
+            </h4>
+
+            <p className="text-sm text-zinc-300 leading-relaxed mb-6">
+              Tem certeza que deseja excluir este robô? Suas operações automáticas na corretora Hiove serão interrompidas imediatamente.
+            </p>
+
+            <div className="flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirmModal(false)}
+                className="px-5 py-3 rounded-xl font-bold text-sm tracking-wider uppercase text-zinc-300 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
+              >
+                CANCELAR
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteBot}
+                disabled={actionLoading}
+                className="px-6 py-3 rounded-xl font-black text-sm tracking-wider uppercase transition-all shadow-lg bg-rose-600 hover:bg-rose-700 text-white cursor-pointer"
+                style={{
+                  boxShadow: "0 8px 20px rgba(225, 29, 72, 0.4)",
+                }}
+              >
+                {actionLoading ? "DELETANDO..." : "SIM, DELETAR BOT"}
               </button>
             </div>
           </div>
@@ -896,7 +1018,7 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowApiKeyText(!showApiKeyText)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white p-1"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white p-1 cursor-pointer"
                 >
                   {showApiKeyText ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -921,7 +1043,7 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
               <button
                 type="button"
                 onClick={() => setShowApiKeyModal(false)}
-                className="px-6 py-3 rounded-xl font-bold text-sm tracking-wider uppercase text-amber-200/80 hover:text-white hover:bg-white/5 transition-all"
+                className="px-6 py-3 rounded-xl font-bold text-sm tracking-wider uppercase text-amber-200/80 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
               >
                 CANCELAR
               </button>
@@ -929,7 +1051,7 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
                 type="button"
                 onClick={handleSaveApiKey}
                 disabled={actionLoading}
-                className="px-7 py-3 rounded-xl font-black text-sm tracking-wider uppercase transition-all shadow-lg"
+                className="px-7 py-3 rounded-xl font-black text-sm tracking-wider uppercase transition-all shadow-lg cursor-pointer"
                 style={{
                   background: "linear-gradient(135deg, #d4af37 0%, #996515 100%)",
                   color: "#000000",

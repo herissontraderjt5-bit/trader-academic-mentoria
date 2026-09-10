@@ -272,6 +272,42 @@ export const hioveUserbotsService = {
     }
   },
 
+  // 4b. Update existing bot parameters
+  async updateBot(
+    token: string,
+    botId: number,
+    config: {
+      valor_entrada?: number | string;
+      stop_loss?: number | string;
+      stop_win?: number | string;
+      usar_gale_1?: boolean;
+      usar_gale_2?: boolean;
+    }
+  ): Promise<{ success: boolean; bot?: HioveBotConfigData; message?: string }> {
+    try {
+      const payload: any = {};
+      if (config.valor_entrada !== undefined) payload.valor_entrada = String(config.valor_entrada);
+      if (config.stop_loss !== undefined) payload.stop_loss = String(config.stop_loss);
+      if (config.stop_win !== undefined) payload.stop_win = String(config.stop_win);
+      if (config.usar_gale_1 !== undefined) payload.usar_gale_1 = config.usar_gale_1;
+      if (config.usar_gale_2 !== undefined) payload.usar_gale_2 = config.usar_gale_2;
+
+      const res = await safeFetch(`${BASE_URL}/${botId}/`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      return { success: res.ok, bot: data, message: data.message || "Bot atualizado com sucesso!" };
+    } catch (e: any) {
+      console.error("Error updating Hiove bot:", e);
+      return { success: false, message: e.message || "Erro ao atualizar bot." };
+    }
+  },
+
   // 5. Pause bot on Hiove cloud
   async pauseBot(token: string, botId?: number): Promise<boolean> {
     try {
@@ -322,7 +358,7 @@ export const hioveUserbotsService = {
     }
   },
 
-  // 6. Delete bot
+  // 7. Delete bot
   async deleteBot(token: string, botId: number): Promise<boolean> {
     try {
       const res = await safeFetch(`${BASE_URL}/${botId}/`, {
@@ -332,7 +368,7 @@ export const hioveUserbotsService = {
           "Content-Type": "application/json",
         },
       });
-      return res.ok;
+      return res.ok || res.status === 204 || res.status === 200;
     } catch (e) {
       console.error("Error deleting Hiove bot:", e);
       return false;

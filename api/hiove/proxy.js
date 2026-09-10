@@ -36,10 +36,17 @@ export default async function handler(req, res) {
     };
 
     if (method.toUpperCase() !== 'GET' && method.toUpperCase() !== 'HEAD') {
-      fetchOptions.body = JSON.stringify(payload);
+      if (method.toUpperCase() !== 'DELETE' || (payload && Object.keys(payload).length > 0)) {
+        fetchOptions.body = JSON.stringify(payload);
+      }
     }
 
     const response = await fetch(targetUrl, fetchOptions);
+
+    if (response.status === 204) {
+      return res.status(204).end();
+    }
+
     const contentType = response.headers.get('content-type') || '';
 
     let data;
