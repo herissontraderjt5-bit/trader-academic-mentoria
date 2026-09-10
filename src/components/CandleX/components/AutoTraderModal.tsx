@@ -62,6 +62,8 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
   const [isSavingApiKey, setIsSavingApiKey] = React.useState(false);
   const [isSyncingBot, setIsSyncingBot] = React.useState(false);
   const [botSyncFeedback, setBotSyncFeedback] = React.useState<string | null>(null);
+  const [assetFilterTab, setAssetFilterTab] = React.useState<"ALL" | "OPEN" | "OTC">("ALL");
+  const [assetSearchQuery, setAssetSearchQuery] = React.useState<string>("");
 
   if (!isOpen) return null;
 
@@ -171,10 +173,6 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
       setIsSyncingBot(false);
     }
   };
-
-
-  const [assetFilterTab, setAssetFilterTab] = React.useState<"ALL" | "OPEN" | "OTC">("ALL");
-  const [assetSearchQuery, setAssetSearchQuery] = React.useState<string>("");
 
   const AVAILABLE_PAIRS = [
     { id: "CURRENT", label: `📌 Ativo Atual (${activeTicker})`, sub: "Segue o gráfico aberto", category: "SPECIAL", payout: 92 },
