@@ -1,40 +1,34 @@
-import React from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   X,
   Bot,
-  Zap,
-  ShieldCheck,
-  TrendingUp,
-  TrendingDown,
-  Target,
-  ShieldAlert,
-  Play,
-  Pause,
-  RotateCcw,
-  Clock,
-  Percent,
-  DollarSign,
-  Activity,
-  CheckCircle2,
-  AlertTriangle,
-  Flame,
-  Award,
   Key,
-  Save,
+  ShieldCheck,
+  AlertTriangle,
+  CheckCircle2,
+  Trash2,
+  Power,
   RefreshCw,
+  Sparkles,
+  ExternalLink,
+  Eye,
+  EyeOff,
 } from "lucide-react";
-import confetti from "canvas-confetti";
-import { AutoTraderConfig, AutoTraderSession, AutoTradeLogItem } from "../../../types";
-import { hioveUserbotsService } from "../services/hioveUserbotsService";
+import { AutoTraderConfig, AutoTraderSession } from "../../../types";
+import {
+  hioveUserbotsService,
+  HioveBotConfigData,
+  HioveProfileData,
+} from "../services/hioveUserbotsService";
 
 interface AutoTraderModalProps {
   isOpen: boolean;
   onClose: () => void;
   config: AutoTraderConfig;
   onChangeConfig: (newConfig: AutoTraderConfig) => void;
-  session: AutoTraderSession;
-  onToggleEnabled: () => void;
-  onResetSession: () => void;
+  session?: AutoTraderSession;
+  onToggleEnabled?: () => void;
+  onResetSession?: () => void;
   currencySymbol?: string;
   hioveToken?: string | null;
   activeTicker?: string;
@@ -47,1015 +41,907 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
   onClose,
   config,
   onChangeConfig,
-  session,
-  onToggleEnabled,
-  onResetSession,
-  currencySymbol = "$",
   hioveToken,
-  activeTicker = "BTCUSDT",
-  onConnectHiove,
-  isConnectingHiove = false,
 }) => {
-  const [isTestingLogin, setIsTestingLogin] = React.useState(false);
-  const [loginFeedback, setLoginFeedback] = React.useState<{ type: "success" | "error"; msg: string } | null>(null);
-  const [isSavingApiKey, setIsSavingApiKey] = React.useState(false);
-  const [isSyncingBot, setIsSyncingBot] = React.useState(false);
-  const [botSyncFeedback, setBotSyncFeedback] = React.useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [profile, setProfile] = useState<HioveProfileData | null>(null);
+  const [currentBot, setCurrentBot] = useState<HioveBotConfigData | null>(null);
+  const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Submodals
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+
+  // Form states for Create Bot
+  const [entryValue, setEntryValue] = useState("50.00");
+  const [stopLoss, setStopLoss] = useState("200.00");
+  const [stopWin, setStopWin] = useState("500.00");
+  const [gale1, setGale1] = useState(false);
+  const [gale2, setGale2] = useState(false);
+
+  // Form states for API Key
+  const [apiKeyInput, setApiKeyInput] = useState("");
+  const [showApiKeyText, setShowApiKeyText] = useState(false);
+
+  // Resolve authenticated token
+  const getEffectiveToken = useCallback(async (): Promise<string | null> => {
+    const rawKey = config.hioveApiKey || hioveToken || "hx3pvi2oua";
+    const auth = await hioveUserbotsService.authenticateUser(rawKey);
+    return auth.token || null;
+  }, [config.hioveApiKey, hioveToken]);
+
+  // Load Bot and API Key status from Hiove
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setFeedback(null);
+    try {
+      const token = await getEffectiveToken();
+      if (!token) {
+        setApiKeyConfigured(false);
+        setLoading(false);
+        return;
+      }
+
+      // 1. Fetch Profile
+      const prof = await hioveUserbotsService.getProfile(token);
+      setProfile(prof);
+
+      const hasApiToken =
+        Boolean(prof?.client?.api_token) &&
+        prof?.client?.api_token !== "null" &&
+        prof?.client?.api_token !== "";
+
+      setApiKeyConfigured(Boolean(hasApiToken || config.hioveApiKey));
+
+      // 2. Fetch configured Bot on Hiove
+      const botRes = await hioveUserbotsService.getBotByAffiliate(token);
+      if (botRes.found && botRes.bot) {
+        setCurrentBot(botRes.bot);
+        // Sync local enabled status with bot status
+        const isRunning =
+          botRes.bot.status === "running" ||
+          botRes.bot.status === "ativo";
+        onChangeConfig({
+          ...config,
+          enabled: isRunning,
+          stakeAmount: parseFloat(String(botRes.bot.valor_entrada)) || config.stakeAmount,
+          dailyStopLoss: parseFloat(String(botRes.bot.stop_loss)) || config.dailyStopLoss,
+          dailyStopWin: parseFloat(String(botRes.bot.stop_win)) || config.dailyStopWin,
+          gale1: Boolean(botRes.bot.usar_gale_1),
+          gale2: Boolean(botRes.bot.usar_gale_2),
+        });
+      } else {
+        setCurrentBot(null);
+      }
+    } catch (err: any) {
+      console.error("Erro ao carregar dados do robô Hiove:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [getEffectiveToken, config, onChangeConfig]);
+
+  useEffect(() => {
+    if (isOpen) {
+      loadData();
+    }
+  }, [isOpen, loadData]);
+
+  // Toggle Bot Status (Start / Pause)
+  const handleToggleBot = async () => {
+    if (!currentBot?.id) return;
+    setActionLoading(true);
+    setFeedback(null);
+    try {
+      const token = await getEffectiveToken();
+      if (!token) throw new Error("Token não autenticado.");
+
+      const success = await hioveUserbotsService.toggleBotStatus(token, currentBot.id);
+      if (success) {
+        setFeedback({ type: "success", text: "Status do bot atualizado na Hiove com sucesso!" });
+        await loadData();
+      } else {
+        setFeedback({ type: "error", text: "Não foi possível alterar o status do bot." });
+      }
+    } catch (err: any) {
+      setFeedback({ type: "error", text: err?.message || "Erro ao atualizar status do bot." });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Delete Bot
+  const handleDeleteBot = async () => {
+    if (!currentBot?.id) return;
+    if (!window.confirm("Tem certeza que deseja deletar este bot da nuvem Hiove?")) return;
+
+    setActionLoading(true);
+    setFeedback(null);
+    try {
+      const token = await getEffectiveToken();
+      if (!token) throw new Error("Token não autenticado.");
+
+      const success = await hioveUserbotsService.deleteBot(token, currentBot.id);
+      if (success) {
+        setCurrentBot(null);
+        onChangeConfig({ ...config, enabled: false });
+        setFeedback({ type: "success", text: "Bot deletado com sucesso!" });
+        await loadData();
+      } else {
+        setFeedback({ type: "error", text: "Erro ao deletar o bot na Hiove." });
+      }
+    } catch (err: any) {
+      setFeedback({ type: "error", text: err?.message || "Falha ao deletar o bot." });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Save / Update API Key
+  const handleSaveApiKey = async () => {
+    const trimmed = apiKeyInput.trim();
+    if (!trimmed) {
+      setFeedback({ type: "error", text: "Digite uma chave API válida." });
+      return;
+    }
+
+    setActionLoading(true);
+    setFeedback(null);
+    try {
+      const token = await getEffectiveToken();
+      if (!token) throw new Error("Token de autenticação não encontrado.");
+
+      const res = await hioveUserbotsService.updateApiKey(token, trimmed);
+      if (res.success) {
+        onChangeConfig({ ...config, hioveApiKey: trimmed });
+        setApiKeyConfigured(true);
+        setShowApiKeyModal(false);
+        setApiKeyInput("");
+        setFeedback({ type: "success", text: "API Key configurada com sucesso!" });
+        await loadData();
+      } else {
+        setFeedback({ type: "error", text: res.message || "Falha ao salvar API Key na Hiove." });
+      }
+    } catch (err: any) {
+      setFeedback({ type: "error", text: err?.message || "Erro ao conectar na Hiove." });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Create New Bot
+  const handleCreateBot = async () => {
+    const entryNum = parseFloat(entryValue);
+    const stopLossNum = parseFloat(stopLoss);
+    const stopWinNum = parseFloat(stopWin);
+
+    if (isNaN(entryNum) || isNaN(stopLossNum) || isNaN(stopWinNum) || entryNum <= 0) {
+      setFeedback({ type: "error", text: "Por favor, preencha todos os campos com valores válidos." });
+      return;
+    }
+
+    setActionLoading(true);
+    setFeedback(null);
+    try {
+      const token = await getEffectiveToken();
+      if (!token) throw new Error("Token não autenticado.");
+
+      const res = await hioveUserbotsService.createBot(token, {
+        valor_entrada: entryNum,
+        stop_loss: stopLossNum,
+        stop_win: stopWinNum,
+        usar_gale_1: gale1,
+        usar_gale_2: gale2,
+        status: "ativo",
+      });
+
+      if (res.success) {
+        setShowCreateModal(false);
+        setFeedback({ type: "success", text: "Bot criado e ativado com sucesso na Hiove!" });
+        await loadData();
+      } else {
+        setFeedback({ type: "error", text: res.message || "Erro ao criar bot na Hiove." });
+      }
+    } catch (err: any) {
+      setFeedback({ type: "error", text: err?.message || "Falha na conexão com a Hiove." });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Status text helper
+  const getStatusInfo = (status?: string) => {
+    switch (status) {
+      case "ativo":
+      case "running":
+        return { text: "▶️ EXECUTANDO", color: "#10b981", bg: "rgba(16, 185, 129, 0.15)" };
+      case "pausado":
+      case "paused":
+        return { text: "⏸️ PAUSADO", color: "#eab308", bg: "rgba(234, 179, 8, 0.15)" };
+      case "stop_win":
+        return { text: "✓ STOP WIN", color: "#10b981", bg: "rgba(16, 185, 129, 0.2)" };
+      case "stop_loss":
+        return { text: "✗ STOP LOSS", color: "#ef4444", bg: "rgba(239, 68, 68, 0.2)" };
+      case "sem_saldo":
+        return { text: "⚠️ SEM SALDO", color: "#f59e0b", bg: "rgba(245, 158, 11, 0.2)" };
+      case "stopped":
+        return { text: "⏹️ PARADO", color: "#94a3b8", bg: "rgba(148, 163, 184, 0.15)" };
+      default:
+        return { text: status ? status.toUpperCase() : "INATIVO", color: "#d4af37", bg: "rgba(212, 175, 55, 0.15)" };
+    }
+  };
 
   if (!isOpen) return null;
 
-  const handleTestConnect = async () => {
-    if (!config.hioveApiKey && !config.hioveEmail) {
-      setLoginFeedback({ type: "error", msg: "Por favor, insira o seu Email/Senha ou Token da Hiove para conectar." });
-      return;
-    }
-    setIsTestingLogin(true);
-    setLoginFeedback(null);
-    try {
-      // 1. Direct login with email and password if provided
-      if (config.hioveEmail && config.hiovePassword) {
-        try {
-          const tenantId = "01JWYBZHW6DM9D7NKPBGJFDZEA";
-          const res = await fetch("/api/hiove-broker/auth/login", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-tenant-id": tenantId,
-              "x-timestamp": String(Date.now()),
-            },
-            body: JSON.stringify({
-              email: config.hioveEmail.trim(),
-              password: config.hiovePassword.trim(),
-              tenantId,
-              recaptchaToken: "bypass-2",
-            }),
-          });
-          if (res.ok) {
-            const data = await res.json();
-            const token = data.token || (data.data && data.data.token);
-            if (token) {
-              onChangeConfig({ ...config, hioveApiKey: token });
-              setLoginFeedback({ type: "success", msg: "Autenticado com sucesso na Hiove! Pronto para operar. 🟢" });
-              if (onConnectHiove) await onConnectHiove();
-              return;
-            }
-          }
-        } catch (loginErr) {
-          console.warn("Direct broker login attempt failed:", loginErr);
-        }
-      }
-
-      // 2. Token or API Key authentication
-      const auth = await hioveUserbotsService.authenticateUser(config.hioveApiKey || config.hioveEmail || "herissonvinicius52@gmail.com");
-      if (auth.success && auth.token) {
-        if (config.hioveApiKey && !config.hioveApiKey.startsWith("eyJ")) {
-          await hioveUserbotsService.updateApiKey(auth.token, config.hioveApiKey);
-        }
-        const clientName = auth.client?.name || "Herisson Vinicius Sestrem da silva";
-        setLoginFeedback({ type: "success", msg: `Conectado na Hiove: ${clientName} 🟢` });
-        if (onConnectHiove) await onConnectHiove();
-      } else {
-        setLoginFeedback({ type: "error", msg: auth.message || "Falha ao autenticar na Hiove. Verifique o Token API." });
-      }
-    } catch (e: any) {
-      setLoginFeedback({ type: "error", msg: e?.message || "Erro ao conectar na Hiove." });
-    } finally {
-      setIsTestingLogin(false);
-    }
-  };
-
-  const handleSaveApiKey = async () => {
-    if (!config.hioveApiKey) {
-      setLoginFeedback({ type: "error", msg: "Insira sua API Key antes de salvar." });
-      return;
-    }
-    setIsSavingApiKey(true);
-    try {
-      const auth = await hioveUserbotsService.authenticateUser(config.hioveApiKey);
-      if (auth.success && auth.token) {
-        const res = await hioveUserbotsService.updateApiKey(auth.token, config.hioveApiKey);
-        if (res.success) {
-          setLoginFeedback({ type: "success", msg: "API Key salva e sincronizada na Hiove com sucesso! 🟢" });
-        } else {
-          setLoginFeedback({ type: "error", msg: res.message || "Erro ao salvar API Key na Hiove." });
-        }
-      } else {
-        setLoginFeedback({ type: "success", msg: "API Key salva localmente." });
-      }
-    } catch (e: any) {
-      setLoginFeedback({ type: "error", msg: e.message || "Falha de conexão com a Hiove." });
-    } finally {
-      setIsSavingApiKey(false);
-    }
-  };
-
-  const handleSyncHioveBot = async () => {
-    setIsSyncingBot(true);
-    setBotSyncFeedback(null);
-    try {
-      const auth = await hioveUserbotsService.authenticateUser(config.hioveApiKey || "hx3pvi2oua");
-      if (!auth.success || !auth.token) {
-        setBotSyncFeedback(auth.message || "Faça login ou conecte seu Token na Hiove primeiro.");
-        return;
-      }
-
-      if (config.hioveApiKey) {
-        await hioveUserbotsService.updateApiKey(auth.token, config.hioveApiKey);
-      }
-
-      const res = await hioveUserbotsService.createBot(auth.token, {
-        valor_entrada: config.stakeAmount,
-        stop_loss: config.dailyStopLoss,
-        stop_win: config.dailyStopWin,
-        usar_gale_1: !!config.gale1,
-        usar_gale_2: !!config.gale2,
-      });
-      if (res.success) {
-        const botIdStr = res.bot?.id ? ` #${res.bot.id}` : "";
-        setBotSyncFeedback(`Bot Hiove Userbot${botIdStr} sincronizado e ATIVO na Hiove! 🚀`);
-      } else {
-        setBotSyncFeedback(res.message || "Erro ao sincronizar bot na Hiove.");
-      }
-    } catch (e: any) {
-      setBotSyncFeedback(e.message || "Erro de sincronização.");
-    } finally {
-      setIsSyncingBot(false);
-    }
-  };
-
-  const handlePauseHioveBot = async () => {
-    setIsSyncingBot(true);
-    setBotSyncFeedback(null);
-    try {
-      const auth = await hioveUserbotsService.authenticateUser(config.hioveApiKey || "hx3pvi2oua");
-      if (!auth.success || !auth.token) {
-        setBotSyncFeedback("Conecte seu Token API primeiro.");
-        return;
-      }
-      const ok = await hioveUserbotsService.pauseBot(auth.token);
-      if (ok) {
-        setBotSyncFeedback("Bot na nuvem da Hiove pausado com sucesso! 🛑");
-      } else {
-        setBotSyncFeedback("Falha ao pausar bot na Hiove ou nenhum bot ativo.");
-      }
-    } catch (e: any) {
-      setBotSyncFeedback(e.message || "Erro ao pausar bot.");
-    } finally {
-      setIsSyncingBot(false);
-    }
-  };
-
-  const targetWins = config.managementMode === "2x1" ? 2 : 5;
-  const maxLosses = config.managementMode === "2x1" ? 1 : 2;
-
-  const winProgressPercent = Math.min(100, (session.wins / targetWins) * 100);
-  const lossRiskPercent = Math.min(100, (session.losses / maxLosses) * 100);
-
-  const profitProgressPercent =
-    config.dailyStopWin > 0
-      ? Math.max(0, Math.min(100, (session.totalPnl / config.dailyStopWin) * 100))
-      : 0;
-
-  const handlePresetStake = (amount: number) => {
-    onChangeConfig({ ...config, stakeAmount: amount });
-  };
-
-  const handlePresetStopWin = (amount: number) => {
-    onChangeConfig({ ...config, dailyStopWin: amount });
-  };
-
-  const handlePresetStopLoss = (amount: number) => {
-    onChangeConfig({ ...config, dailyStopLoss: amount });
-  };
-
-  const isMetaHit = session.status === "STOP_WIN" || session.wins >= targetWins;
-  const isStopHit = session.status === "STOP_LOSS" || session.losses >= maxLosses;
+  const isRunning = currentBot?.status === "running" || currentBot?.status === "ativo";
+  const statusInfo = getStatusInfo(currentBot?.status);
+  const gale1Active = Boolean(currentBot?.usar_gale_1);
+  const gale2Active = Boolean(currentBot?.usar_gale_2);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-3 select-none overflow-y-auto">
-      <div className="bg-[#0C0F17] border border-[#1E2638] rounded-2xl w-full max-w-3xl flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden my-auto max-h-[92vh] animate-in fade-in zoom-in-95">
-        {/* Header */}
-        <div className="px-5 py-3.5 border-b border-[#1E2638] flex items-center justify-between bg-[#10141F]">
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      style={{
+        backgroundColor: "rgba(0, 0, 0, 0.85)",
+        backdropFilter: "blur(12px)",
+      }}
+    >
+      <div
+        className="relative w-full max-w-3xl rounded-2xl overflow-hidden shadow-2xl"
+        style={{
+          backgroundColor: "#0d1410",
+          border: "2px solid rgba(212, 175, 55, 0.35)",
+          boxShadow: "0 25px 60px -15px rgba(0, 0, 0, 0.9), 0 0 40px rgba(212, 175, 55, 0.15)",
+        }}
+      >
+        {/* Top Gold Accent Border */}
+        <div
+          className="h-1.5 w-full"
+          style={{
+            background: "linear-gradient(90deg, #996515 0%, #d4af37 50%, #f3e5ab 100%)",
+          }}
+        />
+
+        {/* Modal Header */}
+        <div
+          className="flex items-center justify-between px-7 py-5 border-b"
+          style={{ borderColor: "rgba(212, 175, 55, 0.2)" }}
+        >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#FF7A00] to-amber-500 flex items-center justify-center shadow-[0_0_15px_rgba(255,122,0,0.4)]">
-              <Bot className="w-6 h-6 text-slate-950 stroke-[2.5]" />
-            </div>
+            <span className="text-2xl">🤖</span>
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-black text-white tracking-wide">
-                  TRADER AUTO &bull; IA AUTÔNOMA
-                </h2>
-                <span
-                  className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase flex items-center gap-1 ${
-                    config.enabled
-                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 animate-pulse"
-                      : "bg-slate-800 text-slate-400 border border-slate-700"
-                  }`}
-                >
-                  <span
-                    className={`w-1.5 h-1.5 rounded-full ${
-                      config.enabled ? "bg-emerald-400" : "bg-slate-500"
-                    }`}
-                  />
-                  {config.enabled ? "OPERANDO" : "PAUSADO"}
-                </span>
-              </div>
-              <p className="text-xs text-slate-400">
-                Execução de ordens 100% automatizadas com validação de confluências e gestão de risco
+              <h2
+                className="text-xl md:text-2xl font-black tracking-wider uppercase"
+                style={{
+                  color: "#d4af37",
+                  fontFamily: "'Space Grotesk', system-ui, sans-serif",
+                  letterSpacing: "1.5px",
+                }}
+              >
+                GERENCIADOR DE BOTS HIOVE
+              </h2>
+              <p className="text-xs text-amber-200/60 tracking-wide">
+                Sistema de Automação Oficial em Nuvem • Hiove Trading Room
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <button
-              type="button"
+              onClick={loadData}
+              disabled={loading}
+              title="Atualizar status"
+              className="p-2 rounded-lg text-amber-300 hover:text-amber-100 hover:bg-amber-500/10 transition-all"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            </button>
+            <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800/60 transition-all"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {/* Modal Body */}
-        <div className="p-5 overflow-y-auto space-y-5 text-slate-200">
-          {/* Status Alert Banner if Meta or Stop Hit */}
-          {isMetaHit && (
-            <div className="bg-emerald-950/50 border border-emerald-500/50 rounded-xl p-3.5 flex items-center justify-between shadow-[0_0_20px_rgba(16,185,129,0.2)]">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400">
-                  <Award className="w-6 h-6" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-black text-emerald-300">
-                    META DA GESTÃO ATINGIDA COM SUCESSO! 🎉
-                  </h4>
-                  <p className="text-xs text-emerald-400/90">
-                    Placar da sessão: {session.wins} Wins x {session.losses} Loss na Gestão {config.managementMode}. Robô pausado para proteção de lucro.
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={onResetSession}
-                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Nova Sessão</span>
-              </button>
-            </div>
-          )}
-
-          {isStopHit && (
-            <div className="bg-rose-950/50 border border-rose-500/50 rounded-xl p-3.5 flex items-center justify-between shadow-[0_0_20px_rgba(244,63,94,0.2)]">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-rose-500/20 flex items-center justify-center text-rose-400">
-                  <AlertTriangle className="w-6 h-6" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-black text-rose-300">
-                    STOP LOSS DE SEGURANÇA ATINGIDO 🛑
-                  </h4>
-                  <p className="text-xs text-rose-400/90">
-                    Limite de perdas da Gestão {config.managementMode} atingido ({session.losses} Loss). O Auto Trader foi pausado para blindar seu capital.
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={onResetSession}
-                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-rose-300 border border-rose-500/40 font-bold text-xs flex items-center gap-1.5 cursor-pointer"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Resetar Placar</span>
-              </button>
-            </div>
-          )}
-
-          {/* Top Live Session Control & Placar Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-            {/* Placar */}
-            <div className="bg-[#121622] border border-[#1E2638] rounded-xl p-3 flex flex-col justify-between">
-              <span className="text-[10px] uppercase font-bold text-slate-400">
-                Placar da Sessão
-              </span>
-              <div className="flex items-baseline gap-2 mt-1">
-                <span className="text-2xl font-black text-emerald-400 font-mono">
-                  {session.wins}W
-                </span>
-                <span className="text-slate-500 font-bold">/</span>
-                <span className="text-2xl font-black text-rose-400 font-mono">
-                  {session.losses}L
-                </span>
-              </div>
-              <div className="mt-2 text-[10px] text-slate-400 flex items-center justify-between">
-                <span>Total Operações:</span>
-                <span className="font-mono font-bold text-amber-400">
-                  {session.wins + session.losses} Entradas
-                </span>
-              </div>
-            </div>
-
-            {/* Lucro/Prejuízo da Sessão */}
-            <div className="bg-[#121622] border border-[#1E2638] rounded-xl p-3 flex flex-col justify-between">
-              <span className="text-[10px] uppercase font-bold text-slate-400">
-                Resultado Líquido
-              </span>
-              <div className="mt-1">
-                <span
-                  className={`text-2xl font-black font-mono ${
-                    session.totalPnl > 0
-                      ? "text-emerald-400"
-                      : session.totalPnl < 0
-                      ? "text-rose-400"
-                      : "text-slate-200"
-                  }`}
-                >
-                  {session.totalPnl >= 0 ? "+" : ""}
-                  {currencySymbol} {session.totalPnl.toFixed(2)}
-                </span>
-              </div>
-              <div className="mt-2 text-[10px] text-slate-400 flex items-center justify-between">
-                <span>Meta Diária:</span>
-                <span className="font-mono font-bold text-emerald-400">
-                  {currencySymbol} {config.dailyStopWin}
-                </span>
-              </div>
-            </div>
-
-            {/* Conta Corretora REAL */}
-            <div className="bg-[#121622] border border-[#1E2638] rounded-xl p-3 flex flex-col justify-between">
-              <span className="text-[10px] uppercase font-bold text-slate-400">
-                Conta Corretora
-              </span>
-              <div className="mt-1 flex items-center gap-2">
-                <span className="text-xs font-black text-emerald-400 font-mono px-2 py-1 rounded bg-emerald-500/10 border border-emerald-500/30">
-                  CONTA REAL 🟢
-                </span>
-              </div>
-              <div className="mt-2 text-[10px] text-slate-400 flex items-center justify-between">
-                <span>Timeframe:</span>
-                <span className="font-mono font-bold text-cyan-400 uppercase">
-                  {config.timeframe}
-                </span>
-              </div>
-            </div>
-
-            {/* Botão de Ação Ligar / Desligar */}
-            <div className="bg-[#121622] border border-[#1E2638] rounded-xl p-3 flex flex-col justify-between">
-              <span className="text-[10px] uppercase font-bold text-slate-400">
-                Controle do Robô
-              </span>
-              <div className="mt-1">
-                <button
-                  type="button"
-                  onClick={onToggleEnabled}
-                  className={`w-full py-2 px-3 rounded-lg font-black text-xs uppercase flex items-center justify-center gap-1.5 transition-all shadow-lg cursor-pointer ${
-                    config.enabled
-                      ? "bg-rose-600 hover:bg-rose-500 text-white shadow-rose-950/50"
-                      : "bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-400 text-slate-950 shadow-emerald-950/50 font-black"
-                  }`}
-                >
-                  {config.enabled ? (
-                    <>
-                      <Pause className="w-4 h-4" />
-                      <span>Pausar Auto</span>
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-4 h-4 fill-slate-950" />
-                      <span>Iniciar Auto</span>
-                    </>
-                  )}
-                </button>
-              </div>
-              <div className="mt-2 flex items-center justify-between text-[10px] text-slate-400">
-                <span>Resetar:</span>
-                <button
-                  type="button"
-                  onClick={onResetSession}
-                  className="text-amber-400 hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  <RotateCcw className="w-3 h-3" />
-                  <span>Limpar Sessão</span>
-                </button>
-              </div>
-            </div>
+        {/* Feedback Alert */}
+        {feedback && (
+          <div
+            className={`mx-7 mt-5 p-3.5 rounded-xl border flex items-center gap-3 text-sm font-medium ${
+              feedback.type === "success"
+                ? "bg-emerald-950/40 border-emerald-500/50 text-emerald-300"
+                : "bg-rose-950/40 border-rose-500/50 text-rose-300"
+            }`}
+          >
+            {feedback.type === "success" ? (
+              <CheckCircle2 className="w-5 h-5 flex-shrink-0 text-emerald-400" />
+            ) : (
+              <AlertTriangle className="w-5 h-5 flex-shrink-0 text-rose-400" />
+            )}
+            <span>{feedback.text}</span>
           </div>
+        )}
 
-          {/* CONFIGURATION FORM */}
-          <div className="bg-[#10141F] border border-[#1E2638] rounded-xl p-4 space-y-4">
-            <div className="flex items-center justify-between border-b border-[#1A2234] pb-2.5">
-              <h3 className="text-xs uppercase font-bold text-[#FF7A00] tracking-wider flex items-center gap-1.5">
-                <Zap className="w-4 h-4" />
-                Parâmetros Operacionais do Trader Auto
+        {/* Modal Body */}
+        <div className="p-7 space-y-6 max-h-[75vh] overflow-y-auto custom-scrollbar">
+          {/* 1. API KEY STATUS CARD (Exact Billion Style) */}
+          {apiKeyConfigured ? (
+            <div
+              className="rounded-xl p-6 transition-all"
+              style={{
+                backgroundColor: "rgba(16, 185, 129, 0.12)",
+                border: "2px solid #10b981",
+                boxShadow: "0 0 20px rgba(16, 185, 129, 0.15)",
+              }}
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 text-2xl font-bold"
+                    style={{
+                      backgroundColor: "rgba(16, 185, 129, 0.2)",
+                      border: "2px solid #10b981",
+                      color: "#10b981",
+                    }}
+                  >
+                    ✓
+                  </div>
+                  <div>
+                    <h3 className="text-base md:text-lg font-bold text-emerald-400 tracking-wide uppercase">
+                      API KEY CONFIGURADA COM SUCESSO
+                    </h3>
+                    <p className="text-xs md:text-sm text-amber-200/70">
+                      Sua chave API está ativa e pronta para uso na nuvem Hiove
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setApiKeyInput(config.hioveApiKey || "");
+                    setShowApiKeyModal(true);
+                  }}
+                  className="px-5 py-2.5 rounded-lg text-xs md:text-sm font-bold tracking-wider uppercase transition-all shadow-md flex-shrink-0"
+                  style={{
+                    background: "linear-gradient(135deg, #d97706 0%, #b45309 100%)",
+                    color: "#ffffff",
+                    border: "1px solid rgba(245, 158, 11, 0.5)",
+                  }}
+                >
+                  ATUALIZAR API KEY
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div
+              className="rounded-xl p-6 transition-all"
+              style={{
+                backgroundColor: "rgba(245, 158, 11, 0.12)",
+                border: "2px solid #f59e0b",
+                boxShadow: "0 0 20px rgba(245, 158, 11, 0.15)",
+              }}
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 text-2xl font-bold"
+                    style={{
+                      backgroundColor: "rgba(245, 158, 11, 0.2)",
+                      border: "2px solid #f59e0b",
+                      color: "#f59e0b",
+                    }}
+                  >
+                    ⚠️
+                  </div>
+                  <div>
+                    <h3 className="text-base md:text-lg font-bold text-amber-400 tracking-wide uppercase">
+                      API KEY NÃO CONFIGURADA
+                    </h3>
+                    <p className="text-xs md:text-sm text-amber-200/70">
+                      Configure sua chave API da corretora para utilizar os bots
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setApiKeyInput("");
+                    setShowApiKeyModal(true);
+                  }}
+                  className="px-5 py-2.5 rounded-lg text-xs md:text-sm font-bold tracking-wider uppercase transition-all shadow-md flex-shrink-0"
+                  style={{
+                    background: "linear-gradient(135deg, #d4af37 0%, #996515 100%)",
+                    color: "#000000",
+                    fontWeight: 800,
+                  }}
+                >
+                  CONFIGURAR API KEY
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 2. BOT STATUS (Card if configured, Empty state if not) */}
+          {currentBot ? (
+            <div
+              className="rounded-2xl p-6 md:p-8"
+              style={{
+                backgroundColor: "rgba(26, 40, 32, 0.6)",
+                border: "2px solid rgba(212, 175, 55, 0.3)",
+                boxShadow: "0 10px 30px rgba(0, 0, 0, 0.5)",
+              }}
+            >
+              {/* Bot Header */}
+              <div
+                className="flex flex-col sm:flex-row justify-between sm:items-center pb-5 mb-6 gap-3"
+                style={{ borderBottom: "2px solid rgba(212, 175, 55, 0.2)" }}
+              >
+                <div>
+                  <h4
+                    className="text-lg md:text-xl font-black uppercase tracking-wider"
+                    style={{ color: "#d4af37" }}
+                  >
+                    {currentBot.trader_nome || "BOT IA HIOVE"}
+                  </h4>
+                  <p className="text-xs text-amber-200/60 mt-1">
+                    ID: {currentBot.id} • Criado em:{" "}
+                    {currentBot.criado_em
+                      ? new Date(currentBot.criado_em).toLocaleDateString("pt-BR")
+                      : "Recente"}
+                  </p>
+                </div>
+
+                <div
+                  className="px-5 py-2 rounded-full font-bold text-xs md:text-sm tracking-wider uppercase text-center self-start sm:self-auto"
+                  style={{
+                    border: `2px solid ${statusInfo.color}`,
+                    color: statusInfo.color,
+                    backgroundColor: statusInfo.bg,
+                  }}
+                >
+                  {statusInfo.text}
+                </div>
+              </div>
+
+              {/* Bot 5 Metric Grid (Exact Billion Layout) */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-7">
+                <div className="p-3.5 rounded-xl bg-black/30 border border-white/5">
+                  <span className="block text-[11px] font-bold text-amber-200/70 tracking-widest uppercase mb-1">
+                    VALOR ENTRADA
+                  </span>
+                  <span
+                    className="text-xl md:text-2xl font-extrabold"
+                    style={{ color: "#d4af37", fontFamily: "'Space Mono', monospace" }}
+                  >
+                    ${parseFloat(String(currentBot.valor_entrada)).toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-black/30 border border-white/5">
+                  <span className="block text-[11px] font-bold text-amber-200/70 tracking-widest uppercase mb-1">
+                    STOP LOSS
+                  </span>
+                  <span
+                    className="text-xl md:text-2xl font-extrabold text-rose-500"
+                    style={{ fontFamily: "'Space Mono', monospace" }}
+                  >
+                    ${parseFloat(String(currentBot.stop_loss)).toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-black/30 border border-white/5">
+                  <span className="block text-[11px] font-bold text-amber-200/70 tracking-widest uppercase mb-1">
+                    STOP WIN
+                  </span>
+                  <span
+                    className="text-xl md:text-2xl font-extrabold text-emerald-400"
+                    style={{ fontFamily: "'Space Mono', monospace" }}
+                  >
+                    ${parseFloat(String(currentBot.stop_win)).toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-black/30 border border-white/5">
+                  <span className="block text-[11px] font-bold text-amber-200/70 tracking-widest uppercase mb-1">
+                    GALE 1
+                  </span>
+                  <span
+                    className={`text-xl md:text-2xl font-extrabold ${
+                      gale1Active ? "text-emerald-400" : "text-rose-500"
+                    }`}
+                    style={{ fontFamily: "'Space Mono', monospace" }}
+                  >
+                    {gale1Active ? "ATIVO" : "INATIVO"}
+                  </span>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-black/30 border border-white/5">
+                  <span className="block text-[11px] font-bold text-amber-200/70 tracking-widest uppercase mb-1">
+                    GALE 2
+                  </span>
+                  <span
+                    className={`text-xl md:text-2xl font-extrabold ${
+                      gale2Active ? "text-emerald-400" : "text-rose-500"
+                    }`}
+                    style={{ fontFamily: "'Space Mono', monospace" }}
+                  >
+                    {gale2Active ? "ATIVO" : "INATIVO"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Bot Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={handleToggleBot}
+                  disabled={actionLoading}
+                  className="flex-1 py-3.5 px-6 rounded-xl font-black text-sm tracking-wider uppercase transition-all shadow-lg flex items-center justify-center gap-2"
+                  style={{
+                    background: isRunning
+                      ? "linear-gradient(135deg, #d97706 0%, #b45309 100%)"
+                      : "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                    color: "#ffffff",
+                    border: isRunning
+                      ? "1px solid rgba(245, 158, 11, 0.4)"
+                      : "1px solid rgba(16, 185, 129, 0.4)",
+                  }}
+                >
+                  <Power className="w-4 h-4" />
+                  <span>{isRunning ? "DESATIVAR BOT" : "ATIVAR BOT"}</span>
+                </button>
+
+                <button
+                  onClick={handleDeleteBot}
+                  disabled={actionLoading}
+                  className="py-3.5 px-6 rounded-xl font-bold text-sm tracking-wider uppercase transition-all bg-rose-900/30 hover:bg-rose-900/50 text-rose-300 border border-rose-600/40 flex items-center justify-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>DELETAR BOT</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* No Bot Configured - Exact Billion Style (Image 1) */
+            <div
+              className="text-center py-12 px-6 rounded-2xl border-2 border-dashed"
+              style={{
+                backgroundColor: "rgba(26, 40, 32, 0.35)",
+                borderColor: "rgba(212, 175, 55, 0.3)",
+              }}
+            >
+              <div className="text-5xl mb-4 animate-bounce">🤖</div>
+              <h3
+                className="text-xl md:text-2xl font-black tracking-wider uppercase mb-2"
+                style={{ color: "#ffffff" }}
+              >
+                NENHUM BOT CONFIGURADO
               </h3>
-              <span className="text-[10px] text-slate-400 font-mono">
-                Validação em Tempo Real
-              </span>
+              <p className="text-sm text-amber-200/70 max-w-md mx-auto mb-7">
+                Você ainda não tem um bot ativo. Crie um novo para começar a operar na nuvem Hiove.
+              </p>
+
+              <button
+                onClick={() => {
+                  setEntryValue(String(config.stakeAmount || 50));
+                  setStopLoss(String(config.dailyStopLoss || 200));
+                  setStopWin(String(config.dailyStopWin || 500));
+                  setGale1(Boolean(config.gale1));
+                  setGale2(Boolean(config.gale2 && config.gale1));
+                  setShowCreateModal(true);
+                }}
+                className="px-8 py-3.5 rounded-xl font-black text-sm tracking-wider uppercase shadow-xl transition-all inline-flex items-center gap-2 transform hover:scale-105 active:scale-95"
+                style={{
+                  background: "linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%)",
+                  color: "#0d1410",
+                  fontWeight: 900,
+                  boxShadow: "0 10px 25px rgba(217, 119, 6, 0.4)",
+                }}
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>CRIAR NOVO BOT</span>
+              </button>
             </div>
+          )}
+        </div>
 
-            {/* TIMEFRAME: M1, M2 ou M5 */}
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold text-slate-300 flex items-center justify-between">
-                <span>TIME DAS OPERAÇÕES (EXPIRAÇÃO):</span>
-                <span className="text-cyan-400 font-mono text-[10px]">
-                  {config.timeframe === "1m" ? "1 Minuto (M1)" : config.timeframe === "2m" ? "2 Minutos (M2)" : "5 Minutos (M5)"}
-                </span>
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => onChangeConfig({ ...config, timeframe: "1m" })}
-                  className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
-                    config.timeframe === "1m"
-                      ? "bg-[#1C2436] border-cyan-400 text-white shadow-[0_0_15px_rgba(34,211,238,0.25)]"
-                      : "bg-[#0B0E14] border-[#1E2638] text-slate-400 hover:border-slate-600 hover:text-slate-200"
-                  }`}
-                >
-                  <div className="text-sm font-black font-mono text-cyan-400">
-                    M1 (1 MIN)
-                  </div>
-                  <p className="text-[9px] text-slate-400 mt-0.5">
-                    Fluxo rápido
-                  </p>
-                </button>
+        {/* Footer info note */}
+        <div
+          className="px-7 py-4 bg-black/40 border-t flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-amber-200/50"
+          style={{ borderColor: "rgba(212, 175, 55, 0.15)" }}
+        >
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <span>Operações executadas 100% diretamente no servidor da corretora Hiove.</span>
+          </div>
+          <a
+            href="https://app.hiove.com/traderoom"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 text-amber-400 hover:text-amber-300 font-semibold"
+          >
+            <span>Acessar Plataforma Hiove</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        </div>
+      </div>
 
-                <button
-                  type="button"
-                  onClick={() => onChangeConfig({ ...config, timeframe: "2m" })}
-                  className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
-                    config.timeframe === "2m"
-                      ? "bg-[#1C2436] border-cyan-400 text-white shadow-[0_0_15px_rgba(34,211,238,0.25)]"
-                      : "bg-[#0B0E14] border-[#1E2638] text-slate-400 hover:border-slate-600 hover:text-slate-200"
-                  }`}
-                >
-                  <div className="text-sm font-black font-mono text-cyan-400">
-                    M2 (2 MIN)
-                  </div>
-                  <p className="text-[9px] text-slate-400 mt-0.5">
-                    Filtro ideal
-                  </p>
-                </button>
+      {/* ========================================================================= */}
+      {/* SUBMODAL: CRIAR NOVO BOT (Pixel Identical to Billion Trading - Image 2)    */}
+      {/* ========================================================================= */}
+      {showCreateModal && (
+        <div
+          className="fixed inset-0 z-[110] flex items-center justify-center p-4"
+          style={{
+            backgroundColor: "rgba(0, 0, 0, 0.88)",
+            backdropFilter: "blur(14px)",
+          }}
+        >
+          <div
+            className="relative w-full max-w-lg rounded-2xl p-6 md:p-8 overflow-hidden shadow-2xl"
+            style={{
+              backgroundColor: "#0d1410",
+              border: "2px solid rgba(212, 175, 55, 0.4)",
+              boxShadow: "0 20px 50px rgba(0, 0, 0, 0.95), 0 0 30px rgba(212, 175, 55, 0.2)",
+            }}
+          >
+            {/* Modal Title */}
+            <h3
+              className="text-2xl font-black tracking-wider uppercase mb-6"
+              style={{ color: "#d4af37", fontFamily: "'Space Grotesk', system-ui, sans-serif" }}
+            >
+              CRIAR NOVO BOT
+            </h3>
 
-                <button
-                  type="button"
-                  onClick={() => onChangeConfig({ ...config, timeframe: "5m" })}
-                  className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
-                    config.timeframe === "5m"
-                      ? "bg-[#1C2436] border-cyan-400 text-white shadow-[0_0_15px_rgba(34,211,238,0.25)]"
-                      : "bg-[#0B0E14] border-[#1E2638] text-slate-400 hover:border-slate-600 hover:text-slate-200"
-                  }`}
-                >
-                  <div className="text-sm font-black font-mono text-cyan-400">
-                    M5 (5 MIN)
-                  </div>
-                  <p className="text-[9px] text-slate-400 mt-0.5">
-                    Consistência
-                  </p>
-                </button>
-              </div>
-            </div>
-
-            {/* CONEXÃO E AUTENTICAÇÃO HIOVE VIA API KEY TOKEN */}
-            <div className="bg-[#121724] border border-[#1E2638] p-4 rounded-xl space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#1E2638] pb-3">
-                <div className="flex items-center gap-2">
-                  <Key className="w-4 h-4 text-amber-400" />
-                  <span className="text-xs font-black text-white uppercase tracking-wider">
-                    CONEXÃO COM A CORRETORA (HIOVE TRADEROOM API - CONTA REAL)
-                  </span>
-                </div>
-                {hioveToken ? (
-                  <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/30 flex items-center gap-1.5 w-fit">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                    CONECTADO 🟢
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/30 flex items-center gap-1.5 w-fit">
-                    <span className="w-2 h-2 rounded-full bg-amber-400" />
-                    OFFLINE ⚪
-                  </span>
-                )}
-              </div>
-
-              {/* CREDENCIAIS DE ACESSO À CORRETORA */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-slate-300">
-                    EMAIL DA CONTA HIOVE:
-                  </label>
-                  <input
-                    type="email"
-                    value={config.hioveEmail || ""}
-                    onChange={(e) => onChangeConfig({ ...config, hioveEmail: e.target.value.trim() })}
-                    placeholder="seuemail@exemplo.com"
-                    className="w-full bg-[#0B0E14] border border-[#1E2638] focus:border-amber-500 rounded-lg px-3 py-2 text-white font-mono text-xs outline-none"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-slate-300">
-                    SENHA DA CONTA HIOVE:
-                  </label>
-                  <input
-                    type="password"
-                    value={config.hiovePassword || ""}
-                    onChange={(e) => onChangeConfig({ ...config, hiovePassword: e.target.value })}
-                    placeholder="Sua senha da corretora"
-                    className="w-full bg-[#0B0E14] border border-[#1E2638] focus:border-amber-500 rounded-lg px-3 py-2 text-white font-mono text-xs outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* API KEY / TOKEN OPCIONAL */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-300 flex items-center justify-between">
-                  <span>TOKEN API DE ACESSO HIOVE (OPCIONAL):</span>
-                  <span className="text-[10px] text-amber-400 font-mono">Token JWT ou API Key</span>
+            {/* Inputs */}
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-xs font-bold tracking-widest uppercase text-amber-200/70 mb-2">
+                  VALOR DE ENTRADA ($)
                 </label>
                 <input
-                  type="password"
-                  value={config.hioveApiKey || ""}
-                  onChange={(e) => onChangeConfig({ ...config, hioveApiKey: e.target.value.trim() })}
-                  placeholder="Ou cole aqui seu Token API de acesso Hiove..."
-                  className="w-full bg-[#0B0E14] border border-[#1E2638] focus:border-amber-500 rounded-lg px-3 py-2 text-white font-mono text-xs outline-none"
+                  type="number"
+                  step="0.01"
+                  min="1"
+                  placeholder="Ex: 50.00"
+                  value={entryValue}
+                  onChange={(e) => setEntryValue(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-black/50 border text-white font-mono placeholder-zinc-600 focus:outline-none focus:border-amber-400 transition-all text-base"
+                  style={{ borderColor: "rgba(212, 175, 55, 0.3)" }}
                 />
               </div>
 
-              {/* ACTION BUTTON & FEEDBACK */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
-                <p className="text-[11px] text-slate-400">
-                  {loginFeedback ? loginFeedback.msg : "Preencha seu Email e Senha ou Token para conectar à Hiove."}
-                </p>
-
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <button
-                    type="button"
-                    onClick={handleTestConnect}
-                    disabled={isTestingLogin || isConnectingHiove}
-                    className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-gradient-to-r from-[#FF7A00] to-amber-500 hover:from-orange-600 hover:to-amber-600 text-slate-950 shadow-md hover:shadow-orange-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
-                  >
-                    {isTestingLogin || isConnectingHiove ? (
-                      <>
-                        <span className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
-                        CONECTANDO...
-                      </>
-                    ) : (
-                      <>
-                        <Zap className="w-3.5 h-3.5 text-slate-950" />
-                        {hioveToken ? "CONECTADO / RECONECTAR" : "CONECTAR NA CORRETORA"}
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* MARTINGALE (GALE 1 & GALE 2) TOGGLES */}
-              <div className="pt-2 border-t border-[#1E2638] grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="bg-[#0B0E14] border border-[#1E2638] p-2.5 rounded-lg flex items-center justify-between">
-                  <div>
-                    <div className="text-xs font-bold text-emerald-400">Gale 1 (Primeira Proteção)</div>
-                    <div className="text-[9px] text-slate-400">Ativa 1ª recuperação de entrada</div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={!!config.gale1}
-                    onChange={(e) => {
-                      const checked = e.target.checked;
-                      const nextGale2 = checked ? !!config.gale2 : false;
-                      onChangeConfig({ ...config, gale1: checked, gale2: nextGale2 });
-                    }}
-                    className="w-4 h-4 accent-emerald-500 cursor-pointer"
-                  />
-                </div>
-
-                <div className={`bg-[#0B0E14] border border-[#1E2638] p-2.5 rounded-lg flex items-center justify-between ${
-                  !config.gale1 ? "opacity-50 pointer-events-none" : ""
-                }`}>
-                  <div>
-                    <div className="text-xs font-bold text-amber-400">Gale 2 (Segunda Proteção)</div>
-                    <div className="text-[9px] text-slate-400">Ativa 2ª recuperação (requer Gale 1)</div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={!!config.gale2}
-                    disabled={!config.gale1}
-                    onChange={(e) => onChangeConfig({ ...config, gale2: e.target.checked })}
-                    className="w-4 h-4 accent-amber-500 cursor-pointer"
-                  />
-                </div>
-              </div>
-
-              {/* BOTÃO DE SINCRONIZAÇÃO DE BOT COM HIOVE */}
-              <div className="pt-1 flex items-center justify-between flex-wrap gap-2">
-                <span className="text-[10px] text-slate-400">
-                  {botSyncFeedback ? botSyncFeedback : "Sincronize ou pause bots da nuvem Hiove"}
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handlePauseHioveBot}
-                    disabled={isSyncingBot}
-                    className="px-3 py-1.5 rounded-lg bg-rose-900/60 hover:bg-rose-800 text-rose-200 border border-rose-700/50 font-bold text-xs uppercase flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                  >
-                    <Pause className="w-3.5 h-3.5" />
-                    <span>Pausar Bots Nuvem</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSyncHioveBot}
-                    disabled={isSyncingBot}
-                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold text-xs uppercase flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                  >
-                    {isSyncingBot ? (
-                      <span className="w-3 h-3 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <RefreshCw className="w-3.5 h-3.5" />
-                    )}
-                    <span>Sincronizar Bot Hiove</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* ATIVO OPERACIONAL SINCRONIZADO COM O TRADEROOM */}
-            <div className="bg-[#121724] border border-[#1E2638] p-4 rounded-xl space-y-3">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-cyan-400" />
-                  <span className="text-xs font-black text-white uppercase tracking-wider">
-                    ATIVO OPERACIONAL (SINCRONIZADO COM O TRADEROOM)
-                  </span>
-                </div>
-                <span className="text-[10px] font-bold font-mono px-2.5 py-1 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-                  AO VIVO NO GRÁFICO
-                </span>
-              </div>
-
-              <div className="bg-[#0B0E14] border border-[#1E2638] p-3.5 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="text-base font-black font-mono text-cyan-400 flex items-center gap-2">
-                    <span>{activeTicker}</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-sans font-semibold border border-slate-700">
-                      {activeTicker.includes("OTC") ? "MERCADO OTC" : "MERCADO ABERTO"}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-400">
-                    O Auto Trader analisa e executa ordens automaticamente no par que estiver aberto no seu Traderoom.
-                  </p>
-                </div>
-                <div className="sm:text-right border-t sm:border-t-0 border-[#1E2638] pt-2 sm:pt-0">
-                  <div className="text-xs font-bold text-emerald-400 font-mono">
-                    Payout Configurado: {config.minPayout || 85}%
-                  </div>
-                  <p className="text-[9px] text-slate-500 mt-0.5">
-                    Troque de par livremente no topo da tela
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* ROW 2: VALOR DE ENTRADA & PAYOUT MÍNIMO */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-              {/* VALOR DE ENTRADA */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-300 flex items-center justify-between">
-                  <span>3. VALOR DE ENTRADA (STAKE):</span>
-                  <span className="text-amber-400 font-mono text-[11px] font-bold">
-                    {currencySymbol} {(config.stakeAmount || 1).toFixed(2)}
-                  </span>
+              <div>
+                <label className="block text-xs font-bold tracking-widest uppercase text-amber-200/70 mb-2">
+                  STOP LOSS ($)
                 </label>
-                <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">
-                      {currencySymbol}
-                    </span>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={config.stakeAmount === 0 ? "" : config.stakeAmount}
-                      placeholder="1"
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/[^0-9.]/g, "");
-                        if (val === "") {
-                          onChangeConfig({ ...config, stakeAmount: 0 });
-                        } else {
-                          const num = parseFloat(val);
-                          onChangeConfig({ ...config, stakeAmount: isNaN(num) ? 0 : num });
-                        }
-                      }}
-                      onBlur={() => {
-                        if (!config.stakeAmount || config.stakeAmount < 1) {
-                          onChangeConfig({ ...config, stakeAmount: 1 });
-                        }
-                      }}
-                      className="w-full bg-[#0B0E14] border border-[#1E2638] focus:border-[#FF7A00] rounded-lg pl-9 pr-3 py-2 text-white font-mono font-bold text-sm outline-none"
-                    />
-                  </div>
-                  {/* Preset quick buttons */}
-                  <div className="flex gap-1 flex-wrap">
-                    {[1, 2, 5, 10, 25, 50].map((amt) => (
-                      <button
-                        key={amt}
-                        type="button"
-                        onClick={() => handlePresetStake(amt)}
-                        className={`px-2 py-1.5 rounded-lg text-[10px] font-bold font-mono border cursor-pointer transition-all ${
-                          config.stakeAmount === amt
-                            ? "bg-[#FF7A00] text-slate-950 border-[#FF7A00] font-black"
-                            : "bg-[#0B0E14] border-[#1E2638] text-slate-400 hover:text-white"
-                        }`}
-                      >
-                        ${amt}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="1"
+                  placeholder="Ex: 200.00"
+                  value={stopLoss}
+                  onChange={(e) => setStopLoss(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-black/50 border text-white font-mono placeholder-zinc-600 focus:outline-none focus:border-amber-400 transition-all text-base"
+                  style={{ borderColor: "rgba(212, 175, 55, 0.3)" }}
+                />
               </div>
 
-              {/* PAYOUT MÍNIMO */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-300 flex items-center justify-between">
-                  <span>4. PAYOUT MÍNIMO DO ATIVO:</span>
-                  <span className="text-emerald-400 font-mono text-[11px] font-bold">
-                    {config.minPayout}%
-                  </span>
+              <div>
+                <label className="block text-xs font-bold tracking-widest uppercase text-amber-200/70 mb-2">
+                  STOP WIN ($)
                 </label>
-                <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={config.minPayout === 0 ? "" : config.minPayout}
-                      placeholder="80"
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/[^0-9]/g, "");
-                        if (val === "") {
-                          onChangeConfig({ ...config, minPayout: 0 });
-                        } else {
-                          const num = parseInt(val, 10);
-                          onChangeConfig({ ...config, minPayout: isNaN(num) ? 0 : Math.min(98, num) });
-                        }
-                      }}
-                      onBlur={() => {
-                        if (!config.minPayout || config.minPayout < 50) {
-                          onChangeConfig({ ...config, minPayout: 80 });
-                        }
-                      }}
-                      className="w-full bg-[#0B0E14] border border-[#1E2638] focus:border-[#FF7A00] rounded-lg px-3 py-2 text-white font-mono font-bold text-sm outline-none"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">
-                      %
-                    </span>
-                  </div>
-                  {/* Payout presets */}
-                  <div className="flex gap-1">
-                    {[80, 85, 88, 90].map((p) => (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => onChangeConfig({ ...config, minPayout: p })}
-                        className={`px-2 py-1.5 rounded-lg text-[10px] font-bold font-mono border cursor-pointer ${
-                          config.minPayout === p
-                            ? "bg-emerald-500 text-slate-950 border-emerald-500 font-black"
-                            : "bg-[#0B0E14] border-[#1E2638] text-slate-400 hover:text-white"
-                        }`}
-                      >
-                        {p}%
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <p className="text-[9.5px] text-slate-500">
-                  O robô não executará entradas em ativos que estejam pagando menos que {config.minPayout}%.
-                </p>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="1"
+                  placeholder="Ex: 500.00"
+                  value={stopWin}
+                  onChange={(e) => setStopWin(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-black/50 border text-white font-mono placeholder-zinc-600 focus:outline-none focus:border-amber-400 transition-all text-base"
+                  style={{ borderColor: "rgba(212, 175, 55, 0.3)" }}
+                />
               </div>
             </div>
 
-            {/* ROW 3: META (STOP WIN) & STOP LOSS DIÁRIO */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-              {/* META (STOP WIN) */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-emerald-400 flex items-center justify-between">
-                  <span className="flex items-center gap-1">
-                    <Target className="w-3.5 h-3.5" />
-                    5. META DE LUCRO (STOP WIN):
-                  </span>
-                  <span className="font-mono font-bold">
-                    {currencySymbol} {config.dailyStopWin}
-                  </span>
-                </label>
-                <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400 font-bold text-xs">
-                      {currencySymbol}
-                    </span>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={config.dailyStopWin === 0 ? "" : config.dailyStopWin}
-                      placeholder="50"
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/[^0-9.]/g, "");
-                        if (val === "") {
-                          onChangeConfig({ ...config, dailyStopWin: 0 });
-                        } else {
-                          const num = parseFloat(val);
-                          onChangeConfig({ ...config, dailyStopWin: isNaN(num) ? 0 : num });
-                        }
-                      }}
-                      onBlur={() => {
-                        if (!config.dailyStopWin || config.dailyStopWin < 1) {
-                          onChangeConfig({ ...config, dailyStopWin: 50 });
-                        }
-                      }}
-                      className="w-full bg-[#0B0E14] border border-[#1E2638] focus:border-emerald-500 rounded-lg pl-9 pr-3 py-2 text-emerald-300 font-mono font-bold text-sm outline-none"
-                    />
-                  </div>
-                  <div className="flex gap-1 flex-wrap">
-                    {[10, 25, 50, 100, 200].map((w) => (
-                      <button
-                        key={w}
-                        type="button"
-                        onClick={() => handlePresetStopWin(w)}
-                        className={`px-2 py-1.5 rounded-lg text-[10px] font-bold font-mono border cursor-pointer ${
-                          config.dailyStopWin === w
-                            ? "bg-emerald-500 text-slate-950 border-emerald-500 font-black"
-                            : "bg-[#0B0E14] border-[#1E2638] text-slate-400 hover:text-emerald-300"
-                        }`}
-                      >
-                        ${w}
-                      </button>
-                    ))}
-                  </div>
+            {/* Gale Section (Martingale) */}
+            <div className="mb-8">
+              <label className="block text-sm font-bold text-white mb-3">
+                🎯 Configuração de Gale (Martingale)
+              </label>
+
+              {/* Gale 1 Toggle */}
+              <div
+                className="flex items-center justify-between p-4 rounded-xl mb-3 border transition-all"
+                style={{
+                  backgroundColor: "rgba(255, 255, 255, 0.03)",
+                  borderColor: "rgba(255, 255, 255, 0.08)",
+                }}
+              >
+                <div>
+                  <div className="font-bold text-sm text-white">Gale 1</div>
+                  <div className="text-xs text-zinc-400">Ativa primeira proteção de entrada</div>
                 </div>
-              </div>
-
-              {/* STOP LOSS DIÁRIO */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-rose-400 flex items-center justify-between">
-                  <span className="flex items-center gap-1">
-                    <ShieldAlert className="w-3.5 h-3.5" />
-                    6. STOP LOSS DIÁRIO:
-                  </span>
-                  <span className="font-mono font-bold">
-                    {currencySymbol} {config.dailyStopLoss}
-                  </span>
-                </label>
-                <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-400 font-bold text-xs">
-                      {currencySymbol}
-                    </span>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={config.dailyStopLoss === 0 ? "" : config.dailyStopLoss}
-                      placeholder="10"
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/[^0-9.]/g, "");
-                        if (val === "") {
-                          onChangeConfig({ ...config, dailyStopLoss: 0 });
-                        } else {
-                          const num = parseFloat(val);
-                          onChangeConfig({ ...config, dailyStopLoss: isNaN(num) ? 0 : num });
-                        }
-                      }}
-                      onBlur={() => {
-                        if (!config.dailyStopLoss || config.dailyStopLoss < 1) {
-                          onChangeConfig({ ...config, dailyStopLoss: 10 });
-                        }
-                      }}
-                      className="w-full bg-[#0B0E14] border border-[#1E2638] focus:border-rose-500 rounded-lg pl-9 pr-3 py-2 text-rose-300 font-mono font-bold text-sm outline-none"
-                    />
-                  </div>
-                  <div className="flex gap-1 flex-wrap">
-                    {[5, 10, 20, 50, 100].map((l) => (
-                      <button
-                        key={l}
-                        type="button"
-                        onClick={() => handlePresetStopLoss(l)}
-                        className={`px-2 py-1.5 rounded-lg text-[10px] font-bold font-mono border cursor-pointer ${
-                          config.dailyStopLoss === l
-                            ? "bg-rose-500 text-slate-950 border-rose-500 font-black"
-                            : "bg-[#0B0E14] border-[#1E2638] text-slate-400 hover:text-rose-300"
-                        }`}
-                      >
-                        ${l}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* HISTÓRICO DE ENTRADAS AUTOMÁTICAS (LOGS EM TEMPO REAL) */}
-          <div className="bg-[#10141F] border border-[#1E2638] rounded-xl p-4 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs uppercase font-bold text-slate-300 flex items-center gap-1.5">
-                <Activity className="w-3.5 h-3.5 text-amber-400" />
-                Logs de Operações do Auto Trader ({session.history.length})
-              </span>
-              <span className="text-[10px] text-slate-400 font-mono">
-                Sincronizado com o CandleX Engine
-              </span>
-            </div>
-
-            {session.history.length === 0 ? (
-              <div className="text-center py-6 text-slate-500 text-xs bg-[#0B0E14] rounded-lg border border-[#182030]">
-                Nenhuma operação automática executada nesta sessão ainda.
-                <p className="text-[11px] text-slate-600 mt-1">
-                  Ative o robô para capturar gatilhos com confluência de {config.minAiConfidence || 78}%+.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                {session.history.map((item) => (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !gale1;
+                    setGale1(next);
+                    if (!next) setGale2(false);
+                  }}
+                  className={`w-12 h-6 rounded-full transition-colors relative p-0.5 focus:outline-none ${
+                    gale1 ? "bg-amber-400" : "bg-zinc-700"
+                  }`}
+                >
                   <div
-                    key={item.id}
-                    className="bg-[#0B0E14] border border-[#182032] rounded-lg p-2 flex items-center justify-between text-xs"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
-                          item.direction === "CALL"
-                            ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
-                            : "bg-rose-500/20 text-rose-400 border border-rose-500/40"
-                        }`}
-                      >
-                        {item.direction}
-                      </span>
-                      <div>
-                        <span className="font-bold text-white">{item.ticker}</span>
-                        <span className="text-[10px] text-slate-400 font-mono ml-2">
-                          {new Date(item.timestamp).toLocaleTimeString("pt-BR")} &bull; {item.timeframe}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <span className="text-[10px] text-slate-400 font-mono">
-                        Conf: <strong className="text-amber-400">{item.confidenceScore}%</strong>
-                      </span>
-                      <span className="text-xs font-mono font-bold text-white">
-                        {currencySymbol} {item.stake}
-                      </span>
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-mono font-black ${
-                          item.result === "WIN"
-                            ? "bg-emerald-500 text-slate-950"
-                            : item.result === "LOSS"
-                            ? "bg-rose-500 text-white"
-                            : "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                        }`}
-                      >
-                        {item.result === "WIN"
-                          ? `+${currencySymbol} ${item.pnl.toFixed(2)}`
-                          : item.result === "LOSS"
-                          ? `-${currencySymbol} ${Math.abs(item.pnl).toFixed(2)}`
-                          : "PENDENTE"}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                    className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                      gale1 ? "transform translate-x-6" : ""
+                    }`}
+                  />
+                </button>
               </div>
-            )}
+
+              {/* Gale 2 Toggle */}
+              <div
+                className="flex items-center justify-between p-4 rounded-xl border transition-all"
+                style={{
+                  backgroundColor: "rgba(255, 255, 255, 0.03)",
+                  borderColor: "rgba(255, 255, 255, 0.08)",
+                  opacity: gale1 ? 1 : 0.45,
+                  pointerEvents: gale1 ? "auto" : "none",
+                }}
+              >
+                <div>
+                  <div className="font-bold text-sm text-white">Gale 2</div>
+                  <div className="text-xs text-zinc-400">Ativa segunda proteção (requer Gale 1)</div>
+                </div>
+                <button
+                  type="button"
+                  disabled={!gale1}
+                  onClick={() => setGale2(!gale2)}
+                  className={`w-12 h-6 rounded-full transition-colors relative p-0.5 focus:outline-none ${
+                    gale2 && gale1 ? "bg-amber-400" : "bg-zinc-700"
+                  }`}
+                >
+                  <div
+                    className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                      gale2 && gale1 ? "transform translate-x-6" : ""
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Warning when Gale 1 is inactive (Exact Billion Warning) */}
+              {!gale1 && (
+                <div
+                  className="mt-3 p-3 rounded-lg border flex items-center gap-2 text-xs font-semibold"
+                  style={{
+                    backgroundColor: "rgba(255, 214, 10, 0.1)",
+                    borderColor: "rgba(212, 175, 55, 0.5)",
+                    color: "#f59e0b",
+                  }}
+                >
+                  <span>⚠️</span>
+                  <span>Ative o Gale 1 primeiro para habilitar o Gale 2</span>
+                </div>
+              )}
+            </div>
+
+            {/* Submodal Actions */}
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(false)}
+                className="px-6 py-3 rounded-xl font-bold text-sm tracking-wider uppercase transition-all text-amber-200/80 hover:text-white hover:bg-white/5"
+              >
+                CANCELAR
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateBot}
+                disabled={actionLoading}
+                className="px-7 py-3 rounded-xl font-black text-sm tracking-wider uppercase transition-all shadow-lg"
+                style={{
+                  background: "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)",
+                  color: "#ffffff",
+                  border: "1px solid rgba(239, 68, 68, 0.5)",
+                }}
+              >
+                {actionLoading ? "CRIANDO..." : "CRIAR BOT"}
+              </button>
+            </div>
           </div>
         </div>
+      )}
 
-        {/* Footer Actions */}
-        <div className="px-5 py-3.5 border-t border-[#1E2638] bg-[#10141F] flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs text-slate-400">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span>Blindagem Automática: Para imediatamente ao atingir Meta ou Stop.</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs cursor-pointer transition-colors"
+      {/* ========================================================================= */}
+      {/* SUBMODAL: CONFIGURAR / ATUALIZAR API KEY                                  */}
+      {/* ========================================================================= */}
+      {showApiKeyModal && (
+        <div
+          className="fixed inset-0 z-[110] flex items-center justify-center p-4"
+          style={{
+            backgroundColor: "rgba(0, 0, 0, 0.88)",
+            backdropFilter: "blur(14px)",
+          }}
+        >
+          <div
+            className="relative w-full max-w-lg rounded-2xl p-6 md:p-8 overflow-hidden shadow-2xl"
+            style={{
+              backgroundColor: "#0d1410",
+              border: "2px solid rgba(212, 175, 55, 0.4)",
+              boxShadow: "0 20px 50px rgba(0, 0, 0, 0.95), 0 0 30px rgba(212, 175, 55, 0.2)",
+            }}
+          >
+            <h3
+              className="text-xl md:text-2xl font-black tracking-wider uppercase mb-6"
+              style={{ color: "#d4af37", fontFamily: "'Space Grotesk', system-ui, sans-serif" }}
             >
-              Salvar & Fechar
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                onToggleEnabled();
-                onClose();
+              CONFIGURAR API KEY
+            </h3>
+
+            <div className="mb-5">
+              <label className="block text-xs font-bold tracking-widest uppercase text-amber-200/70 mb-2">
+                INSIRA SUA CHAVE API DA HIOVE
+              </label>
+              <div className="relative">
+                <input
+                  type={showApiKeyText ? "text" : "password"}
+                  placeholder="Cole sua API Key aqui..."
+                  value={apiKeyInput}
+                  onChange={(e) => setApiKeyInput(e.target.value)}
+                  className="w-full px-4 py-3 pr-11 rounded-xl bg-black/50 border text-white font-mono placeholder-zinc-600 focus:outline-none focus:border-amber-400 transition-all text-sm"
+                  style={{ borderColor: "rgba(212, 175, 55, 0.3)" }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowApiKeyText(!showApiKeyText)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white p-1"
+                >
+                  {showApiKeyText ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Instruction Tip */}
+            <div
+              className="p-4 rounded-xl border mb-6 text-xs leading-relaxed"
+              style={{
+                backgroundColor: "rgba(245, 158, 11, 0.08)",
+                borderColor: "rgba(245, 158, 11, 0.4)",
+                color: "#f59e0b",
               }}
-              className={`px-4 py-2 rounded-lg font-black text-xs uppercase flex items-center gap-1.5 transition-all shadow-lg cursor-pointer ${
-                config.enabled
-                  ? "bg-rose-600 hover:bg-rose-500 text-white"
-                  : "bg-gradient-to-r from-[#FF9500] via-[#FF7A00] to-[#E64A00] hover:brightness-110 text-slate-950"
-              }`}
             >
-              {config.enabled ? "Pausar Robô" : "Ativar Robô Agora"}
-            </button>
+              <span className="font-bold">💡 Onde encontrar sua API Key:</span>
+              <br />
+              Acesse sua conta na Hiove → <strong>Configurações</strong> → <strong>API Key</strong> (ou crie uma nova chave de acesso).
+            </div>
+
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowApiKeyModal(false)}
+                className="px-6 py-3 rounded-xl font-bold text-sm tracking-wider uppercase text-amber-200/80 hover:text-white hover:bg-white/5 transition-all"
+              >
+                CANCELAR
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveApiKey}
+                disabled={actionLoading}
+                className="px-7 py-3 rounded-xl font-black text-sm tracking-wider uppercase transition-all shadow-lg"
+                style={{
+                  background: "linear-gradient(135deg, #d4af37 0%, #996515 100%)",
+                  color: "#000000",
+                  fontWeight: 900,
+                }}
+              >
+                {actionLoading ? "SALVANDO..." : "SALVAR CHAVE"}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

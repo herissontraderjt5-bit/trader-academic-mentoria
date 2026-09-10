@@ -758,27 +758,7 @@ export default function CandleXWorkstation({
     pendingAnalysisRef.current = null;
   }, []);
 
-  // Silent background scan for AutoTrader - NEVER opens modal or interrupts user
-  const runSilentAiAnalysis = useCallback(async () => {
-    if (candles.length === 0) return;
-
-    try {
-      const latestIndicators = indicators || calculateAllIndicators(candles);
-      const result = await candlexApiService.analyze(
-        activeTicker,
-        timeframe.toUpperCase(),
-        candles,
-        latestIndicators
-      );
-      if (result) {
-        setAiAnalysis(result);
-      }
-    } catch (e) {
-      console.error("AutoTrader background analysis error:", e);
-    }
-  }, [candles, indicators, activeTicker, timeframe]);
-
-  // Keep compatibility for any general invocation
+  // Análise manual por IA (disparada exclusivamente por ação do usuário)
   const runAiAnalysis = runManualAiScan;
 
   const prevSelectionRef = useRef<string>(`${activeTicker}_${timeframe}`);
@@ -1015,7 +995,7 @@ export default function CandleXWorkstation({
         status: "RUNNING",
         startedAt: Date.now(),
       }));
-      soundManager.speakAlert("Robô CandleX Ativado. Operando com confluência de IA e gestão de risco.");
+      soundManager.speakAlert("Robô Hiove Ativado com Sucesso na Nuvem.");
     } else {
       const nextConfig = {
         ...autoTraderConfig,
@@ -1037,7 +1017,7 @@ export default function CandleXWorkstation({
         ...prev,
         status: "PAUSED",
       }));
-      soundManager.speakAlert("Robô de Opções Pausado com Sucesso.");
+      soundManager.speakAlert("Robô Hiove Pausado com Sucesso.");
     }
   };
 
@@ -1048,191 +1028,8 @@ export default function CandleXWorkstation({
     });
   };
 
-  const lastExecutedSignalRef = useRef<string>("");
-
-  // Continuous Neural Scanner: Automatically runs silent AI Analysis every 3 seconds when AutoTrader is active
-  useEffect(() => {
-    if (!autoTraderConfig.enabled) return;
-
-    const scanInterval = setInterval(() => {
-      runSilentAiAnalysis();
-    }, 3000);
-
-    return () => clearInterval(scanInterval);
-  }, [autoTraderConfig.enabled, runSilentAiAnalysis]);
-
-  // Automated Execution Engine: Triggers real Hiove broker trades continuously when AutoTrader is enabled
-  useEffect(() => {
-    if (!autoTraderConfig.enabled) return;
-
-    // 0. Safety Checks: Stop Win / Stop Loss / Status
-    if (autoTraderSession.status === "STOP_WIN" || autoTraderSession.status === "STOP_LOSS") {
-      handleUpdateAutoTraderConfig({ ...autoTraderConfig, enabled: false });
-      return;
-    }
-
-    // Check session PNL against Stop Win / Stop Loss
-    if (autoTraderConfig.dailyStopWin > 0 && autoTraderSession.totalPnl >= autoTraderConfig.dailyStopWin) {
-      console.log("🛑 Stop Win reached in session. Pausing AutoTrader.");
-      handleUpdateAutoTraderConfig({ ...autoTraderConfig, enabled: false });
-      setAutoTraderSession((s) => ({ ...s, status: "STOP_WIN" }));
-      return;
-    }
-
-    if (autoTraderConfig.dailyStopLoss > 0 && autoTraderSession.totalPnl <= -autoTraderConfig.dailyStopLoss) {
-      console.log("🛑 Stop Loss reached in session. Pausing AutoTrader.");
-      handleUpdateAutoTraderConfig({ ...autoTraderConfig, enabled: false });
-      setAutoTraderSession((s) => ({ ...s, status: "STOP_LOSS" }));
-      return;
-    }
-
-    // Check today's AutoTrader trades PNL
-    const nowTs = Date.now();
-    const todayTrades = trades.filter(
-      (t) =>
-        (t.strategyUsed?.includes("AutoTrader") || t.strategyUsed?.includes("Robô")) &&
-        nowTs - t.timestamp < 86400000 &&
-        t.result !== "PENDING"
-    );
-    const todayPnl = todayTrades.reduce((acc, t) => acc + (t.pnl || 0), 0);
-    if (autoTraderConfig.dailyStopWin > 0 && todayPnl >= autoTraderConfig.dailyStopWin) {
-      handleUpdateAutoTraderConfig({ ...autoTraderConfig, enabled: false });
-      setAutoTraderSession((s) => ({ ...s, status: "STOP_WIN", totalPnl: todayPnl }));
-      return;
-    }
-    if (autoTraderConfig.dailyStopLoss > 0 && todayPnl <= -autoTraderConfig.dailyStopLoss) {
-      handleUpdateAutoTraderConfig({ ...autoTraderConfig, enabled: false });
-      setAutoTraderSession((s) => ({ ...s, status: "STOP_LOSS", totalPnl: todayPnl }));
-      return;
-    }
-
-    // 1. Prevent overlapping orders on the same activeTicker while a trade is currently ACTIVE
-    const hasActivePendingTrade = trades.some((t) => {
-      if (t.result !== "PENDING" || t.ticker !== activeTicker) return false;
-      const expiryMs = Math.max(1, t.expiryMinutes || 1) * 60000;
-      return Date.now() - t.timestamp < expiryMs;
-    });
-    if (hasActivePendingTrade) return;
-
-    // Determine direction from AI analysis or momentum fallback
-    let targetDirection: "CALL" | "PUT" | null = null;
-    let confidenceScore = 78;
-
-    if (aiAnalysis && (aiAnalysis.direction === "CALL" || aiAnalysis.direction === "PUT")) {
-      targetDirection = aiAnalysis.direction;
-      confidenceScore = aiAnalysis.confidenceScore;
-    } else if (candles.length > 0) {
-      const lastCandle = candles[candles.length - 1];
-      targetDirection = lastCandle.close >= lastCandle.open ? "CALL" : "PUT";
-    }
-
-    if (!targetDirection) return;
-
-    const signalKey = `${activeTicker}_${targetDirection}_${Math.floor(Date.now() / 10000)}`;
-
-    const effectiveTf = (autoTraderConfig.timeframe || "1m").toString().toLowerCase();
-    const expiryMins = effectiveTf.includes("2m") || effectiveTf === "2" || effectiveTf === "m2"
-      ? 2
-      : (effectiveTf.includes("5m") || effectiveTf === "5" || effectiveTf === "m5"
-        ? 5
-        : 1);
-
-    // Cooldown: at least expiry duration
-    const expiryMs = expiryMins * 60000;
-    const recentAutoTrade = trades.find(
-      (t) =>
-        t.ticker === activeTicker &&
-        (t.strategyUsed?.includes("AutoTrader") || t.strategyUsed?.includes("Robô")) &&
-        Date.now() - t.timestamp < expiryMs
-    );
-    if (recentAutoTrade) return;
-
-    lastExecutedSignalRef.current = signalKey;
-
-    const currentPriceVal = candles[candles.length - 1]?.close || 0;
-
-    console.log("🤖 AutoTrader Triggering Automated Trade:", {
-      ticker: activeTicker,
-      direction: targetDirection,
-      confidence: confidenceScore,
-      stake: autoTraderConfig.stakeAmount,
-      accountType: autoTraderConfig.accountType,
-      configuredTimeframe: autoTraderConfig.timeframe,
-      effectiveTimeframe: effectiveTf,
-      expiryMins,
-    });
-
-    const newTradeId = "at_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4);
-
-    // 1. Send order to real Hiove broker via API Token with exact configured timeframe (e.g. 2m)
-    placeRealHioveTrade(
-      targetDirection,
-      autoTraderConfig.stakeAmount,
-      activeTicker,
-      `${expiryMins}m`
-    );
-
-    // 2. Record trade in workstation trade log
-    const newTradeRecord: TradeRecord = {
-      id: newTradeId,
-      ticker: activeTicker,
-      direction: targetDirection,
-      stake: autoTraderConfig.stakeAmount,
-      entryPrice: currentPriceVal,
-      expiryMinutes: expiryMins,
-      payoutPercent: autoTraderConfig.minPayout || 85,
-      timestamp: Date.now(),
-      result: "PENDING",
-      pnl: 0,
-      strategyUsed: `AutoTrader IA (${confidenceScore}% Conf • ${expiryMins}M)`,
-      confidenceAtEntry: confidenceScore,
-    };
-
-    handleRecordTrade(newTradeRecord);
-
-    // 3. Update AutoTrader session history
-    setAutoTraderSession((prev) => ({
-      ...prev,
-      status: "RUNNING",
-      history: [
-        {
-          id: newTradeId,
-          ticker: activeTicker,
-          direction: targetDirection!,
-          stake: autoTraderConfig.stakeAmount,
-          confidenceScore,
-          result: "PENDING",
-          pnl: 0,
-          timestamp: Date.now(),
-          timeframe: `${expiryMins}m`,
-          managementCycle: `${expiryMins}M`,
-        },
-        ...prev.history,
-      ],
-    }));
-
-    soundManager.speakAlert(
-      `Robô AutoTrader executou ordem de ${targetDirection === "CALL" ? "Compra" : "Venda"} em ${activeTicker} para ${expiryMins} minutos com ${confidenceScore}% de confiança.`
-    );
-  }, [
-    aiAnalysis,
-    autoTraderConfig.enabled,
-    autoTraderConfig.minAiConfidence,
-    autoTraderConfig.stakeAmount,
-    autoTraderConfig.accountType,
-    autoTraderConfig.timeframe,
-    autoTraderConfig.dailyStopWin,
-    autoTraderConfig.dailyStopLoss,
-    autoTraderSession.status,
-    autoTraderSession.totalPnl,
-    activeTicker,
-    timeframe,
-    candles,
-    placeRealHioveTrade,
-    handleRecordTrade,
-    handleUpdateAutoTraderConfig,
-    trades,
-  ]);
+  // O Robô opera diretamente na nuvem da corretora Hiove (userbots.hiove.io).
+  // A análise de IA é utilizada exclusivamente para o modo manual a pedido do trader.
 
   // Automatic real-time trade resolver using closed market candles
   useEffect(() => {
