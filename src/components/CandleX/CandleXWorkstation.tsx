@@ -209,9 +209,14 @@ export default function CandleXWorkstation({
 
           if (dbAutotrader) {
             setAutoTraderConfig(dbAutotrader);
+            if (dbAutotrader.timeframe) setTimeframe(dbAutotrader.timeframe);
           } else {
             const savedAt = localStorage.getItem(`candlex_autotrader_${currentUser.id}`);
-            if (savedAt) setAutoTraderConfig(JSON.parse(savedAt));
+            if (savedAt) {
+              const parsed = JSON.parse(savedAt);
+              setAutoTraderConfig(parsed);
+              if (parsed.timeframe) setTimeframe(parsed.timeframe);
+            }
           }
 
           if (dbTrades && dbTrades.length > 0) {
@@ -245,6 +250,9 @@ export default function CandleXWorkstation({
 
   const handleUpdateAutoTraderConfig = async (newConfig: AutoTraderConfig) => {
     setAutoTraderConfig(newConfig);
+    if (newConfig.timeframe && newConfig.timeframe !== timeframe) {
+      setTimeframe(newConfig.timeframe);
+    }
     if (currentUser && currentUser.id !== 'usr-guest') {
       localStorage.setItem(`candlex_autotrader_${currentUser.id}`, JSON.stringify(newConfig));
       await supabaseService.saveCandleXAutoTrader(currentUser.id, newConfig);
@@ -500,14 +508,18 @@ export default function CandleXWorkstation({
     try {
       const tenantId = "01JWYBZHW6DM9D7NKPBGJFDZEA";
       const isDemo = autoTraderConfig.accountType !== "REAL";
-      const chosenTf = (targetTf || timeframe).toLowerCase();
-      const closeType = chosenTf.includes("5m") ? "5m" : (chosenTf.includes("2m") ? "2m" : "1m");
+      const chosenTf = (targetTf || autoTraderConfig.timeframe || timeframe || "1m").toString().toLowerCase();
+      const closeType = chosenTf.includes("2m") || chosenTf === "2" || chosenTf === "m2"
+        ? "2m"
+        : (chosenTf.includes("5m") || chosenTf === "5" || chosenTf === "m5"
+          ? "5m"
+          : "1m");
       const tradeDirection = direction === "CALL" ? "BUY" : "SELL";
       
       const rawSymbol = (targetSymbol || activeTicker).replace("_OTC", "").trim();
       const symbol = rawSymbol.toUpperCase();
 
-      console.log("Placing real Hiove trade via API...", { symbol, direction: tradeDirection, amount, isDemo, closeType });
+      console.log("Placing real Hiove trade via API...", { symbol, direction: tradeDirection, amount, isDemo, closeType, chosenTf });
       
       const payload = {
         isDemo,
@@ -936,7 +948,12 @@ export default function CandleXWorkstation({
 
     lastExecutedSignalRef.current = signalKey;
 
-    const expiryMins = timeframe === "5m" ? 5 : timeframe === "2m" ? 2 : 1;
+    const effectiveTf = (autoTraderConfig.timeframe || timeframe || "1m").toString().toLowerCase();
+    const expiryMins = effectiveTf.includes("2m") || effectiveTf === "2" || effectiveTf === "m2"
+      ? 2
+      : (effectiveTf.includes("5m") || effectiveTf === "5" || effectiveTf === "m5"
+        ? 5
+        : 1);
     const currentPriceVal = candles[candles.length - 1]?.close || 0;
 
     console.log("🤖 AutoTrader Triggering Automated Trade:", {
@@ -945,16 +962,19 @@ export default function CandleXWorkstation({
       confidence: confidenceScore,
       stake: autoTraderConfig.stakeAmount,
       accountType: autoTraderConfig.accountType,
+      configuredTimeframe: autoTraderConfig.timeframe,
+      effectiveTimeframe: effectiveTf,
+      expiryMins,
     });
 
     const newTradeId = "at_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4);
 
-    // 1. Send order to real Hiove broker via API Token
+    // 1. Send order to real Hiove broker via API Token with exact configured timeframe (e.g. 2m)
     placeRealHioveTrade(
       targetDirection,
       autoTraderConfig.stakeAmount,
       activeTicker,
-      timeframe
+      effectiveTf
     );
 
     // 2. Record trade in workstation trade log
@@ -969,7 +989,7 @@ export default function CandleXWorkstation({
       timestamp: Date.now(),
       result: "PENDING",
       pnl: 0,
-      strategyUsed: `AutoTrader IA (${confidenceScore}% Conf)`,
+      strategyUsed: `AutoTrader IA (${confidenceScore}% Conf • ${expiryMins}M)`,
       confidenceAtEntry: confidenceScore,
     };
 
@@ -989,13 +1009,15 @@ export default function CandleXWorkstation({
           result: "PENDING",
           pnl: 0,
           timestamp: Date.now(),
+          timeframe: `${expiryMins}m`,
+          managementCycle: `${expiryMins}M`,
         },
         ...prev.history,
       ],
     }));
 
     soundManager.speakAlert(
-      `Robô AutoTrader executou ordem de ${targetDirection === "CALL" ? "Compra" : "Venda"} em ${activeTicker} com ${confidenceScore}% de confiança.`
+      `Robô AutoTrader executou ordem de ${targetDirection === "CALL" ? "Compra" : "Venda"} em ${activeTicker} para ${expiryMins} minutos com ${confidenceScore}% de confiança.`
     );
   }, [
     aiAnalysis,
@@ -1003,6 +1025,7 @@ export default function CandleXWorkstation({
     autoTraderConfig.minAiConfidence,
     autoTraderConfig.stakeAmount,
     autoTraderConfig.accountType,
+    autoTraderConfig.timeframe,
     activeTicker,
     timeframe,
     candles,

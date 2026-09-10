@@ -161,7 +161,12 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
     }
 
     if (onSaveSignalTrade && analysis) {
-      const expiryMins = timeframe.toLowerCase().includes("5m") || timeframe === "5" ? 5 : timeframe.toLowerCase().includes("2m") || timeframe === "2" ? 2 : 1;
+      const effectiveTf = (autoTraderConfig?.enabled && autoTraderConfig.timeframe ? autoTraderConfig.timeframe : timeframe).toLowerCase();
+      const expiryMins = effectiveTf.includes("2m") || effectiveTf === "2" || effectiveTf === "m2"
+        ? 2
+        : (effectiveTf.includes("5m") || effectiveTf === "5" || effectiveTf === "m5"
+          ? 5
+          : 1);
       const stakeAmount = userStake;
       const payout = 89;
       const pnl = outcome === "WIN" ? +((stakeAmount * payout) / 100).toFixed(2) : outcome === "LOSS" ? -stakeAmount : 0;
@@ -724,8 +729,10 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
   const confidenceScore = isRejected ? (analysis.confidenceScore || 50) : (analysis.confidenceScore || 90);
 
   const getExpirationLabel = () => {
-    const tf = timeframe.toLowerCase();
+    const tf = (autoTraderConfig?.enabled && autoTraderConfig.timeframe ? autoTraderConfig.timeframe : timeframe).toLowerCase();
     if (tf.includes("1m") || tf === "1" || tf === "m1") return "M1 (1 Minuto)";
+    if (tf.includes("2m") || tf === "2" || tf === "m2") return "M2 (2 Minutos)";
+    if (tf.includes("3m") || tf === "3" || tf === "m3") return "M3 (3 Minutos)";
     if (tf.includes("5m") || tf === "5" || tf === "m5") return "M5 (5 Minutos)";
     if (tf.includes("15m") || tf === "15" || tf === "m15") return "M15 (15 Minutos)";
     if (tf.includes("30m") || tf === "30" || tf === "m30") return "M30 (30 Minutos)";
