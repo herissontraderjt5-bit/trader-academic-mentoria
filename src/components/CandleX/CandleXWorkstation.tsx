@@ -857,28 +857,38 @@ export default function CandleXWorkstation({
     const nextEnabled = !autoTraderConfig.enabled;
     const activeToken = autoTraderConfig.hioveApiKey || "hx3pvi2oua";
 
-    const nextConfig = {
-      ...autoTraderConfig,
-      enabled: nextEnabled,
-      hioveApiKey: activeToken,
-    };
-    handleUpdateAutoTraderConfig(nextConfig);
-
     if (nextEnabled) {
-      // Connect / Sync with Hiove Userbots server
+      // 1. Protection: Check if daily meta (Stop Win) or Stop Loss is already reached
+      if (autoTraderSession.status === "STOP_WIN" || autoTraderSession.status === "STOP_LOSS") {
+        soundManager.speakAlert("Atenção: Meta diária ou Stop Loss já foram atingidos nesta sessão. Clique em Resetar Placar ou Nova Sessão para operar novamente.");
+        return;
+      }
+
+      if (autoTraderConfig.dailyStopWin > 0 && autoTraderSession.totalPnl >= autoTraderConfig.dailyStopWin) {
+        soundManager.speakAlert("Meta de lucro diário já atingida! Resete a sessão caso deseje continuar operando.");
+        return;
+      }
+
+      if (autoTraderConfig.dailyStopLoss > 0 && autoTraderSession.totalPnl <= -autoTraderConfig.dailyStopLoss) {
+        soundManager.speakAlert("Limite de Stop Loss diário já atingido! Resete a sessão caso deseje continuar operando.");
+        return;
+      }
+
+      const nextConfig = {
+        ...autoTraderConfig,
+        enabled: true,
+        hioveApiKey: activeToken,
+      };
+      handleUpdateAutoTraderConfig(nextConfig);
+
+      // 2. Ensure any external Hiove userbots cloud bots are PAUSED so they don't execute Apple / DYDX OTC trades
       try {
         const auth = await hioveUserbotsService.authenticateUser(activeToken);
         if (auth.success && auth.token) {
-          await hioveUserbotsService.createBot(auth.token, {
-            valor_entrada: nextConfig.stakeAmount,
-            stop_loss: nextConfig.dailyStopLoss,
-            stop_win: nextConfig.dailyStopWin,
-            usar_gale_1: !!nextConfig.gale1,
-            usar_gale_2: !!nextConfig.gale2,
-          });
+          await hioveUserbotsService.pauseBot(auth.token);
         }
       } catch (err) {
-        console.warn("Hiove Userbots sync error on toggle:", err);
+        console.warn("Hiove Userbots pause cloud bot error on start:", err);
       }
 
       setAutoTraderSession((prev) => ({
@@ -886,13 +896,29 @@ export default function CandleXWorkstation({
         status: "RUNNING",
         startedAt: Date.now(),
       }));
-      soundManager.speakAlert("Robô CandleX Ativado. Iniciando varredura automatizada.");
+      soundManager.speakAlert("Robô CandleX Ativado. Operando com confluência de IA e gestão de risco.");
     } else {
+      const nextConfig = {
+        ...autoTraderConfig,
+        enabled: false,
+      };
+      handleUpdateAutoTraderConfig(nextConfig);
+
+      // Unconditionally pause any Hiove cloud bot so it immediately ceases all broker operations
+      try {
+        const auth = await hioveUserbotsService.authenticateUser(activeToken);
+        if (auth.success && auth.token) {
+          await hioveUserbotsService.pauseBot(auth.token);
+        }
+      } catch (err) {
+        console.warn("Hiove Userbots pause error on toggle:", err);
+      }
+
       setAutoTraderSession((prev) => ({
         ...prev,
         status: "PAUSED",
       }));
-      soundManager.speakAlert("Robô de Opções Pausado.");
+      soundManager.speakAlert("Robô de Opções Pausado com Sucesso.");
     }
   };
 
@@ -920,6 +946,65 @@ export default function CandleXWorkstation({
   useEffect(() => {
     if (!autoTraderConfig.enabled) return;
 
+    // 0. Safety Checks: Stop Win / Stop Loss / Status
+    if (autoTraderSession.status === "STOP_WIN" || autoTraderSession.status === "STOP_LOSS") {
+      handleUpdateAutoTraderConfig({ ...autoTraderConfig, enabled: false });
+      return;
+    }
+
+    // Check session PNL against Stop Win / Stop Loss
+    if (autoTraderConfig.dailyStopWin > 0 && autoTraderSession.totalPnl >= autoTraderConfig.dailyStopWin) {
+      console.log("🛑 Stop Win reached in session. Pausing AutoTrader.");
+      handleUpdateAutoTraderConfig({ ...autoTraderConfig, enabled: false });
+      setAutoTraderSession((s) => ({ ...s, status: "STOP_WIN" }));
+      return;
+    }
+
+    if (autoTraderConfig.dailyStopLoss > 0 && autoTraderSession.totalPnl <= -autoTraderConfig.dailyStopLoss) {
+      console.log("🛑 Stop Loss reached in session. Pausing AutoTrader.");
+      handleUpdateAutoTraderConfig({ ...autoTraderConfig, enabled: false });
+      setAutoTraderSession((s) => ({ ...s, status: "STOP_LOSS" }));
+      return;
+    }
+
+    // Check today's AutoTrader trades PNL
+    const nowTs = Date.now();
+    const todayTrades = trades.filter(
+      (t) =>
+        (t.strategyUsed?.includes("AutoTrader") || t.strategyUsed?.includes("Robô")) &&
+        nowTs - t.timestamp < 86400000 &&
+        t.result !== "PENDING"
+    );
+    const todayPnl = todayTrades.reduce((acc, t) => acc + (t.pnl || 0), 0);
+    if (autoTraderConfig.dailyStopWin > 0 && todayPnl >= autoTraderConfig.dailyStopWin) {
+      handleUpdateAutoTraderConfig({ ...autoTraderConfig, enabled: false });
+      setAutoTraderSession((s) => ({ ...s, status: "STOP_WIN", totalPnl: todayPnl }));
+      return;
+    }
+    if (autoTraderConfig.dailyStopLoss > 0 && todayPnl <= -autoTraderConfig.dailyStopLoss) {
+      handleUpdateAutoTraderConfig({ ...autoTraderConfig, enabled: false });
+      setAutoTraderSession((s) => ({ ...s, status: "STOP_LOSS", totalPnl: todayPnl }));
+      return;
+    }
+
+    // Asset selection check: ensure activeTicker is permitted by user configuration
+    const selectedAssets = autoTraderConfig.selectedAssets && autoTraderConfig.selectedAssets.length > 0
+      ? autoTraderConfig.selectedAssets
+      : ["CURRENT"];
+    const isCurrentAllowed =
+      selectedAssets.includes("CURRENT") ||
+      selectedAssets.includes(activeTicker) ||
+      selectedAssets.includes(activeTicker + "_OTC") ||
+      selectedAssets.some((a) => a.replace("_OTC", "") === activeTicker.replace("_OTC", ""));
+
+    if (!isCurrentAllowed) {
+      return;
+    }
+
+    // 1. Strictly PREVENT ANY NEW ORDER while ANY trade is currently PENDING!
+    const hasPendingTrade = trades.some((t) => t.result === "PENDING");
+    if (hasPendingTrade) return;
+
     // Determine direction from AI analysis or momentum fallback
     let targetDirection: "CALL" | "PUT" | null = null;
     let confidenceScore = 78;
@@ -935,20 +1020,15 @@ export default function CandleXWorkstation({
     if (!targetDirection) return;
 
     const signalKey = `${activeTicker}_${targetDirection}_${Math.floor(Date.now() / 10000)}`;
-    // 1. Impedir abertura de ordens simultâneas no mesmo ativo enquanto houver ordem PENDING em andamento
-    const hasPendingTradeOnAsset = trades.some(
-      (t) => t.ticker === activeTicker && t.result === "PENDING"
-    );
-    if (hasPendingTradeOnAsset) return;
 
-    const effectiveTf = (autoTraderConfig.timeframe || timeframe || "1m").toString().toLowerCase();
+    const effectiveTf = (autoTraderConfig.timeframe || "1m").toString().toLowerCase();
     const expiryMins = effectiveTf.includes("2m") || effectiveTf === "2" || effectiveTf === "m2"
       ? 2
       : (effectiveTf.includes("5m") || effectiveTf === "5" || effectiveTf === "m5"
         ? 5
         : 1);
 
-    // 2. Cooldown: aguardar ao menos a duração da expiração antes de cogitar nova entrada automatizada
+    // Cooldown: at least expiry duration
     const expiryMs = expiryMins * 60000;
     const recentAutoTrade = trades.find(
       (t) =>
@@ -980,7 +1060,7 @@ export default function CandleXWorkstation({
       targetDirection,
       autoTraderConfig.stakeAmount,
       activeTicker,
-      effectiveTf
+      `${expiryMins}m`
     );
 
     // 2. Record trade in workstation trade log
@@ -1032,11 +1112,17 @@ export default function CandleXWorkstation({
     autoTraderConfig.stakeAmount,
     autoTraderConfig.accountType,
     autoTraderConfig.timeframe,
+    autoTraderConfig.dailyStopWin,
+    autoTraderConfig.dailyStopLoss,
+    autoTraderConfig.selectedAssets,
+    autoTraderSession.status,
+    autoTraderSession.totalPnl,
     activeTicker,
     timeframe,
     candles,
     placeRealHioveTrade,
     handleRecordTrade,
+    handleUpdateAutoTraderConfig,
     trades,
   ]);
 
@@ -1127,15 +1213,23 @@ export default function CandleXWorkstation({
             const nextTotalPnl = +(prevSession.totalPnl + pnl).toFixed(2);
 
             let nextStatus = prevSession.status;
-            if (nextTotalPnl >= autoTraderConfig.dailyStopWin) {
+            if (autoTraderConfig.dailyStopWin > 0 && nextTotalPnl >= autoTraderConfig.dailyStopWin) {
               nextStatus = "STOP_WIN";
               confetti();
               soundManager.speakAlert("Meta diária do Robô atingida! AutoTrader finalizado com sucesso.");
-              setAutoTraderConfig((c) => ({ ...c, enabled: false }));
-            } else if (nextTotalPnl <= -autoTraderConfig.dailyStopLoss) {
+              handleUpdateAutoTraderConfig({ ...autoTraderConfig, enabled: false });
+              const activeToken = autoTraderConfig.hioveApiKey || "hx3pvi2oua";
+              hioveUserbotsService.authenticateUser(activeToken).then((auth) => {
+                if (auth.success && auth.token) hioveUserbotsService.pauseBot(auth.token);
+              }).catch(() => {});
+            } else if (autoTraderConfig.dailyStopLoss > 0 && nextTotalPnl <= -autoTraderConfig.dailyStopLoss) {
               nextStatus = "STOP_LOSS";
               soundManager.speakAlert("Limite de Stop Loss diário atingido. AutoTrader pausado por segurança.");
-              setAutoTraderConfig((c) => ({ ...c, enabled: false }));
+              handleUpdateAutoTraderConfig({ ...autoTraderConfig, enabled: false });
+              const activeToken = autoTraderConfig.hioveApiKey || "hx3pvi2oua";
+              hioveUserbotsService.authenticateUser(activeToken).then((auth) => {
+                if (auth.success && auth.token) hioveUserbotsService.pauseBot(auth.token);
+              }).catch(() => {});
             }
 
             // Update matching entry in Auto Trader history
@@ -1175,7 +1269,7 @@ export default function CandleXWorkstation({
         localStorage.setItem(`candlex_trades_${currentUser.id}`, JSON.stringify(nextTrades));
       }
     }
-  }, [candles, trades, activeTicker, autoTraderConfig.enabled, currentUser]);
+  }, [candles, trades, activeTicker, autoTraderConfig, currentUser]);
 
   const currentPrice = candles[candles.length - 1]?.close || 0;
 

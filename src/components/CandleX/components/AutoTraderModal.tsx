@@ -149,6 +149,29 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
     }
   };
 
+  const handlePauseHioveBot = async () => {
+    setIsSyncingBot(true);
+    setBotSyncFeedback(null);
+    try {
+      const auth = await hioveUserbotsService.authenticateUser(config.hioveApiKey || "hx3pvi2oua");
+      if (!auth.success || !auth.token) {
+        setBotSyncFeedback("Conecte seu Token API primeiro.");
+        return;
+      }
+      const ok = await hioveUserbotsService.pauseBot(auth.token);
+      if (ok) {
+        setBotSyncFeedback("Bot na nuvem da Hiove pausado com sucesso! 🛑");
+      } else {
+        setBotSyncFeedback("Falha ao pausar bot na Hiove ou nenhum bot ativo.");
+      }
+    } catch (e: any) {
+      setBotSyncFeedback(e.message || "Erro ao pausar bot.");
+    } finally {
+      setIsSyncingBot(false);
+    }
+  };
+
+
   const AVAILABLE_PAIRS = [
     { id: "CURRENT", label: `📌 Ativo Atual (${activeTicker})`, sub: "Segue o gráfico aberto" },
     { id: "EURUSD_OTC", label: "EUR/USD (OTC)", sub: "Paridade Forex" },
@@ -606,21 +629,32 @@ export const AutoTraderModal: React.FC<AutoTraderModalProps> = ({
               {/* BOTÃO DE SINCRONIZAÇÃO DE BOT COM HIOVE */}
               <div className="pt-1 flex items-center justify-between flex-wrap gap-2">
                 <span className="text-[10px] text-slate-400">
-                  {botSyncFeedback ? botSyncFeedback : "Sincronize Stake, Stop Loss e Stop Win direto na Hiove Userbots"}
+                  {botSyncFeedback ? botSyncFeedback : "Sincronize ou pause bots da nuvem Hiove"}
                 </span>
-                <button
-                  type="button"
-                  onClick={handleSyncHioveBot}
-                  disabled={isSyncingBot}
-                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold text-xs uppercase flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  {isSyncingBot ? (
-                    <span className="w-3 h-3 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <RefreshCw className="w-3.5 h-3.5" />
-                  )}
-                  <span>Sincronizar Bot Hiove</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handlePauseHioveBot}
+                    disabled={isSyncingBot}
+                    className="px-3 py-1.5 rounded-lg bg-rose-900/60 hover:bg-rose-800 text-rose-200 border border-rose-700/50 font-bold text-xs uppercase flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <Pause className="w-3.5 h-3.5" />
+                    <span>Pausar Bots Nuvem</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSyncHioveBot}
+                    disabled={isSyncingBot}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold text-xs uppercase flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    {isSyncingBot ? (
+                      <span className="w-3 h-3 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-3.5 h-3.5" />
+                    )}
+                    <span>Sincronizar Bot Hiove</span>
+                  </button>
+                </div>
               </div>
             </div>
 

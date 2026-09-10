@@ -229,7 +229,40 @@ export const hioveUserbotsService = {
     }
   },
 
-  // 5. Toggle bot status (start/pause)
+  // 5. Pause bot on Hiove cloud
+  async pauseBot(token: string, botId?: number): Promise<boolean> {
+    try {
+      let targetId = botId;
+      if (!targetId) {
+        try {
+          const found = await this.getBotByAffiliate(token);
+          if (found.found && found.bot?.id) {
+            targetId = found.bot.id;
+          }
+        } catch {}
+      }
+
+      const id = targetId || 335;
+      const res = await safeFetch(`${BASE_URL}/${id}/`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          status: "paused",
+        }),
+      });
+
+      console.log(`[Hiove] Bot #${id} pausado na nuvem:`, res.ok);
+      return res.ok;
+    } catch (e) {
+      console.error("Error pausing Hiove bot:", e);
+      return false;
+    }
+  },
+
+  // 6. Toggle bot status (start/pause)
   async toggleBotStatus(token: string, botId: number): Promise<boolean> {
     try {
       const res = await safeFetch(`${BASE_URL}/${botId}/toggle_status/`, {
