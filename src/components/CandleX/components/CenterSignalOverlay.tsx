@@ -409,12 +409,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
       const isLowConfidence = (analysis.confidenceScore || 0) < 60;
       const isLowConfluence = patterns.length < 2;
 
-      // EXACT USER RULE: Filtro Quadrante de Cores nas 2 últimas velas
-      const c1 = candles.length >= 1 ? candles[candles.length - 1] : null;
-      const c2 = candles.length >= 2 ? candles[candles.length - 2] : null;
-      const isAlternating2 = c1 && c2 ? (c1.close >= c1.open) !== (c2.close >= c2.open) : false;
-
-      if (isNeutral || isAlternating2 || isLowConfidence || isLowConfluence) {
+      if (isNeutral || isLowConfidence || isLowConfluence) {
         setDecision("REJECTED");
         setResolvedDir("NEUTRAL");
         hasAnnouncedDecisionRef.current = true;
@@ -422,7 +417,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
           onDeleteSignalTrade(signalTradeId);
           hasRegisteredPendingRef.current = false;
         }
-        const rejectTxt = analysis.rationale || (isAlternating2 ? "Filtro Quadrante de Cores Ativado: As 2 últimas velas fecharam com cores alternadas (Positiva e Negativa)." : `Análise inconclusiva no momento (${analysis.confidenceScore}% de confluência).`);
+        const rejectTxt = analysis.rationale || `Análise inconclusiva no momento (${analysis.confidenceScore}% de confluência).`;
         setRejectionReason(rejectTxt);
         soundManager.playRejectAlert();
       } else {
@@ -434,23 +429,6 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         // Transition from Analysis Audit to Confirmation after brief validation (1.8s)
         const confirmTimer = setTimeout(() => {
           if (isCancelledByUserRef.current) return;
-
-          // Re-verify Filtro Quadrante de Cores before confirming
-          const curC1 = candles.length >= 1 ? candles[candles.length - 1] : null;
-          const curC2 = candles.length >= 2 ? candles[candles.length - 2] : null;
-          const curAlt2 = curC1 && curC2 ? (curC1.close >= curC1.open) !== (curC2.close >= curC2.open) : false;
-
-          if (curAlt2) {
-            setDecision("REJECTED");
-            setResolvedDir("NEUTRAL");
-            hasAnnouncedDecisionRef.current = true;
-            setRejectionReason("Filtro Quadrante de Cores Ativado: As 2 últimas velas fecharam com cores alternadas (Positiva e Negativa). Entrada cancelada.");
-            soundManager.playRejectAlert();
-            if (onDeleteSignalTrade) {
-              onDeleteSignalTrade(signalTradeId);
-            }
-            return;
-          }
 
           setDecision("CONFIRMED");
           setResolvedDir(analysis.direction);
@@ -487,22 +465,6 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         const confluenceCount = patterns.length;
         const confidence = analysis.confidenceScore || 0;
         const dir = analysis.direction;
-
-        // EXACT USER RULE: Filtro Quadrante de Cores nas 2 últimas velas
-        const c1 = candles.length >= 1 ? candles[candles.length - 1] : null;
-        const c2 = candles.length >= 2 ? candles[candles.length - 2] : null;
-        const isAlternating2 = c1 && c2 ? (c1.close >= c1.open) !== (c2.close >= c2.open) : false;
-
-        if (isAlternating2) {
-          setDecision("REJECTED");
-          setResolvedDir("NEUTRAL");
-          setRejectionReason("Filtro Quadrante de Cores Ativado: As 2 últimas velas fecharam com cores alternadas (Positiva e Negativa). Entrada cancelada.");
-          soundManager.playRejectAlert();
-          if (onDeleteSignalTrade) {
-            onDeleteSignalTrade(signalTradeId);
-          }
-          return;
-        }
 
         if (dir === "NEUTRAL" || confidence < 60 || confluenceCount < 2) {
           setDecision("REJECTED");
