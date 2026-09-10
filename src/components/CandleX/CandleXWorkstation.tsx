@@ -864,6 +864,16 @@ export default function CandleXWorkstation({
       updatedTrades = trades.map((t, idx) => (idx === existingIndex ? { ...t, ...tradeData } : t));
     } else {
       updatedTrades = [tradeData, ...trades];
+      // When a new signal is confirmed by the system or user, immediately transmit order to broker!
+      if (tradeData.result === "PENDING") {
+        console.log("🚀 Transmitting confirmed signal trade to Hiove broker:", tradeData);
+        placeRealHioveTrade(
+          tradeData.direction,
+          tradeData.stake,
+          tradeData.ticker,
+          `${tradeData.expiryMinutes || 1}m`
+        );
+      }
     }
     setTrades(updatedTrades);
 
@@ -969,14 +979,25 @@ export default function CandleXWorkstation({
       };
       handleUpdateAutoTraderConfig(nextConfig);
 
-      // 2. Ensure any external Hiove userbots cloud bots are PAUSED so they don't execute Apple / DYDX OTC trades
+      // 2. Synchronize and ACTIVATE bot on Hiove cloud server
       try {
         const auth = await hioveUserbotsService.authenticateUser(activeToken);
         if (auth.success && auth.token) {
-          await hioveUserbotsService.pauseBot(auth.token);
+          if (autoTraderConfig.hioveApiKey) {
+            await hioveUserbotsService.updateApiKey(auth.token, autoTraderConfig.hioveApiKey);
+          }
+          const syncRes = await hioveUserbotsService.createBot(auth.token, {
+            valor_entrada: autoTraderConfig.stakeAmount || 5,
+            stop_loss: autoTraderConfig.dailyStopLoss || 50,
+            stop_win: autoTraderConfig.dailyStopWin || 100,
+            usar_gale_1: !!autoTraderConfig.gale1,
+            usar_gale_2: !!autoTraderConfig.gale2,
+            status: "ativo",
+          });
+          console.log("Hiove Userbot Activated on Cloud:", syncRes);
         }
       } catch (err) {
-        console.warn("Hiove Userbots pause cloud bot error on start:", err);
+        console.warn("Hiove Userbots activate error on start:", err);
       }
 
       setAutoTraderSession((prev) => ({
@@ -1094,9 +1115,13 @@ export default function CandleXWorkstation({
       return;
     }
 
-    // 1. Strictly PREVENT ANY NEW ORDER while ANY trade is currently PENDING!
-    const hasPendingTrade = trades.some((t) => t.result === "PENDING");
-    if (hasPendingTrade) return;
+    // 1. Prevent overlapping orders on the same activeTicker while a trade is currently ACTIVE
+    const hasActivePendingTrade = trades.some((t) => {
+      if (t.result !== "PENDING" || t.ticker !== activeTicker) return false;
+      const expiryMs = Math.max(1, t.expiryMinutes || 1) * 60000;
+      return Date.now() - t.timestamp < expiryMs;
+    });
+    if (hasActivePendingTrade) return;
 
     // Determine direction from AI analysis or momentum fallback
     let targetDirection: "CALL" | "PUT" | null = null;
