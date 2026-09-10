@@ -38,63 +38,7 @@ export const HioveBrokerFrame: React.FC<HioveBrokerFrameProps> = ({
 
   return (
     <div className="relative flex-1 w-full h-full bg-[#0B0E14] overflow-hidden flex flex-col">
-      {/* Top Traderoom Quick Navigation Bar */}
-      <div className="bg-[#0e131d] border-b border-[#1b2333] px-3 py-2 flex items-center justify-between flex-wrap gap-2 text-xs flex-shrink-0 z-10 shadow-sm">
-        <div className="flex items-center gap-2">
-          <span className="flex items-center gap-1.5 font-black text-amber-400 font-mono text-[11px] uppercase tracking-wider">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            HIOVE TRADEROOM OFICIAL
-          </span>
-          <span className="text-slate-600">&bull;</span>
-          <span className="text-amber-300 font-mono font-bold text-[11px] bg-[#141A26] px-2 py-0.5 rounded border border-amber-500/30">
-            {activeTicker}
-          </span>
-        </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          {onSwitchChartEngine && (
-            <button
-              type="button"
-              onClick={() => onSwitchChartEngine("TRADINGVIEW")}
-              className="px-2.5 py-1 rounded-lg bg-[#141A26] hover:bg-[#1E2738] border border-[#263248] text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center gap-1.5 text-[11px] font-bold"
-              title="Alternar para visualização com Gráfico TradingView"
-            >
-              <Monitor className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Gráfico TradingView</span>
-            </button>
-          )}
-
-          <button
-            type="button"
-            onClick={handleReload}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer flex items-center gap-1 text-[11px]"
-            title="Recarregar tela da corretora"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Recarregar</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleOpenPopup}
-            className="px-2.5 py-1 rounded-lg bg-[#182030] hover:bg-[#202c44] border border-amber-500/40 text-amber-300 font-bold text-[11px] uppercase flex items-center gap-1.5 shadow cursor-pointer transition-all"
-            title="Abrir em janela flutuante independente otimizada para operações"
-          >
-            <Layers className="w-3.5 h-3.5 text-amber-400" />
-            <span>Janela Flutuante</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleOpenExternal}
-            className="px-3 py-1 rounded-lg bg-gradient-to-r from-[#FF7A00] to-amber-500 hover:from-orange-600 hover:to-amber-600 text-slate-950 font-black text-[11px] uppercase flex items-center gap-1.5 shadow-md cursor-pointer transition-all"
-            title="Abrir Hiove Traderoom em tela cheia em nova aba"
-          >
-            <ExternalLink className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span>Abrir em Nova Aba</span>
-          </button>
-        </div>
-      </div>
 
       {/* Frame Container */}
       <div className="relative flex-1 w-full h-full bg-[#0B0E14] overflow-hidden">
