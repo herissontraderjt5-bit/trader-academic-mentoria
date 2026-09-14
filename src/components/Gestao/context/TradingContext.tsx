@@ -51,14 +51,26 @@ function createDefaultConfigForMonth(monthId: string, baseConfig?: MonthConfig):
     }
   }
 
+  const base = baseConfig || DEFAULT_MONTH_CONFIG;
+  const initialBankroll = base.initialBankroll ?? 100;
+  const monthlyGoalPercent = base.monthlyGoalPercent ?? 80;
+  const calculatedGoal = Number(((initialBankroll * monthlyGoalPercent) / 100).toFixed(2));
+  const days = workingDays || 20;
+
   return {
-    ...(baseConfig || DEFAULT_MONTH_CONFIG),
+    ...base,
     id: monthId,
     name,
     month,
     year,
     daysInMonth,
     workingDays,
+    initialBankroll,
+    monthlyGoal: calculatedGoal,
+    monthlyGoalPercent,
+    isMonthlyGoalPercent: true,
+    dailyStopWin: Number((calculatedGoal / days).toFixed(2)),
+    dailyStopLoss: Number((initialBankroll / days).toFixed(2)),
     closedAt: undefined,
   };
 }
@@ -138,6 +150,23 @@ interface TradingContextType {
   clearAllData: () => void;
 }
 
+function sanitizeConfigs(configs: MonthConfig[]): MonthConfig[] {
+  return configs.map((cfg) => {
+    const pct = cfg.monthlyGoalPercent ?? 80;
+    const bank = cfg.initialBankroll ?? 100;
+    const calculatedGoal = Number(((bank * pct) / 100).toFixed(2));
+    const days = cfg.workingDays || 20;
+    return {
+      ...cfg,
+      monthlyGoalPercent: pct,
+      monthlyGoal: calculatedGoal,
+      isMonthlyGoalPercent: true,
+      dailyStopWin: Number((calculatedGoal / days).toFixed(2)),
+      dailyStopLoss: Number((bank / days).toFixed(2)),
+    };
+  });
+}
+
 const TradingContext = createContext<TradingContextType | undefined>(undefined);
 
 export const TradingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -152,7 +181,10 @@ export const TradingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const saved = localStorage.getItem(`trader_academic_gestao_${userId}_month_configs`);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return sanitizeConfigs(parsed);
+        }
       } catch (e) {
         // fallback
       }
@@ -262,7 +294,12 @@ export const TradingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const savedConfigs = localStorage.getItem(storageKey('month_configs'));
     if (savedConfigs) {
       try {
-        setAllMonthConfigs(JSON.parse(savedConfigs));
+        const parsed = JSON.parse(savedConfigs);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setAllMonthConfigs(sanitizeConfigs(parsed));
+        } else {
+          setAllMonthConfigs([DEFAULT_MONTH_CONFIG]);
+        }
       } catch (e) {
         setAllMonthConfigs([DEFAULT_MONTH_CONFIG]);
       }
@@ -509,9 +546,37 @@ export const TradingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Month Config update
   const updateMonthConfig = (updated: Partial<MonthConfig>) => {
-    setAllMonthConfigs((prev) =>
-      prev.map((c) => (c.id === currentMonthId ? { ...c, ...updated } : c))
-    );
+    setAllMonthConfigs((prev) => {
+      const exists = prev.some((c) => c.id === currentMonthId);
+      let nextList: MonthConfig[];
+      if (!exists) {
+        const base = createDefaultConfigForMonth(currentMonthId, prev[0]);
+        const merged = { ...base, ...updated, isMonthlyGoalPercent: true };
+        const pct = merged.monthlyGoalPercent ?? 80;
+        const bank = merged.initialBankroll ?? 100;
+        const days = merged.workingDays || 20;
+        merged.monthlyGoal = Number(((bank * pct) / 100).toFixed(2));
+        merged.dailyStopWin = Number((merged.monthlyGoal / days).toFixed(2));
+        merged.dailyStopLoss = Number((bank / days).toFixed(2));
+        nextList = [...prev, merged];
+      } else {
+        nextList = prev.map((c) => {
+          if (c.id === currentMonthId) {
+            const merged = { ...c, ...updated, isMonthlyGoalPercent: true };
+            const pct = merged.monthlyGoalPercent ?? 80;
+            const bank = merged.initialBankroll ?? 100;
+            const days = merged.workingDays || 20;
+            merged.monthlyGoal = Number(((bank * pct) / 100).toFixed(2));
+            merged.dailyStopWin = Number((merged.monthlyGoal / days).toFixed(2));
+            merged.dailyStopLoss = Number((bank / days).toFixed(2));
+            return merged;
+          }
+          return c;
+        });
+      }
+      localStorage.setItem(storageKey('month_configs'), JSON.stringify(nextList));
+      return nextList;
+    });
   };
 
   // Create new Month
@@ -529,11 +594,20 @@ export const TradingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       initialBank = currentStats.currentBankroll > 0 ? currentStats.currentBankroll : monthConfig.initialBankroll;
     }
 
+    const goalPct = monthConfig.monthlyGoalPercent ?? 80;
+    const calculatedGoal = Number(((initialBank * goalPct) / 100).toFixed(2));
+    const days = monthConfig.workingDays || 20;
+
     const newConfig: MonthConfig = {
       ...monthConfig,
       id: newMonthId,
       name,
       initialBankroll: initialBank,
+      monthlyGoal: calculatedGoal,
+      monthlyGoalPercent: goalPct,
+      isMonthlyGoalPercent: true,
+      dailyStopWin: Number((calculatedGoal / days).toFixed(2)),
+      dailyStopLoss: Number((initialBank / days).toFixed(2)),
       closedAt: undefined,
     };
 
@@ -551,6 +625,10 @@ export const TradingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const startNewMonth = (name: string, monthNum: number, year: number, initialBankroll: number) => {
     const newMonthId = `${year}-${String(monthNum).padStart(2, '0')}`;
     const daysInMonth = new Date(year, monthNum, 0).getDate();
+    const goalPct = monthConfig.monthlyGoalPercent ?? 80;
+    const calculatedGoal = Number(((initialBankroll * goalPct) / 100).toFixed(2));
+    const days = monthConfig.workingDays || 20;
+
     const newConfig: MonthConfig = {
       ...monthConfig,
       id: newMonthId,
@@ -559,6 +637,11 @@ export const TradingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       year,
       daysInMonth,
       initialBankroll,
+      monthlyGoal: calculatedGoal,
+      monthlyGoalPercent: goalPct,
+      isMonthlyGoalPercent: true,
+      dailyStopWin: Number((calculatedGoal / days).toFixed(2)),
+      dailyStopLoss: Number((initialBankroll / days).toFixed(2)),
       closedAt: undefined,
     };
 
@@ -792,8 +875,14 @@ export const TradingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [dailySummaries, todayDateStr]);
 
   const todayProfit = todaySummary ? todaySummary.financialResult : 0;
-  const todayGoalReached = monthConfig.dailyStopWin > 0 && todayProfit >= monthConfig.dailyStopWin;
-  const todayStopLossReached = monthConfig.dailyStopLoss > 0 && todayProfit <= -monthConfig.dailyStopLoss;
+  const effectiveDailyStopWin = monthConfig.dailyStopWin && monthConfig.dailyStopWin > 0
+    ? monthConfig.dailyStopWin
+    : (monthlyStats.monthlyGoalAmount / (monthConfig.workingDays || 20));
+  const effectiveDailyStopLoss = monthConfig.dailyStopLoss && monthConfig.dailyStopLoss > 0
+    ? monthConfig.dailyStopLoss
+    : (monthConfig.initialBankroll / (monthConfig.workingDays || 20));
+  const todayGoalReached = effectiveDailyStopWin > 0 && todayProfit >= effectiveDailyStopWin;
+  const todayStopLossReached = effectiveDailyStopLoss > 0 && todayProfit <= -effectiveDailyStopLoss;
 
   // Reset & Clear
   const resetToDemoData = () => {

@@ -101,7 +101,7 @@ export const GoalProgressDonut: React.FC = () => {
       {/* Footer Info */}
       <div className="p-2.5 bg-[#0b0e14] border border-slate-800 rounded-lg flex items-center justify-between text-xs font-mono">
         <div className="text-slate-400">
-          <span>Meta Alvo:</span>{' '}
+          <span>Meta Alvo ({monthConfig.monthlyGoalPercent ?? 80}%):</span>{' '}
           <strong className="text-white">{formatCurrency(monthlyStats.monthlyGoalAmount)}</strong>
         </div>
         <div className="text-slate-400">

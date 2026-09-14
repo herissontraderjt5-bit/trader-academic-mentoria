@@ -13,7 +13,7 @@ export const DEFAULT_MONTH_CONFIG: MonthConfig = {
   currency: 'BRL',
   monthlyGoal: 100.0,
   monthlyGoalPercent: 80,
-  isMonthlyGoalPercent: false,
+  isMonthlyGoalPercent: true,
   defaultPayout: 87,
   maxOpsPerDay: 5,
   preferredManagement: '2x1',

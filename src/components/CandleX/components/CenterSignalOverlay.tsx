@@ -430,6 +430,61 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         const confirmTimer = setTimeout(() => {
           if (isCancelledByUserRef.current) return;
 
+          // Re-verify Filtros de Proteção (Quadrante, Pavio Longo, Topo/Fundo) before confirming
+          const curC1 = candles.length >= 1 ? candles[candles.length - 1] : null;
+          const curC2 = candles.length >= 2 ? candles[candles.length - 2] : null;
+          const curAlt2 = curC1 && curC2 ? (curC1.close >= curC1.open) !== (curC2.close >= curC2.open) : false;
+
+          if (curAlt2) {
+            setDecision("REJECTED");
+            setResolvedDir("NEUTRAL");
+            hasAnnouncedDecisionRef.current = true;
+            setRejectionReason("Filtro Quadrante de Cores Ativado: As 2 últimas velas fecharam com cores alternadas (Positiva e Negativa). Entrada cancelada.");
+            soundManager.playRejectAlert();
+            if (onDeleteSignalTrade) onDeleteSignalTrade(signalTradeId);
+            return;
+          }
+
+          if (curC1) {
+            const cRange = Math.max(0.0001, curC1.high - curC1.low);
+            const cBody = Math.abs(curC1.close - curC1.open);
+            const uWick = curC1.high - Math.max(curC1.open, curC1.close);
+            const lWick = Math.min(curC1.open, curC1.close) - curC1.low;
+            const isExcessiveWick =
+              (analysis.direction === "CALL" && (uWick >= cRange * 0.45 || (cBody > 0 && uWick >= cBody * 1.5))) ||
+              (analysis.direction === "PUT" && (lWick >= cRange * 0.45 || (cBody > 0 && lWick >= cBody * 1.5))) ||
+              ((uWick + lWick) >= cRange * 0.70 && cBody <= cRange * 0.20);
+
+            if (isExcessiveWick) {
+              setDecision("REJECTED");
+              setResolvedDir("NEUTRAL");
+              hasAnnouncedDecisionRef.current = true;
+              const wTxt = analysis.direction === "CALL" ? "Pavio superior excessivo com forte rejeição vendedora" : "Pavio inferior excessivo com forte rejeição compradora";
+              setRejectionReason(`Filtro Pavio Muito Longo Ativado: ${wTxt}. Entrada cancelada.`);
+              soundManager.playRejectAlert();
+              if (onDeleteSignalTrade) onDeleteSignalTrade(signalTradeId);
+              return;
+            }
+
+            const cPrice = curC1.close;
+            const nearRes = indicators?.nearResistance || (indicators?.resistance || 0);
+            const nearSup = indicators?.nearSupport || (indicators?.support || 0);
+            const atrVal = indicators?.atr || (cPrice * 0.002);
+            const isTop = nearRes > 0 && (nearRes - cPrice <= atrVal * 0.35 || cPrice >= nearRes);
+            const isBottom = nearSup > 0 && (cPrice - nearSup <= atrVal * 0.35 || cPrice <= nearSup);
+
+            if ((analysis.direction === "CALL" && isTop) || (analysis.direction === "PUT" && isBottom)) {
+              setDecision("REJECTED");
+              setResolvedDir("NEUTRAL");
+              hasAnnouncedDecisionRef.current = true;
+              const lvl = analysis.direction === "CALL" ? `Topo / Resistência ($${nearRes.toFixed(2)})` : `Fundo / Suporte ($${nearSup.toFixed(2)})`;
+              setRejectionReason(`Filtro Topo e Fundo Ativado: Preço atingiu região de ${lvl}. Operação cancelada.`);
+              soundManager.playRejectAlert();
+              if (onDeleteSignalTrade) onDeleteSignalTrade(signalTradeId);
+              return;
+            }
+          }
+
           setDecision("CONFIRMED");
           setResolvedDir(analysis.direction);
           hasAnnouncedDecisionRef.current = true;
@@ -444,7 +499,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         return () => clearTimeout(confirmTimer);
       }
     }
-  }, [analysis, lastSignalTimestamp, activeTicker, onDeleteSignalTrade, signalTradeId, candles]);
+  }, [analysis, lastSignalTimestamp, activeTicker, onDeleteSignalTrade, signalTradeId, candles, indicators]);
 
   // Active Decision Engine when entering the decision window (only during preparation candle!)
   useEffect(() => {
@@ -465,6 +520,59 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         const confluenceCount = patterns.length;
         const confidence = analysis.confidenceScore || 0;
         const dir = analysis.direction;
+
+        // Re-verify Filtro Quadrante de Cores
+        const curC1 = candles.length >= 1 ? candles[candles.length - 1] : null;
+        const curC2 = candles.length >= 2 ? candles[candles.length - 2] : null;
+        const curAlt2 = curC1 && curC2 ? (curC1.close >= curC1.open) !== (curC2.close >= curC2.open) : false;
+
+        if (curAlt2) {
+          setDecision("REJECTED");
+          setResolvedDir("NEUTRAL");
+          setRejectionReason("Filtro Quadrante de Cores Ativado: As 2 últimas velas fecharam com cores alternadas (Positiva e Negativa). Entrada cancelada.");
+          soundManager.playRejectAlert();
+          if (onDeleteSignalTrade) onDeleteSignalTrade(signalTradeId);
+          return;
+        }
+
+        // Re-verify Filtro Pavio Muito Longo & Topo e Fundo
+        if (curC1) {
+          const cRange = Math.max(0.0001, curC1.high - curC1.low);
+          const cBody = Math.abs(curC1.close - curC1.open);
+          const uWick = curC1.high - Math.max(curC1.open, curC1.close);
+          const lWick = Math.min(curC1.open, curC1.close) - curC1.low;
+          const isExcessiveWick =
+            (dir === "CALL" && (uWick >= cRange * 0.45 || (cBody > 0 && uWick >= cBody * 1.5))) ||
+            (dir === "PUT" && (lWick >= cRange * 0.45 || (cBody > 0 && lWick >= cBody * 1.5))) ||
+            ((uWick + lWick) >= cRange * 0.70 && cBody <= cRange * 0.20);
+
+          if (isExcessiveWick) {
+            setDecision("REJECTED");
+            setResolvedDir("NEUTRAL");
+            const wTxt = dir === "CALL" ? "Pavio superior excessivo com forte rejeição vendedora" : "Pavio inferior excessivo com forte rejeição compradora";
+            setRejectionReason(`Filtro Pavio Muito Longo Ativado: ${wTxt}. Entrada cancelada.`);
+            soundManager.playRejectAlert();
+            if (onDeleteSignalTrade) onDeleteSignalTrade(signalTradeId);
+            return;
+          }
+
+          const cPrice = curC1.close;
+          const nearRes = indicators?.nearResistance || (indicators?.resistance || 0);
+          const nearSup = indicators?.nearSupport || (indicators?.support || 0);
+          const atrVal = indicators?.atr || (cPrice * 0.002);
+          const isTop = nearRes > 0 && (nearRes - cPrice <= atrVal * 0.35 || cPrice >= nearRes);
+          const isBottom = nearSup > 0 && (cPrice - nearSup <= atrVal * 0.35 || cPrice <= nearSup);
+
+          if ((dir === "CALL" && isTop) || (dir === "PUT" && isBottom)) {
+            setDecision("REJECTED");
+            setResolvedDir("NEUTRAL");
+            const lvl = dir === "CALL" ? `Topo / Resistência ($${nearRes.toFixed(2)})` : `Fundo / Suporte ($${nearSup.toFixed(2)})`;
+            setRejectionReason(`Filtro Topo e Fundo Ativado: Preço atingiu região de ${lvl}. Operação cancelada.`);
+            soundManager.playRejectAlert();
+            if (onDeleteSignalTrade) onDeleteSignalTrade(signalTradeId);
+            return;
+          }
+        }
 
         if (dir === "NEUTRAL" || confidence < 60 || confluenceCount < 2) {
           setDecision("REJECTED");

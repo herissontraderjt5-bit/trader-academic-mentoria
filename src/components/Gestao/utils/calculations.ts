@@ -245,9 +245,21 @@ export function calculateMonthlyStats(
     (config.initialBankroll + totalDeposits + operationalProfit - operationalLoss - totalWithdrawals).toFixed(2)
   );
 
-  const monthlyGoalAmount = config.isMonthlyGoalPercent
-    ? Number(((config.initialBankroll * config.monthlyGoal) / 100).toFixed(2))
-    : config.monthlyGoal;
+  // Meta Mensal: calcula com base no percentual da banca inicial configurado nos parâmetros financeiros
+  const goalPercent = config.monthlyGoalPercent !== undefined && config.monthlyGoalPercent !== null
+    ? config.monthlyGoalPercent
+    : 80;
+  const initialBank = config.initialBankroll !== undefined && config.initialBankroll !== null
+    ? config.initialBankroll
+    : 100;
+
+  // Valor da Meta Mensal calculado a partir da % da banca inicial
+  let monthlyGoalAmount = Number(((initialBank * goalPercent) / 100).toFixed(2));
+
+  // Fallback de segurança apenas se o resultado for <= 0 e houver um valor monetário explícito configurado
+  if (monthlyGoalAmount <= 0 && config.monthlyGoal && config.monthlyGoal > 0) {
+    monthlyGoalAmount = config.monthlyGoal;
+  }
 
   // Formula requested:
   // progresso da meta = lucro mensal ÷ meta mensal × 100.

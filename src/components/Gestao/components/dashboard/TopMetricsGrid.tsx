@@ -144,6 +144,9 @@ export const TopMetricsGrid: React.FC = () => {
             <span className="text-2xl font-black font-mono text-white tracking-tight">
               {formatCurrency(monthlyStats.monthlyGoalAmount)}
             </span>
+            <span className="text-xs font-bold font-mono text-orange-400 bg-orange-500/10 border border-orange-500/20 px-1.5 py-0.5 rounded">
+              {monthConfig.monthlyGoalPercent ?? 80}%
+            </span>
           </div>
           <div className="mt-2 text-[11px] flex items-center justify-between">
             <span className="text-slate-400">Progresso:</span>

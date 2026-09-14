@@ -14,21 +14,44 @@ export const InitialSetupModal: React.FC<InitialSetupModalProps> = ({ isOpen, on
 
   const [initialBankroll, setInitialBankroll] = useState<number>(monthConfig.initialBankroll || 125);
   const [currency, setCurrency] = useState<'BRL' | 'USD' | 'EUR'>(monthConfig.currency || 'BRL');
-  const [monthlyGoalPercent, setMonthlyGoalPercent] = useState<number>(monthConfig.monthlyGoalPercent || 80);
+  const [monthlyGoalPercent, setMonthlyGoalPercent] = useState<number>(monthConfig.monthlyGoalPercent ?? 80);
   const [workingDays, setWorkingDays] = useState<number>(monthConfig.workingDays || 20);
   const [defaultPayout, setDefaultPayout] = useState<number>(monthConfig.defaultPayout || 87);
   const [preferredManagement, setPreferredManagement] = useState<ManagementModel>(monthConfig.preferredManagement || '2x1');
+
+  // Sync state when modal opens or monthConfig updates
+  React.useEffect(() => {
+    if (isOpen) {
+      setInitialBankroll(monthConfig.initialBankroll || 125);
+      setCurrency(monthConfig.currency || 'BRL');
+      setMonthlyGoalPercent(monthConfig.monthlyGoalPercent ?? 80);
+      setWorkingDays(monthConfig.workingDays || 20);
+      setDefaultPayout(monthConfig.defaultPayout || 87);
+      setPreferredManagement(monthConfig.preferredManagement || '2x1');
+    }
+  }, [isOpen, monthConfig]);
 
   if (!isOpen) return null;
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    const bankrollNum = Number(initialBankroll) || 100;
+    const goalPctNum = Number(monthlyGoalPercent) || 0;
+    const goalValNum = Number(((bankrollNum * goalPctNum) / 100).toFixed(2));
+    const daysNum = Number(workingDays) || 20;
+    const dailyWin = Number((goalValNum / daysNum).toFixed(2));
+    const dailyLoss = Number((bankrollNum / daysNum).toFixed(2));
+
     updateMonthConfig({
-      initialBankroll: Number(initialBankroll),
+      initialBankroll: bankrollNum,
       currency,
-      monthlyGoalPercent: Number(monthlyGoalPercent),
-      workingDays: Number(workingDays),
-      defaultPayout: Number(defaultPayout),
+      monthlyGoalPercent: goalPctNum,
+      monthlyGoal: goalValNum,
+      isMonthlyGoalPercent: true,
+      workingDays: daysNum,
+      defaultPayout: Number(defaultPayout) || 87,
+      dailyStopWin: dailyWin,
+      dailyStopLoss: dailyLoss,
       preferredManagement,
     });
     onClose();
@@ -104,10 +127,15 @@ export const InitialSetupModal: React.FC<InitialSetupModalProps> = ({ isOpen, on
           {/* Row 2: Meta Mensal % & Dias Trabalhados */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
-                <Target className="w-3.5 h-3.5 text-orange-400" />
-                Meta Mensal (% da banca)
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                  <Target className="w-3.5 h-3.5 text-orange-400" />
+                  Meta Mensal (% da banca)
+                </label>
+                <span className="text-[11px] font-mono text-emerald-400 font-bold">
+                  ≈ {currentSymbol} {Number(((initialBankroll * (monthlyGoalPercent || 0)) / 100).toFixed(2))}
+                </span>
+              </div>
               <input
                 id="setup-monthly-goal-percent"
                 type="number"
@@ -121,10 +149,15 @@ export const InitialSetupModal: React.FC<InitialSetupModalProps> = ({ isOpen, on
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-cyan-400 mb-1.5 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-cyan-400" />
-                Dias Trabalhados no Mês
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-cyan-400 flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-cyan-400" />
+                  Dias Trabalhados no Mês
+                </label>
+                <span className="text-[11px] font-mono text-cyan-400 font-bold">
+                  ≈ {currentSymbol} {Number((((initialBankroll * (monthlyGoalPercent || 0)) / 100) / (workingDays || 20)).toFixed(2))}/dia
+                </span>
+              </div>
               <input
                 id="setup-working-days"
                 type="number"

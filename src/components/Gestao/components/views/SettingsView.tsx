@@ -36,9 +36,45 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onOpenInitialSetup }
   // Form states
   const [initialBankroll, setInitialBankroll] = useState<number>(monthConfig.initialBankroll);
   const [currency, setCurrency] = useState<'BRL' | 'USD' | 'EUR'>(monthConfig.currency);
-  const [monthlyGoalPercent, setMonthlyGoalPercent] = useState<number>(monthConfig.monthlyGoalPercent || 80);
+  const [monthlyGoalPercent, setMonthlyGoalPercent] = useState<number>(monthConfig.monthlyGoalPercent ?? 80);
+  const [monthlyGoalValue, setMonthlyGoalValue] = useState<number>(() => {
+    const pct = monthConfig.monthlyGoalPercent ?? 80;
+    return Number(((monthConfig.initialBankroll * pct) / 100).toFixed(2));
+  });
   const [workingDays, setWorkingDays] = useState<number>(monthConfig.workingDays || 20);
   const [defaultPayout, setDefaultPayout] = useState<number>(monthConfig.defaultPayout || 87);
+
+  // Sync state when monthConfig changes (e.g. switching months)
+  useEffect(() => {
+    setInitialBankroll(monthConfig.initialBankroll);
+    setCurrency(monthConfig.currency);
+    const pct = monthConfig.monthlyGoalPercent ?? 80;
+    setMonthlyGoalPercent(pct);
+    const val = Number(((monthConfig.initialBankroll * pct) / 100).toFixed(2));
+    setMonthlyGoalValue(val);
+    setWorkingDays(monthConfig.workingDays || 20);
+    setDefaultPayout(monthConfig.defaultPayout || 87);
+    if (monthConfig.customAssets) setCustomAssets(monthConfig.customAssets);
+    if (monthConfig.customStrategies) setCustomStrategies(monthConfig.customStrategies);
+  }, [monthConfig]);
+
+  // Handlers for bidirectional sync between % and monetary goal
+  const handleBankrollChange = (newBankroll: number) => {
+    setInitialBankroll(newBankroll);
+    setMonthlyGoalValue(Number(((newBankroll * monthlyGoalPercent) / 100).toFixed(2)));
+  };
+
+  const handleGoalPercentChange = (newPercent: number) => {
+    setMonthlyGoalPercent(newPercent);
+    setMonthlyGoalValue(Number(((initialBankroll * newPercent) / 100).toFixed(2)));
+  };
+
+  const handleGoalValueChange = (newValue: number) => {
+    setMonthlyGoalValue(newValue);
+    if (initialBankroll > 0) {
+      setMonthlyGoalPercent(Number(((newValue / initialBankroll) * 100).toFixed(1)));
+    }
+  };
 
   // Custom Assets
   const [customAssets, setCustomAssets] = useState<string[]>(
@@ -56,12 +92,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onOpenInitialSetup }
 
   const handleSaveGeneralConfig = (e: React.FormEvent) => {
     e.preventDefault();
+    const bankrollNum = Number(initialBankroll) || 100;
+    const goalPctNum = Number(monthlyGoalPercent) || 0;
+    const goalValNum = Number(((bankrollNum * goalPctNum) / 100).toFixed(2));
+    const daysNum = Number(workingDays) || 20;
+    const dailyWin = Number((goalValNum / daysNum).toFixed(2));
+    const dailyLoss = Number((bankrollNum / daysNum).toFixed(2));
+
     updateMonthConfig({
-      initialBankroll: Number(initialBankroll),
+      initialBankroll: bankrollNum,
       currency,
-      monthlyGoalPercent: Number(monthlyGoalPercent),
-      workingDays: Number(workingDays),
-      defaultPayout: Number(defaultPayout),
+      monthlyGoalPercent: goalPctNum,
+      monthlyGoal: goalValNum,
+      isMonthlyGoalPercent: true,
+      workingDays: daysNum,
+      defaultPayout: Number(defaultPayout) || 87,
+      dailyStopWin: dailyWin,
+      dailyStopLoss: dailyLoss,
       customAssets,
       customStrategies,
     });
@@ -173,7 +220,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onOpenInitialSetup }
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-xs">
           {/* Moeda */}
           <div>
             <label className="block font-semibold text-slate-300 mb-1">Moeda da Conta</label>
@@ -200,22 +247,38 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onOpenInitialSetup }
               step="0.01"
               required
               value={initialBankroll}
-              onChange={(e) => setInitialBankroll(parseFloat(e.target.value) || 0)}
+              onChange={(e) => handleBankrollChange(parseFloat(e.target.value) || 0)}
               className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg px-3 py-2 text-white font-mono focus:border-orange-500 transition-colors"
             />
           </div>
 
           {/* Meta Mensal % */}
           <div>
-            <label className="block font-semibold text-slate-300 mb-1">Meta Mensal (% da banca)</label>
+            <label className="block font-semibold text-orange-400 mb-1">Meta Mensal (%)</label>
             <input
               id="input-settings-monthly-goal-percent"
               type="number"
               step="0.5"
               required
               value={monthlyGoalPercent}
-              onChange={(e) => setMonthlyGoalPercent(parseFloat(e.target.value) || 0)}
-              className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg px-3 py-2 text-white font-mono focus:border-orange-500 transition-colors"
+              onChange={(e) => handleGoalPercentChange(parseFloat(e.target.value) || 0)}
+              className="w-full bg-[#0b0e14] border border-orange-500/50 rounded-lg px-3 py-2 text-white font-mono focus:border-orange-500 transition-colors"
+            />
+          </div>
+
+          {/* Meta Mensal em Moeda */}
+          <div>
+            <label className="block font-semibold text-emerald-400 mb-1">
+              Meta Mensal ({currentSymbol})
+            </label>
+            <input
+              id="input-settings-monthly-goal-value"
+              type="number"
+              step="0.01"
+              required
+              value={monthlyGoalValue}
+              onChange={(e) => handleGoalValueChange(parseFloat(e.target.value) || 0)}
+              className="w-full bg-[#0b0e14] border border-emerald-500/50 rounded-lg px-3 py-2 text-white font-mono focus:border-emerald-500 transition-colors"
             />
           </div>
 
@@ -250,6 +313,28 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onOpenInitialSetup }
               onChange={(e) => setDefaultPayout(parseFloat(e.target.value) || 87)}
               className="w-full bg-[#0b0e14] border border-slate-700 rounded-lg px-3 py-2 text-white font-mono focus:border-orange-500 transition-colors"
             />
+          </div>
+        </div>
+
+        {/* Resumo Dinâmico dos Parâmetros Calculados */}
+        <div className="p-3 bg-[#0b0e14] border border-slate-800 rounded-lg grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono">
+          <div className="flex items-center justify-between px-3 py-1.5 bg-[#121722] rounded border border-slate-800">
+            <span className="text-slate-400">Meta Mensal Total:</span>
+            <span className="font-bold text-emerald-400">
+              {formatCurrency(monthlyGoalValue)} ({monthlyGoalPercent}%)
+            </span>
+          </div>
+          <div className="flex items-center justify-between px-3 py-1.5 bg-[#121722] rounded border border-slate-800">
+            <span className="text-slate-400">Meta Diária (Stop Win):</span>
+            <span className="font-bold text-cyan-400">
+              {formatCurrency(monthlyGoalValue / (workingDays || 20))} / dia
+            </span>
+          </div>
+          <div className="flex items-center justify-between px-3 py-1.5 bg-[#121722] rounded border border-slate-800">
+            <span className="text-slate-400">Stop Loss Diário:</span>
+            <span className="font-bold text-rose-400">
+              {formatCurrency(initialBankroll / (workingDays || 20))} / dia
+            </span>
           </div>
         </div>
 
