@@ -19,11 +19,14 @@ export function calculateOperationProfit(
   payoutPercent: number,
   result: 'WIN' | 'LOSS' | 'EMPATE'
 ): number {
+  const inv = Number(investment) || 0;
+  const pay = Number(payoutPercent) || 0;
+
   if (result === 'WIN') {
-    return Number((investment * (payoutPercent / 100)).toFixed(2));
+    return Number((inv * (pay / 100)).toFixed(2));
   }
   if (result === 'LOSS') {
-    return -Number(investment.toFixed(2));
+    return -Number(inv.toFixed(2));
   }
   return 0;
 }

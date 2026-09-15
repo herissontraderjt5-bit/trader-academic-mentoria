@@ -395,8 +395,8 @@ function generateAlgorithmicAnalysis(ticker, timeframe, candles, indicators = {}
   const N = detectedPatterns.length;
   const isCall = direction === "CALL";
 
-  // RULE: Cancel if less than 5 confluences
-  if (N < 5) {
+  // RULE: Cancel if less than 3 confluences
+  if (N < 3) {
     return {
       direction: "NEUTRAL",
       confidenceScore: 50.0,
@@ -405,14 +405,14 @@ function generateAlgorithmicAnalysis(ticker, timeframe, candles, indicators = {}
       triggerZone: `Aguardar confluências adicionais em $${currentPrice.toFixed(2)}`,
       invalidationLevel: `Faixa $${nearSupport} - $${nearResistance}`,
       detectedPatterns: [
-        `⚠️ Confluências Insuficientes (${N} de no mínimo 5 exigidas)`,
+        `⚠️ Confluências Insuficientes (${N} de no mínimo 3 exigidas)`,
         "Assertividade abaixo do limite mínimo institucional de 80%",
         ...detectedPatterns,
       ],
-      strategyName: "Aguardando Confluências (Mínimo 5)",
+      strategyName: "Aguardando Confluências (Mínimo 3)",
       marketSentiment: trend,
-      rationale: `Apenas ${N} confluência(s) detectada(s). O CandleX exige no mínimo 5 confluências com assertividade >= 80% para confirmar a entrada com segurança.`,
-      hioveQuickTip: "AGUARDE: Confluências insuficientes no momento. Aguarde alinhamento de pelo menos 5 fatores analíticos.",
+      rationale: `Apenas ${N} confluência(s) detectada(s). O CandleX exige no mínimo 3 confluências com assertividade >= 80% para confirmar a entrada com segurança.`,
+      hioveQuickTip: "AGUARDE: Confluências insuficientes no momento. Aguarde alinhamento de pelo menos 3 fatores analíticos.",
       keyLevels: {
         support: nearSupport,
         resistance: nearResistance,

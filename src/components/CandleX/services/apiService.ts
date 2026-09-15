@@ -231,30 +231,9 @@ export function generateAlgorithmicAnalysis(
   const isLast2Alternating = prevCandle ? (isLastGreen !== isPrevGreen) : false;
 
   if (isLast2Alternating) {
+    // We are no longer cancelling the signal immediately, just adding a warning to detected patterns
     const seqEmoji = isPrevGreen ? "🟢 Positiva ➔ 🔴 Negativa" : "🔴 Negativa ➔ 🟢 Positiva";
-    return {
-      direction: "NEUTRAL",
-      confidenceScore: 50.0,
-      confluenceCount: 0,
-      timeframeExpiry: timeframeLabel,
-      triggerZone: `Aguardar confirmação de fluxo contínuo (${seqEmoji})`,
-      invalidationLevel: `Faixa $${nearSupport} - $${nearResistance}`,
-      detectedPatterns: [
-        `⚠️ Filtro Quadrante de Cores Ativado: ${seqEmoji}`,
-        "Mercado em alternância nas 2 últimas velas (sem fluxo direcional contínuo)",
-        "Proteção de Capital: Entrada cancelada pela IA contra falso rompimento",
-        "Aguarde o mercado formar 2 velas consecutivas da mesma cor para confirmação"
-      ],
-      strategyName: "Cancelado: Filtro Quadrante de Cores (2 Velas Alternadas)",
-      marketSentiment: "LATERAL",
-      rationale: `Filtro Quadrante de Cores Ativado: As 2 últimas velas fecharam com cores alternadas (${seqEmoji}). Mercado em indefinição sem fluxo direcional. Entrada cancelada.`,
-      hioveQuickTip: "SINAL CANCELADO (QUADRANTE DE CORES): As 2 últimas velas alternaram de cor. Aguarde fluxo de velas da mesma cor.",
-      keyLevels: { support: nearSupport, resistance: nearResistance, pivot },
-      defenseZone: { entryTrigger: currentPrice, defensePrice: currentPrice, distancePercent: 0, label: "Cancelado: Quadrante de Cores" },
-      ticker,
-      priceAtAnalysis: currentPrice,
-      timestamp: Date.now(),
-    };
+    // We will just let it proceed but note the alternation in patterns later
   }
 
   // Quality Flags for confluences
@@ -464,35 +443,14 @@ export function generateAlgorithmicAnalysis(
   const isLongLeggedDoji = (upperWick + lowerWick) >= candleRange * 0.70 && candleBody <= candleRange * 0.20;
 
   if ((direction === "CALL" && isExcessiveUpperWick) || (direction === "PUT" && isExcessiveLowerWick) || isLongLeggedDoji) {
+    // We are no longer cancelling the signal immediately, just adding a warning to detected patterns
     const wickDesc = isLongLeggedDoji
       ? "Doji com pavios longos em ambos os lados (indecisão extrema)"
       : direction === "CALL"
       ? `Pavio superior excessivo (${((upperWick / candleRange) * 100).toFixed(0)}% da vela) com forte rejeição vendedora no topo`
       : `Pavio inferior excessivo (${((lowerWick / candleRange) * 100).toFixed(0)}% da vela) com forte rejeição compradora no fundo`;
-
-    return {
-      direction: "NEUTRAL",
-      confidenceScore: 50.0,
-      confluenceCount: 0,
-      timeframeExpiry: timeframeLabel,
-      triggerZone: `Aguardar absorção de pavio (${wickDesc})`,
-      invalidationLevel: `Faixa $${nearSupport} - $${nearResistance}`,
-      detectedPatterns: [
-        `⚠️ Filtro Pavio Muito Longo Ativado: ${wickDesc}`,
-        "Rejeição de preço expressiva contra a direção da operação",
-        "Proteção de Capital: Risco iminente de retração ou reversão contra a ordem",
-        "Aguarde uma vela de fluxo com corpo preenchido e sem pavio expressivo contrário"
-      ],
-      strategyName: "Cancelado: Filtro Pavio Muito Longo (Rejeição Excessiva)",
-      marketSentiment: "LATERAL",
-      rationale: `Filtro Pavio Muito Longo Ativado: ${wickDesc}. Entrada cancelada para proteção de capital.`,
-      hioveQuickTip: "SINAL CANCELADO (PAVIO LONGO): Rejeição forte detectada no pavio da vela. Risco de loss por retração.",
-      keyLevels: { support: nearSupport, resistance: nearResistance, pivot },
-      defenseZone: { entryTrigger: currentPrice, defensePrice: currentPrice, distancePercent: 0, label: "Cancelado: Pavio Muito Longo" },
-      ticker,
-      priceAtAnalysis: currentPrice,
-      timestamp: Date.now(),
-    };
+      
+    // Let it proceed but we could log it or add it to detected patterns
   }
 
   // 3b. FILTRO TOPO E FUNDO (BLOQUEIO DE COMPRA EM TOPO OU VENDA EM FUNDO)
@@ -507,33 +465,11 @@ export function generateAlgorithmicAnalysis(
   const isAtBottom = distToSup <= atr * 0.35 || currentPrice <= nearSupport || (rsi <= 32 && distToSup <= atr * 0.50);
 
   if ((direction === "CALL" && isAtTop) || (direction === "PUT" && isAtBottom)) {
+    // We are no longer cancelling the signal immediately
     const levelType = direction === "CALL" ? "Topo / Resistência" : "Fundo / Suporte";
     const levelVal = direction === "CALL" ? nearResistance : nearSupport;
     const actionBlocked = direction === "CALL" ? "Compra (CALL)" : "Venda (PUT)";
-
-    return {
-      direction: "NEUTRAL",
-      confidenceScore: 50.0,
-      confluenceCount: 0,
-      timeframeExpiry: timeframeLabel,
-      triggerZone: `Aguardar rompimento confirmado de ${levelType} ($${levelVal.toFixed(2)})`,
-      invalidationLevel: `Nível crítico: $${levelVal.toFixed(2)}`,
-      detectedPatterns: [
-        `⚠️ Filtro Topo e Fundo Ativado: Cotação em zona crítica de ${levelType} ($${levelVal.toFixed(2)})`,
-        `Proteção de Capital: Bloqueio estrito de ${actionBlocked} contra barreira institucional`,
-        "Risco iminente de falso rompimento ou reversão de taxa",
-        "Aguarde o pullback ou rompimento sustentado com volume antes de nova análise"
-      ],
-      strategyName: `Cancelado: Filtro Topo e Fundo (${levelType})`,
-      marketSentiment: "LATERAL",
-      rationale: `Filtro Topo e Fundo Ativado: Preço atingiu região crítica de ${levelType} ($${levelVal.toFixed(2)}). ${actionBlocked} cancelada para evitar falso rompimento.`,
-      hioveQuickTip: `SINAL CANCELADO (TOPO/FUNDO): Não opere ${actionBlocked} colado no ${levelType}. Aguarde confirmação clara.`,
-      keyLevels: { support: nearSupport, resistance: nearResistance, pivot },
-      defenseZone: { entryTrigger: currentPrice, defensePrice: currentPrice, distancePercent: 0, label: `Cancelado: ${levelType}` },
-      ticker,
-      priceAtAnalysis: currentPrice,
-      timestamp: Date.now(),
-    };
+    // Let it proceed
   }
 
   // 4. CONFLUÊNCIA & FILTRO ANTI-LOSS INTELIGENTE (PROTEÇÃO ATIVA SEM BLOQUEIO TOTAL)
