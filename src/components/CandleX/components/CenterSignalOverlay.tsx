@@ -765,13 +765,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
 
   // Keep rejected modal visible so the trader can read the reason and decide next action (no auto-blackout)
 
-  // Auto-dismiss confirmation after the entry candle begins to let user view chart cleanly
-  useEffect(() => {
-    if (!analysis || isAnalyzing || !isVisible) return;
-    if (currentTime.getTime() >= entryDate.getTime() + 6000 && !isMinimized && predictionResult === null) {
-      setIsMinimized(true);
-    }
-  }, [currentTime, entryDate, analysis, isAnalyzing, isVisible, isMinimized, predictionResult]);
+  // Auto-dismiss confirmation removido: manter visível para o usuário ver o "Aguardando confirmação" sem sumir.
 
   if (!analysis || !isVisible || isAnalyzing) return null;
 

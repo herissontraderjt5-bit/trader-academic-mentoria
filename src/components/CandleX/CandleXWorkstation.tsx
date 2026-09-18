@@ -1057,9 +1057,18 @@ export default function CandleXWorkstation({
         return t; // Ordem ainda em andamento
       }
 
-      // 3. Preço de entrada real da ordem e preço final de mercado no momento do fechamento
-      const entryPrice = t.entryPrice && t.entryPrice > 0 ? t.entryPrice : currentPriceVal;
-      const expiryPrice = currentPriceVal;
+      // 3. Garantir que a vela correta foi recebida do WebSocket antes de julgar
+      const entryCandleSecs = Math.floor(t.timestamp / 1000);
+      let tradeCandle = candles.find((c) => Math.abs(c.time - entryCandleSecs) <= 10);
+      
+      // Se não encontrou a vela de expiração ainda, aguarda
+      if (!tradeCandle) {
+        return t;
+      }
+
+      // 4. Preço de entrada real da ordem e preço final de mercado no momento do fechamento
+      const entryPrice = t.entryPrice && t.entryPrice > 0 ? t.entryPrice : tradeCandle.open;
+      const expiryPrice = tradeCandle.close;
       const priceDiff = +(expiryPrice - entryPrice).toFixed(6);
 
       let outcome: "WIN" | "LOSS" | "DRAW" = "DRAW";
