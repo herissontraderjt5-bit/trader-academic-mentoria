@@ -524,6 +524,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         // Re-verify Filtro Quadrante de Cores (Removido para evitar bloqueios excessivos sem contexto)
 
         // Re-verify Filtro Pavio Muito Longo & Topo e Fundo
+        const curC1 = candles.length >= 1 ? candles[candles.length - 1] : null;
         if (curC1) {
           const cRange = Math.max(0.0001, curC1.high - curC1.low);
           const cBody = Math.abs(curC1.close - curC1.open);
