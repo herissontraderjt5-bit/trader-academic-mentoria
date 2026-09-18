@@ -118,13 +118,8 @@ function generateAlgorithmicAnalysis(ticker, timeframe, candles, indicators = {}
   for (let i = 1; i < colorsArray.length; i++) {
     if (colorsArray[i] !== colorsArray[i - 1]) flips++;
   }
-  const isStrictPingPong =
-    colorStr === "GRGRG" ||
-    colorStr === "RGRGR" ||
-    last4Str === "GRGR" ||
-    last4Str === "RGRG" ||
-    (colorsArray.length === 4 && (colorStr === "GRGR" || colorStr === "RGRG"));
-  const hasHighAlternation = flips >= 3 && (last4Str === "GRGR" || last4Str === "RGRG" || colorStr.endsWith("GRG") || colorStr.endsWith("RGR"));
+  const isStrictPingPong = colorStr === "GRGRG" || colorStr === "RGRGR";
+  const hasHighAlternation = flips >= 4;
   const isAlternatingQuadrant = Boolean(indicators?.isAlternatingQuadrant) || isStrictPingPong || hasHighAlternation;
   const colorEmojiSeq = colorsArray.map((c) => (c === "G" ? "🟢" : "🔴")).join(" ");
 

@@ -521,19 +521,7 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         const confidence = analysis.confidenceScore || 0;
         const dir = analysis.direction;
 
-        // Re-verify Filtro Quadrante de Cores
-        const curC1 = candles.length >= 1 ? candles[candles.length - 1] : null;
-        const curC2 = candles.length >= 2 ? candles[candles.length - 2] : null;
-        const curAlt2 = curC1 && curC2 ? (curC1.close >= curC1.open) !== (curC2.close >= curC2.open) : false;
-
-        if (curAlt2) {
-          setDecision("REJECTED");
-          setResolvedDir("NEUTRAL");
-          setRejectionReason("Filtro Quadrante de Cores Ativado: As 2 últimas velas fecharam com cores alternadas (Positiva e Negativa). Entrada cancelada.");
-          soundManager.playRejectAlert();
-          if (onDeleteSignalTrade) onDeleteSignalTrade(signalTradeId);
-          return;
-        }
+        // Re-verify Filtro Quadrante de Cores (Removido para evitar bloqueios excessivos sem contexto)
 
         // Re-verify Filtro Pavio Muito Longo & Topo e Fundo
         if (curC1) {
@@ -688,8 +676,15 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
         tradeCandle = candles.find((c) => c.time >= entryCandleSecs && c.time < expiryCandleSecs);
       }
 
-      const entryPrice = tradeCandle ? tradeCandle.open : (lockedEntryPriceRef.current || (analysis.priceAtAnalysis || 100));
-      const expiryPrice = tradeCandle ? tradeCandle.close : (candles.length > 0 ? candles[candles.length - 1].close : entryPrice);
+      if (!tradeCandle) {
+        // Vela não encontrada ainda nos dados locais - aguarda a atualização do WebSocket para evitar "Falso DOJI"
+        isResolvingRef.current = false;
+        setHasResolvedOutcome(false);
+        return;
+      }
+
+      const entryPrice = tradeCandle.open;
+      const expiryPrice = tradeCandle.close;
       const priceDiff = +(expiryPrice - entryPrice).toFixed(6);
 
       const dir = resolvedDirection === "CALL" ? "CALL" : "PUT";
