@@ -35,6 +35,7 @@ import { AiNeuralScannerOverlay } from "./components/AiNeuralScannerOverlay";
 import { CenterSignalOverlay } from "./components/CenterSignalOverlay";
 import { HioveUnifiedTopBar } from "./components/HioveUnifiedTopBar";
 import { AutoTraderModal } from "./components/AutoTraderModal";
+import { TelegramSignalBotModal } from "./components/TelegramSignalBotModal";
 
 import {
   Candle,
@@ -44,6 +45,8 @@ import {
   BankrollConfig,
   AutoTraderConfig,
   AutoTraderSession,
+  SignalBotConfig,
+  SignalBotSession,
   AutoTradeLogItem,
   User,
   PlatformSettings,
@@ -54,6 +57,7 @@ import { soundManager } from "./utils/soundEffects";
 import { candlexApiService } from "./services/apiService";
 import { hioveUserbotsService } from "./services/hioveUserbotsService";
 import { supabaseService } from "../../services/supabaseService";
+import { telegramService } from "../../services/telegramService";
 import confetti from "canvas-confetti";
 
 interface CandleXWorkstationProps {
@@ -102,6 +106,21 @@ const INITIAL_AUTOTRADER_SESSION: AutoTraderSession = {
   tradesExecuted: 0,
   startedAt: Date.now(),
   history: [],
+};
+
+const INITIAL_SIGNAL_BOT_CONFIG: SignalBotConfig = {
+  enabled: false,
+  minAiConfidence: 80,
+  timeframes: ["1m", "5m"],
+};
+
+const INITIAL_SIGNAL_BOT_SESSION: SignalBotSession = {
+  status: "IDLE",
+  signalsGenerated: 0,
+  wins: 0,
+  losses: 0,
+  dojis: 0,
+  startedAt: Date.now(),
 };
 
 const INITIAL_TABS = [
@@ -167,6 +186,18 @@ export default function CandleXWorkstation({
   const [trades, setTrades] = useState<TradeRecord[]>([]);
   const [bankrollConfig, setBankrollConfig] = useState<BankrollConfig>(INITIAL_BANKROLL_CONFIG);
   const [recentResultNotification, setRecentResultNotification] = useState<TradeRecord | null>(null);
+
+  // Telegram Signal Bot Config & Session
+  const [isSignalBotOpen, setIsSignalBotOpen] = useState<boolean>(false);
+  const [signalBotConfig, setSignalBotConfig] = useState<SignalBotConfig>(INITIAL_SIGNAL_BOT_CONFIG);
+  const [signalBotSession, setSignalBotSession] = useState<SignalBotSession>(INITIAL_SIGNAL_BOT_SESSION);
+  const [telegramSettings, setTelegramSettings] = useState<any>(null);
+
+  useEffect(() => {
+    supabaseService.getTelegramSignalSettings().then(data => {
+      if (data) setTelegramSettings(data);
+    });
+  }, []);
 
   // Hiove integration states
   const [hioveAccountInfo, setHioveAccountInfo] = useState<{ balance: number; demoBalance: number; token: string | null; userId: string | null }>({
@@ -716,6 +747,109 @@ export default function CandleXWorkstation({
     return () => clearInterval(interval);
   }, [fetchMarketData]);
 
+  // TELEGRAM SIGNAL BOT POLLING ENGINE
+  useEffect(() => {
+    if (!signalBotConfig.enabled || !telegramSettings || !telegramSettings.isActive) return;
+
+    // Helper: Check if current time is within allowed windows
+    const isWithinAllowedTime = () => {
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      
+      const parseTime = (timeStr: string) => {
+        const [h, m] = timeStr.split(':').map(Number);
+        return h * 60 + m;
+      };
+
+      const inWindow = (start: string, end: string) => {
+        if (!start || !end) return false;
+        return currentMinutes >= parseTime(start) && currentMinutes <= parseTime(end);
+      };
+
+      return inWindow(telegramSettings.morningStartTime, telegramSettings.morningEndTime) ||
+             inWindow(telegramSettings.afternoonStartTime, telegramSettings.afternoonEndTime) ||
+             inWindow(telegramSettings.nightStartTime, telegramSettings.nightEndTime);
+    };
+
+    // Helper: Format pair (e.g. "EUR/USD" -> "EURUSD")
+    const cleanPair = (pair: string) => pair.replace('/', '').replace(' (OTC)', '_OTC').trim();
+
+    const signalInterval = setInterval(async () => {
+      if (candles.length === 0) return;
+      if (!isWithinAllowedTime()) return;
+      
+      // Only process if activeTicker is in allowed pairs
+      const isAllowedPair = telegramSettings.allowedPairs.some((p: string) => cleanPair(p) === activeTicker);
+      if (!isAllowedPair) return;
+
+      try {
+        const latestIndicators = indicators || calculateAllIndicators(candles);
+        const result = await candlexApiService.analyze(
+          activeTicker,
+          timeframe.toUpperCase(),
+          candles,
+          latestIndicators
+        );
+
+        if (result && result.direction !== "NEUTRAL" && result.confidenceScore >= signalBotConfig.minAiConfidence) {
+          // Check if there is already a pending signal trade for this ticker to avoid duplicates
+          const hasPending = trades.some(t => t.ticker === activeTicker && t.result === "PENDING" && t.strategyUsed === "TELEGRAM_SIGNAL");
+          if (hasPending) return;
+
+          const stakeAmount = 10; // Default or configured
+          const currentPriceVal = candles[candles.length - 1]?.close || 0;
+          
+          const newTrade: TradeRecord = {
+            id: "sig_" + Date.now() + "_" + Math.random().toString(36).substr(2, 3),
+            timestamp: Date.now(),
+            ticker: activeTicker,
+            direction: result.direction,
+            entryPrice: currentPriceVal,
+            stake: stakeAmount,
+            payoutPercent: 85,
+            expiryMinutes: parseInt(timeframe.replace('m', '')) || 1,
+            result: "PENDING",
+            pnl: 0,
+            strategyUsed: "TELEGRAM_SIGNAL",
+            confidenceAtEntry: result.confidenceScore,
+            notes: result.rationale
+          };
+
+          const updatedTrades = [newTrade, ...trades];
+          setTrades(updatedTrades);
+          
+          setSignalBotSession(prev => ({
+            ...prev,
+            signalsGenerated: prev.signalsGenerated + 1
+          }));
+
+          if (currentUser && currentUser.id !== 'usr-guest') {
+            localStorage.setItem(`candlex_trades_${currentUser.id}`, JSON.stringify(updatedTrades));
+            await supabaseService.saveCandleXTrade(currentUser.id, newTrade);
+          }
+
+          // Send to Telegram
+          const expiryMin = newTrade.expiryMinutes;
+          const emojiDir = result.direction === "CALL" ? "🟩 COMPRA (CALL)" : "🟥 VENDA (PUT)";
+          const msg = `
+🤖 <b>NOVO SINAL IDENTIFICADO!</b>
+🎯 <b>Ativo:</b> ${activeTicker}
+⏳ <b>Expiração:</b> M${expiryMin}
+📈 <b>Ação:</b> ${emojiDir}
+🧠 <b>Confiança IA:</b> ${result.confidenceScore}%
+
+<i>Este sinal foi gerado automaticamente pelo CandleX-IA.</i>`;
+          
+          telegramService.sendMessage(telegramSettings, msg);
+        }
+      } catch (e) {
+        console.error("Error in signal bot polling:", e);
+      }
+    }, 60000); // Check every 60 seconds
+
+    return () => clearInterval(signalInterval);
+  }, [signalBotConfig.enabled, telegramSettings, activeTicker, timeframe, candles, indicators, trades, currentUser]);
+
   const lastAnalysisTimeRef = useRef<number>(0);
 
   // Manual Trigger: User clicks to analyze or re-scan -> runs visual 6-pillar scan then delivers signal
@@ -1166,6 +1300,30 @@ export default function CandleXWorkstation({
           });
         }
 
+        // TELEGRAM SIGNAL BOT - Result Dispatch
+        if (t.strategyUsed === "TELEGRAM_SIGNAL") {
+          setSignalBotSession(prev => ({
+            ...prev,
+            wins: prev.wins + (outcome === "WIN" ? 1 : 0),
+            losses: prev.losses + (outcome === "LOSS" ? 1 : 0),
+            dojis: prev.dojis + (outcome === "DRAW" ? 1 : 0)
+          }));
+
+          if (telegramSettings && telegramSettings.isActive) {
+            let resultEmoji = telegramSettings.emojiDoji;
+            let resultText = "EMPATE";
+            if (outcome === "WIN") { resultEmoji = telegramSettings.emojiWin; resultText = "WIN"; }
+            else if (outcome === "LOSS") { resultEmoji = telegramSettings.emojiLoss; resultText = "LOSS"; }
+
+            const msg = `
+${resultEmoji} <b>RESULTADO DO SINAL: ${resultText}</b>
+🎯 <b>Ativo:</b> ${t.ticker}
+📉 <b>Preço Final:</b> ${expiryPrice}
+`;
+            telegramService.sendMessage(telegramSettings, msg);
+          }
+        }
+
         const resolvedTrade = { ...t, result: outcome, pnl, expiryPrice };
         setRecentResultNotification(resolvedTrade);
         if (currentUser && currentUser.id !== 'usr-guest') {
@@ -1507,6 +1665,7 @@ export default function CandleXWorkstation({
             winsCount={trades.filter((t) => t.result === "WIN").length}
             lossesCount={trades.filter((t) => t.result === "LOSS").length}
             drawsCount={trades.filter((t) => t.result === "DRAW").length}
+            onOpenSignalBot={() => setIsSignalBotOpen(true)}
           />
         </div>
 
@@ -1582,6 +1741,14 @@ export default function CandleXWorkstation({
         activeTicker={activeTicker}
         onConnectHiove={() => connectToHiove(true)}
         isConnectingHiove={false}
+      />
+
+      <TelegramSignalBotModal
+        isOpen={isSignalBotOpen}
+        onClose={() => setIsSignalBotOpen(false)}
+        config={signalBotConfig}
+        onChangeConfig={setSignalBotConfig}
+        session={signalBotSession}
       />
 
       <OperationsModal

@@ -54,6 +54,7 @@ interface NeuralAnalyzerSidebarProps {
   winsCount?: number;
   lossesCount?: number;
   drawsCount?: number;
+  onOpenSignalBot?: () => void;
 }
 
 const AVAILABLE_ASSETS = [
@@ -251,6 +252,16 @@ export const NeuralAnalyzerSidebar: React.FC<NeuralAnalyzerSidebarProps> = ({
             <span className="text-[10px] font-mono font-bold bg-[#FF7A00] text-slate-950 px-2.5 py-0.5 rounded-full">
               ABRIR ROBÔ 🤖
             </span>
+          </button>
+
+          {/* SINAIS TELEGRAM BUTTON */}
+          <button
+            type="button"
+            onClick={onOpenSignalBot}
+            className="w-full py-2.5 px-3 mt-2 rounded-xl bg-[#0088cc]/10 border border-[#0088cc]/30 hover:border-[#0088cc]/70 text-[#0088cc] font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md group"
+          >
+            <Zap className="w-4 h-4 group-hover:scale-110 transition-transform" />
+            <span className="font-extrabold uppercase tracking-wider text-white">Modo Sinais Telegram</span>
           </button>
         </div>
 

@@ -13,7 +13,8 @@ import {
   Menu,
   X,
   HelpCircle,
-  LogOut
+  LogOut,
+  Send
 } from 'lucide-react';
 import { Module, User, Announcement, PlatformSettings, LiveSession, WithdrawalRequest } from '../../types';
 import { AdminDashboard } from './AdminDashboard';

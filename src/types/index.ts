@@ -393,6 +393,21 @@ export interface AutoTraderSession {
   history: AutoTradeLogItem[];
 }
 
+export interface SignalBotConfig {
+  enabled: boolean;
+  minAiConfidence: number;
+  timeframes: string[];
+}
+
+export interface SignalBotSession {
+  status: "IDLE" | "RUNNING" | "PAUSED";
+  signalsGenerated: number;
+  wins: number;
+  losses: number;
+  dojis: number;
+  startedAt: number;
+}
+
 export type ActiveWindowId =
   | "hiove"
   | "ai"
