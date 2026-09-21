@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { User, Module, Lesson, Announcement, LiveSession, PlatformSettings, TradeJournalEntry, LessonComment, WithdrawalRequest, BankrollConfig, AutoTraderConfig, TradeRecord } from '../types';
+import { User, Module, Lesson, Announcement, LiveSession, PlatformSettings, TradeJournalEntry, LessonComment, WithdrawalRequest, BankrollConfig, AutoTraderConfig, TradeRecord, TelegramSignalSettings } from '../types';
 
 export const supabaseService = {
   isConfigured(): boolean {
@@ -1041,6 +1041,67 @@ export const supabaseService = {
       return !error;
     } catch (e) {
       console.error('Error deleting CandleX trade from Supabase:', e);
+      return false;
+    }
+  },
+
+  // ------------------------------------------
+  // TELEGRAM SIGNALS
+  // ------------------------------------------
+  async getTelegramSignalSettings(): Promise<TelegramSignalSettings | null> {
+    if (!supabase) return null;
+    try {
+      const { data, error } = await supabase.from('telegram_signal_settings').select('*').eq('id', 'default').single();
+      if (error || !data) return null;
+      return {
+        id: data.id,
+        botToken: data.bot_token,
+        channelId: data.channel_id,
+        allowedPairs: data.allowed_pairs || [],
+        morningStartTime: data.morning_start_time,
+        morningEndTime: data.morning_end_time,
+        afternoonStartTime: data.afternoon_start_time,
+        afternoonEndTime: data.afternoon_end_time,
+        nightStartTime: data.night_start_time,
+        nightEndTime: data.night_end_time,
+        startMessageTemplate: data.start_message_template,
+        endMessageTemplate: data.end_message_template,
+        emojiWin: data.emoji_win,
+        emojiLoss: data.emoji_loss,
+        emojiDoji: data.emoji_doji,
+        isActive: data.is_active,
+      };
+    } catch (e) {
+      console.error('Error fetching Telegram signal settings:', e);
+      return null;
+    }
+  },
+
+  async saveTelegramSignalSettings(settings: TelegramSignalSettings): Promise<boolean> {
+    if (!supabase) return false;
+    try {
+      const { error } = await supabase.from('telegram_signal_settings').upsert({
+        id: 'default',
+        bot_token: settings.botToken,
+        channel_id: settings.channelId,
+        allowed_pairs: settings.allowedPairs,
+        morning_start_time: settings.morningStartTime,
+        morning_end_time: settings.morningEndTime,
+        afternoon_start_time: settings.afternoonStartTime,
+        afternoon_end_time: settings.afternoonEndTime,
+        night_start_time: settings.nightStartTime,
+        night_end_time: settings.nightEndTime,
+        start_message_template: settings.startMessageTemplate,
+        end_message_template: settings.endMessageTemplate,
+        emoji_win: settings.emojiWin,
+        emoji_loss: settings.emojiLoss,
+        emoji_doji: settings.emojiDoji,
+        is_active: settings.isActive,
+        updated_at: new Date().toISOString(),
+      });
+      return !error;
+    } catch (e) {
+      console.error('Error saving Telegram signal settings to Supabase:', e);
       return false;
     }
   },

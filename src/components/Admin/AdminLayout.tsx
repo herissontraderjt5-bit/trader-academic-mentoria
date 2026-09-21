@@ -24,6 +24,7 @@ import { AdminSimulator } from './AdminSimulator';
 import { AdminSettings } from './AdminSettings';
 import { AdminWithdrawals } from './AdminWithdrawals';
 import { AdminAffiliates } from './AdminAffiliates';
+import { AdminTelegramSignals } from './AdminTelegramSignals';
 import { BrandLogo } from '../BrandLogo';
 
 interface AdminLayoutProps {
@@ -63,7 +64,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   onBackToStudentView,
   onLogout,
 }) => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'modules' | 'members' | 'announcements' | 'simulator' | 'settings' | 'withdrawals' | 'affiliates'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'modules' | 'members' | 'announcements' | 'simulator' | 'settings' | 'withdrawals' | 'affiliates' | 'telegram'>('dashboard');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const menuItems = [
@@ -72,6 +73,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     { id: 'members', label: 'Gestão de Alunos & Acessos', icon: Users, badge: allUsers.length },
     { id: 'affiliates', label: 'Afiliados & Indicações', icon: Users },
     { id: 'announcements', label: 'Avisos & Salas Ao Vivo', icon: Radio, badge: liveSessions.length },
+    { id: 'telegram', label: 'Sinais Telegram', icon: Send },
     { id: 'withdrawals', label: 'Solicitações de Saque', icon: CreditCard, badge: withdrawalRequests.filter(w => w.status === 'Pendente').length },
     { id: 'settings', label: 'Configurações da Plataforma', icon: Settings },
   ];
@@ -227,6 +229,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             onUpdateUsers={onUpdateUsers}
             onUpdateSettings={onUpdateSettings}
           />
+        )}
+
+        {activeTab === 'telegram' && (
+          <AdminTelegramSignals />
         )}
       </main>
 

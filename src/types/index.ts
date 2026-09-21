@@ -185,6 +185,26 @@ export interface WithdrawalRequest {
   updatedAt?: string;
 }
 
+export interface TelegramSignalSettings {
+  id: string;
+  botToken: string;
+  channelId: string;
+  allowedPairs: string[];
+  morningStartTime: string;
+  morningEndTime: string;
+  afternoonStartTime: string;
+  afternoonEndTime: string;
+  nightStartTime: string;
+  nightEndTime: string;
+  startMessageTemplate: string;
+  endMessageTemplate: string;
+  emojiWin: string;
+  emojiLoss: string;
+  emojiDoji: string;
+  isActive: boolean;
+}
+
+
 // ------------------------------------------
 // CANDLEX AI INTEGRATION TYPES
 // ------------------------------------------
