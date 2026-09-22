@@ -28,20 +28,20 @@ export const TradingViewRealChart: React.FC<TradingViewRealChartProps> = ({
     if (clean === "MSFT") return "NASDAQ:MSFT";
     if (clean === "GOOGL" || clean === "GOOG") return "NASDAQ:GOOGL";
     if (clean === "AMZN") return "NASDAQ:AMZN";
-    if (clean === "EURUSD") return "FX:EURUSD";
-    if (clean === "AUDUSD") return "FX:AUDUSD";
-    if (clean === "AUDCAD") return "FX:AUDCAD";
-    if (clean === "EURGBP") return "FX:EURGBP";
-    if (clean === "EURJPY") return "FX:EURJPY";
-    if (clean === "GBPCHF") return "FX:GBPCHF";
-    if (clean === "GBPJPY") return "FX:GBPJPY";
-    if (clean === "GBPUSD") return "FX:GBPUSD";
-    if (clean === "NZDUSD") return "FX:NZDUSD";
-    if (clean === "USDCAD") return "FX:USDCAD";
-    if (clean === "USDCHF") return "FX:USDCHF";
-    if (clean === "USDJPY") return "FX:USDJPY";
+    if (clean === "EURUSD") return "OANDA:EURUSD";
+    if (clean === "AUDUSD") return "OANDA:AUDUSD";
+    if (clean === "AUDCAD") return "OANDA:AUDCAD";
+    if (clean === "EURGBP") return "OANDA:EURGBP";
+    if (clean === "EURJPY") return "OANDA:EURJPY";
+    if (clean === "GBPCHF") return "OANDA:GBPCHF";
+    if (clean === "GBPJPY") return "OANDA:GBPJPY";
+    if (clean === "GBPUSD") return "OANDA:GBPUSD";
+    if (clean === "NZDUSD") return "OANDA:NZDUSD";
+    if (clean === "USDCAD") return "OANDA:USDCAD";
+    if (clean === "USDCHF") return "OANDA:USDCHF";
+    if (clean === "USDJPY") return "OANDA:USDJPY";
     if (clean.includes("USDT")) return `BINANCE:${clean}`;
-    return `FX:${clean}`;
+    return `OANDA:${clean}`;
   };
 
   const getTvInterval = (rawInterval: string) => {
