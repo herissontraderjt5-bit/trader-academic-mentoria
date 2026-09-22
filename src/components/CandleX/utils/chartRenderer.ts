@@ -16,8 +16,15 @@ export function generateChartImageBase64(options: ChartRenderOptions): string {
   const ctx = canvas.getContext('2d');
   if (!ctx) return '';
 
+  // TradingView Dark Theme Colors
+  const bg = '#131722';
+  const gridColor = '#1e222d';
+  const textColor = '#787b86';
+  const upColor = '#089981';
+  const downColor = '#f23645';
+
   // Background
-  ctx.fillStyle = '#0B0E14';
+  ctx.fillStyle = bg;
   ctx.fillRect(0, 0, width, height);
 
   // Find min and max price to scale
@@ -26,7 +33,7 @@ export function generateChartImageBase64(options: ChartRenderOptions): string {
 
   // Calculate natural range of candles
   const candleRange = maxPrice - minPrice;
-  const maxAllowedDistance = candleRange * 2; // Allow viewport to expand up to 2x the candle range
+  const maxAllowedDistance = candleRange * 2; 
 
   // Ensure support and resistance are visible only if they are reasonably close
   if (support && support > 0 && support < minPrice && (minPrice - support) <= maxAllowedDistance) {
@@ -46,17 +53,26 @@ export function generateChartImageBase64(options: ChartRenderOptions): string {
   const priceRange = maxPrice - minPrice;
   const numCandles = Math.min(candles.length, 50); // Show last 50 candles max
   const displayCandles = candles.slice(-numCandles);
-  const candleWidth = (width - 60) / numCandles; // 60px for y-axis
+  const chartWidth = width - 75; // 75px for y-axis on the right
+  const candleWidth = chartWidth / numCandles; 
+  const candleBodyWidth = Math.max(candleWidth * 0.65, 3); // TV style proportional body
 
   // Draw Grid
-  ctx.strokeStyle = '#1F2937';
+  ctx.strokeStyle = gridColor;
   ctx.lineWidth = 1;
   ctx.beginPath();
-  for (let i = 0; i < 5; i++) {
-    const y = (height / 5) * i;
+  const gridSteps = 6;
+  for (let i = 0; i <= gridSteps; i++) {
+    const y = (height / gridSteps) * i;
     ctx.moveTo(0, y);
-    ctx.lineTo(width - 60, y);
+    ctx.lineTo(chartWidth, y);
   }
+  ctx.stroke();
+
+  // Y-axis separator
+  ctx.beginPath();
+  ctx.moveTo(chartWidth, 0);
+  ctx.lineTo(chartWidth, height);
   ctx.stroke();
 
   const getPriceY = (price: number) => {
@@ -67,17 +83,16 @@ export function generateChartImageBase64(options: ChartRenderOptions): string {
   const swingHigh = Math.max(...displayCandles.map((c) => c.high));
   const swingLow = Math.min(...displayCandles.map((c) => c.low));
   
-  // Decide trend based on first vs last candle of the visible window
   const isUptrend = displayCandles[0].close < displayCandles[displayCandles.length - 1].close;
   
   const fibLevels = [
-    { level: 0, color: 'rgba(255, 255, 255, 0.4)' },
-    { level: 0.236, color: 'rgba(244, 63, 94, 0.6)' },
-    { level: 0.382, color: 'rgba(234, 179, 8, 0.6)' },
-    { level: 0.5, color: 'rgba(56, 189, 248, 0.6)' },
-    { level: 0.618, color: 'rgba(34, 197, 94, 0.6)' },
-    { level: 0.786, color: 'rgba(168, 85, 247, 0.6)' },
-    { level: 1, color: 'rgba(255, 255, 255, 0.4)' },
+    { level: 0, color: '#787b86' },
+    { level: 0.236, color: '#f23645' },
+    { level: 0.382, color: '#ff9800' },
+    { level: 0.5, color: '#4caf50' },
+    { level: 0.618, color: '#089981' },
+    { level: 0.786, color: '#2962ff' },
+    { level: 1, color: '#787b86' },
   ];
 
   fibLevels.forEach(({ level, color }) => {
@@ -88,48 +103,38 @@ export function generateChartImageBase64(options: ChartRenderOptions): string {
     const y = getPriceY(fibPrice);
     
     ctx.strokeStyle = color;
+    ctx.globalAlpha = 0.4;
     ctx.lineWidth = 1;
-    ctx.setLineDash([3, 3]);
     ctx.beginPath();
     ctx.moveTo(0, y);
-    ctx.lineTo(width - 60, y);
+    ctx.lineTo(chartWidth, y);
     ctx.stroke();
     
-    ctx.setLineDash([]);
+    ctx.globalAlpha = 1.0;
     ctx.fillStyle = color;
     ctx.font = '11px Arial';
-    ctx.fillText(`FIB ${level}`, 10, y - 4);
+    ctx.fillText(`${level} (${fibPrice.toFixed(5)})`, 5, y - 5);
   });
 
   // Draw Support / Resistance lines
   if (resistance) {
     const y = getPriceY(resistance);
-    ctx.strokeStyle = '#ef4444'; // Red for resistance
-    ctx.lineWidth = 3;
-    ctx.setLineDash([8, 8]);
+    ctx.strokeStyle = downColor;
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(0, y);
-    ctx.lineTo(width - 60, y);
+    ctx.lineTo(chartWidth, y);
     ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillStyle = '#ef4444';
-    ctx.font = 'bold 16px Arial';
-    ctx.fillText('RESISTANCE', width - 170, y - 8);
   }
 
   if (support) {
     const y = getPriceY(support);
-    ctx.strokeStyle = '#22c55e'; // Green for support
-    ctx.lineWidth = 3;
-    ctx.setLineDash([8, 8]);
+    ctx.strokeStyle = upColor;
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(0, y);
-    ctx.lineTo(width - 60, y);
+    ctx.lineTo(chartWidth, y);
     ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillStyle = '#22c55e';
-    ctx.font = 'bold 16px Arial';
-    ctx.fillText('SUPPORT', width - 145, y - 8);
   }
 
   // Draw Candles
@@ -141,12 +146,12 @@ export function generateChartImageBase64(options: ChartRenderOptions): string {
     const highY = getPriceY(candle.high);
     const lowY = getPriceY(candle.low);
     
-    const isUp = candle.close > candle.open;
-    const color = isUp ? '#22c55e' : '#ef4444';
+    const isUp = candle.close >= candle.open; // TradingView logic: equal is usually up color
+    const color = isUp ? upColor : downColor;
 
     // Wick
     ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1; // TV wicks are 1px
     ctx.beginPath();
     ctx.moveTo(x, highY);
     ctx.lineTo(x, lowY);
@@ -155,17 +160,40 @@ export function generateChartImageBase64(options: ChartRenderOptions): string {
     // Body
     ctx.fillStyle = color;
     const bodyTop = Math.min(openY, closeY);
-    const bodyHeight = Math.max(Math.abs(openY - closeY), 2); // at least 2px
-    ctx.fillRect(x - candleWidth * 0.4, bodyTop, candleWidth * 0.8, bodyHeight);
+    const bodyHeight = Math.max(Math.abs(openY - closeY), 1); // at least 1px for doji
+    
+    // TradingView style rendering for bodies
+    ctx.fillRect(x - candleBodyWidth / 2, bodyTop, candleBodyWidth, bodyHeight);
+    
+    // Slight border to make them pop exactly like TV
+    ctx.strokeStyle = color;
+    ctx.strokeRect(x - candleBodyWidth / 2, bodyTop, candleBodyWidth, bodyHeight);
   });
 
   // Draw y-axis labels
-  ctx.fillStyle = '#9CA3AF';
-  ctx.font = '14px Arial';
-  for (let i = 0; i <= 5; i++) {
-    const y = (height / 5) * i;
-    const priceVal = maxPrice - (priceRange * (i / 5));
-    ctx.fillText(priceVal.toFixed(5), width - 55, y === 0 ? 15 : y);
+  ctx.fillStyle = textColor;
+  ctx.font = '12px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu, sans-serif'; // TradingView font stack
+  for (let i = 0; i <= gridSteps; i++) {
+    const y = (height / gridSteps) * i;
+    const priceVal = maxPrice - (priceRange * (i / gridSteps));
+    // Determine precision based on value size (Forex uses 5, Crypto uses less or more)
+    const decimals = priceVal < 10 ? 5 : 2; 
+    ctx.fillText(priceVal.toFixed(decimals), chartWidth + 8, y === 0 ? 15 : (y === height ? height - 5 : y + 4));
+  }
+
+  // Add current price tag (like TradingView red/green tag on axis)
+  if (displayCandles.length > 0) {
+     const lastCandle = displayCandles[displayCandles.length - 1];
+     const lastPriceY = getPriceY(lastCandle.close);
+     const isLastUp = lastCandle.close >= lastCandle.open;
+     const tagColor = isLastUp ? upColor : downColor;
+     
+     ctx.fillStyle = tagColor;
+     ctx.fillRect(chartWidth, lastPriceY - 10, 75, 20);
+     
+     ctx.fillStyle = '#ffffff';
+     const decimals = lastCandle.close < 10 ? 5 : 2;
+     ctx.fillText(lastCandle.close.toFixed(decimals), chartWidth + 8, lastPriceY + 4);
   }
 
   return canvas.toDataURL('image/png');
