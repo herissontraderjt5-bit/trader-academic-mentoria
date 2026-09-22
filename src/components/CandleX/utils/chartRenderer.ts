@@ -24,9 +24,17 @@ export function generateChartImageBase64(options: ChartRenderOptions): string {
   let minPrice = Math.min(...candles.map((c) => c.low));
   let maxPrice = Math.max(...candles.map((c) => c.high));
 
-  // Ensure support and resistance are visible on chart
-  if (support && support < minPrice) minPrice = support;
-  if (resistance && resistance > maxPrice) maxPrice = resistance;
+  // Calculate natural range of candles
+  const candleRange = maxPrice - minPrice;
+  const maxAllowedDistance = candleRange * 2; // Allow viewport to expand up to 2x the candle range
+
+  // Ensure support and resistance are visible only if they are reasonably close
+  if (support && support > 0 && support < minPrice && (minPrice - support) <= maxAllowedDistance) {
+    minPrice = support;
+  }
+  if (resistance && resistance > 0 && resistance > maxPrice && (resistance - maxPrice) <= maxAllowedDistance) {
+    maxPrice = resistance;
+  }
 
   // Add padding
   const padding = (maxPrice - minPrice) * 0.1;
