@@ -71,6 +71,8 @@ export const telegramService = {
   },
 
   async sendTestSignal(settings: TelegramSignalSettings): Promise<{ success: boolean; message?: string }> {
+    const formatEmojiDisplay = (emoji: string) => this.isStickerId(emoji) ? "🖼️ Sticker/Imagem" : emoji;
+
     const text = `
 <b>🔔 TESTE DE SINAL CANDLEX-IA</b>
 Par Permitido Exemplo: ${settings.allowedPairs[0] || 'EUR/USD'}
@@ -78,10 +80,10 @@ Horário da Manhã: ${settings.morningStartTime} - ${settings.morningEndTime}
 
 <i>Se você está vendo esta mensagem, a integração foi configurada com sucesso!</i>
 
-Testando Emojis:
-${settings.emojiWin} Win
-${settings.emojiLoss} Loss
-${settings.emojiDoji} Doji
+Testando Configuração de Resultados:
+${formatEmojiDisplay(settings.emojiWin)} Win
+${formatEmojiDisplay(settings.emojiLoss)} Loss
+${formatEmojiDisplay(settings.emojiDoji)} Doji
 `;
     // We bypass the isActive check for the test
     const testSettings = { ...settings, isActive: true };
