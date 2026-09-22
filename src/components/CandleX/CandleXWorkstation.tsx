@@ -990,8 +990,8 @@ export default function CandleXWorkstation({
              const currentTrades = tradesRef.current;
              const pendingTradeIndex = currentTrades.findIndex(t => t.strategyUsed === "TELEGRAM_SIGNAL" && t.result === "PENDING" && t.ticker === workflow.activeTicker);
              
-             // Fetch close candle
-             const cands = await candlexApiService.getCandles(workflow.activeTicker!, workflow.activeTimeframe!, 2);
+             // Use local candles to avoid network failures
+             const cands = candlesRef.current;
              const closeCandle = cands[cands.length - 1];
              const expiryPrice = closeCandle?.close || 0;
              
@@ -1029,10 +1029,12 @@ export default function CandleXWorkstation({
                    
                    const stickerId = outcome === "WIN" ? telegramSettings.winStickerId : (outcome === "LOSS" ? telegramSettings.lossStickerId : telegramSettings.dojiStickerId);
                    
-                   if (stickerId) {
-                     telegramService.sendSticker(telegramSettings, stickerId);
-                   } else {
-                     telegramService.sendMessage(telegramSettings, `${emoji} <b>RESULTADO FINAL: ${text}</b>\nPar: ${t.ticker}\nPreço Fechamento: ${expiryPrice}`);
+                   // ALWAYS send the text message first
+                   await telegramService.sendMessage(telegramSettings, `${emoji} <b>RESULTADO FINAL: ${text}</b>\nPar: ${t.ticker}\nPreço Fechamento: ${expiryPrice}`);
+                   
+                   // Then try to send the sticker if it exists
+                   if (stickerId && stickerId.trim() !== '') {
+                     await telegramService.sendSticker(telegramSettings, stickerId);
                    }
                    
                    setSignalBotSession(prev => ({
