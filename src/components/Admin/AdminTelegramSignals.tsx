@@ -27,6 +27,10 @@ export const AdminTelegramSignals: React.FC = () => {
     nightEndTime: '23:00',
     startMessageTemplate: 'Bom dia Traders! Iniciando as operações do dia.',
     endMessageTemplate: 'Fim das operações do dia. Relatório diário:',
+    preAlertMessageTemplate: 'Atenção! Possível sinal de {DIRECTION} em {TICKER} - {TIMEFRAME}',
+    confirmationMessageTemplate: 'SINAL CONFIRMADO! 🟢 Entrada: {DIRECTION} | Ativo: {TICKER} | Tempo: {TIMEFRAME}',
+    preAlertMinutes: 1,
+    martingaleLevel: 0,
     emojiWin: '✅',
     emojiLoss: '❌',
     emojiDoji: '🔄',
@@ -192,6 +196,72 @@ Lucro Total: +R$ 450,00`;
                 className="w-full p-3 rounded-xl bg-[#171724] border border-[#272738] text-white text-xs focus:outline-none focus:border-[#0088cc]"
               />
             </div>
+          </div>
+        </div>
+
+        {/* Automation Configs */}
+        <div className="space-y-4 pt-6 border-t border-[#222230]">
+          <h3 className="text-sm font-bold text-[#0088cc] uppercase tracking-wider font-mono flex items-center gap-2">
+            <Radio className="w-4 h-4" />
+            Automação de Sinais VIP
+          </h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-300 mb-1 font-mono uppercase">
+                Antecedência Pré-Alerta (Minutos)
+              </label>
+              <select
+                value={formData.preAlertMinutes}
+                onChange={(e) => setFormData({ ...formData, preAlertMinutes: parseInt(e.target.value) })}
+                className="w-full p-3 rounded-xl bg-[#171724] border border-[#272738] text-white text-xs focus:outline-none focus:border-[#0088cc]"
+              >
+                <option value={0}>Sem Pré-Alerta (Manda Direto)</option>
+                <option value={1}>1 Minuto Antes</option>
+                <option value={2}>2 Minutos Antes</option>
+                <option value={5}>5 Minutos Antes</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-300 mb-1 font-mono uppercase">
+                Estratégia de Martingale (Gale)
+              </label>
+              <select
+                value={formData.martingaleLevel}
+                onChange={(e) => setFormData({ ...formData, martingaleLevel: parseInt(e.target.value) })}
+                className="w-full p-3 rounded-xl bg-[#171724] border border-[#272738] text-white text-xs focus:outline-none focus:border-[#0088cc]"
+              >
+                <option value={0}>Sem Gale (Mão Fixa)</option>
+                <option value={1}>Até 1 Gale (G1)</option>
+                <option value={2}>Até 2 Gales (G2)</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-bold text-gray-300 mb-1 font-mono uppercase">
+                Mensagem de Pré-Alerta
+              </label>
+              <textarea
+                value={formData.preAlertMessageTemplate}
+                onChange={(e) => setFormData({ ...formData, preAlertMessageTemplate: e.target.value })}
+                className="w-full p-3 rounded-xl bg-[#171724] border border-[#272738] text-white text-xs focus:outline-none focus:border-[#0088cc] min-h-[60px]"
+                placeholder="Ex: Preparem-se! {TICKER} - {TIMEFRAME} - {DIRECTION}"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-300 mb-1 font-mono uppercase">
+                Mensagem de Confirmação (Sinal)
+              </label>
+              <textarea
+                value={formData.confirmationMessageTemplate}
+                onChange={(e) => setFormData({ ...formData, confirmationMessageTemplate: e.target.value })}
+                className="w-full p-3 rounded-xl bg-[#171724] border border-[#272738] text-white text-xs focus:outline-none focus:border-[#0088cc] min-h-[60px]"
+                placeholder="Ex: ENTRADA CONFIRMADA! {DIRECTION} em {TICKER}"
+              />
+            </div>
+            <p className="text-[10px] text-gray-500 font-mono">Variáveis suportadas: {"{TICKER}"}, {"{TIMEFRAME}"}, {"{DIRECTION}"}</p>
           </div>
         </div>
 

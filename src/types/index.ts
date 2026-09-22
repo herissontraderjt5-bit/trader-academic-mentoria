@@ -198,6 +198,10 @@ export interface TelegramSignalSettings {
   nightEndTime: string;
   startMessageTemplate: string;
   endMessageTemplate: string;
+  preAlertMessageTemplate: string;
+  confirmationMessageTemplate: string;
+  preAlertMinutes: number;
+  martingaleLevel: number;
   emojiWin: string;
   emojiLoss: string;
   emojiDoji: string;
@@ -399,8 +403,18 @@ export interface SignalBotConfig {
   timeframes: string[];
 }
 
+export interface SignalBotWorkflowState {
+  status: "IDLE" | "PRE_ALERT" | "WAITING_CONFIRMATION" | "WAITING_RESULT";
+  activeTicker?: string;
+  activeTimeframe?: string;
+  activeDirection?: "CALL" | "PUT";
+  targetTime?: number; // timestamp when the trade starts/candle opens
+  galeCount?: number; // how many gales have been executed for current signal
+}
+
 export interface SignalBotSession {
   status: "IDLE" | "RUNNING" | "PAUSED";
+  workflow: SignalBotWorkflowState;
   signalsGenerated: number;
   wins: number;
   losses: number;
