@@ -804,6 +804,7 @@ export default function CandleXWorkstation({
         msg = msg.replace(/{TICKER}/g, ticker);
         msg = msg.replace(/{TIMEFRAME}/g, tf.toUpperCase());
         msg = msg.replace(/{TIMERFRAME}/g, tf.toUpperCase()); // Alias in case user typoes
+        msg = msg.replace(/{MINUTES}/g, parseInt(tf).toString()); // Just the number (e.g. 5)
         
         const emojiDir = dir === "CALL" ? "🟩 COMPRA (CALL)" : "🟥 VENDA (PUT)";
         msg = msg.replace(/{DIRECTION}/g, emojiDir);
