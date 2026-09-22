@@ -118,6 +118,7 @@ export const NeuralAnalyzerSidebar: React.FC<NeuralAnalyzerSidebarProps> = ({
   winsCount = 0,
   lossesCount = 0,
   drawsCount = 0,
+  onOpenSignalBot,
 }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [copiedSignal, setCopiedSignal] = useState(false);

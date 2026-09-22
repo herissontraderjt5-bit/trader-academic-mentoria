@@ -116,6 +116,7 @@ const INITIAL_SIGNAL_BOT_CONFIG: SignalBotConfig = {
 
 const INITIAL_SIGNAL_BOT_SESSION: SignalBotSession = {
   status: "IDLE",
+  workflow: { status: "IDLE" },
   signalsGenerated: 0,
   wins: 0,
   losses: 0,
@@ -190,10 +191,7 @@ export default function CandleXWorkstation({
   // Telegram Signal Bot Config & Session
   const [isSignalBotOpen, setIsSignalBotOpen] = useState<boolean>(false);
   const [signalBotConfig, setSignalBotConfig] = useState<SignalBotConfig>(INITIAL_SIGNAL_BOT_CONFIG);
-  const [signalBotSession, setSignalBotSession] = useState<SignalBotSession>({
-    ...INITIAL_SIGNAL_BOT_SESSION,
-    workflow: { status: "IDLE" }
-  });
+  const [signalBotSession, setSignalBotSession] = useState<SignalBotSession>(INITIAL_SIGNAL_BOT_SESSION);
   const [telegramSettings, setTelegramSettings] = useState<any>(null);
 
   useEffect(() => {
@@ -259,6 +257,18 @@ export default function CandleXWorkstation({
             const savedTr = localStorage.getItem(`candlex_trades_${currentUser.id}`);
             if (savedTr) setTrades(JSON.parse(savedTr));
           }
+
+          useEffect(() => {
+            const savedConfig = localStorage.getItem("signalBotConfig");
+            if (savedConfig) {
+              try {
+                const parsed = JSON.parse(savedConfig);
+                setSignalBotConfig({ ...INITIAL_SIGNAL_BOT_CONFIG, ...parsed, timeframes: parsed.timeframes || ["1m", "5m"] });
+              } catch (e) {
+                console.warn("Failed to parse signalBotConfig");
+              }
+            }
+          }, []);
 
           setSyncStatus('synced');
         } catch (e) {
