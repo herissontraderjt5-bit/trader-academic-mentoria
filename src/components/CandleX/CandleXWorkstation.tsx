@@ -988,7 +988,8 @@ export default function CandleXWorkstation({
           }
         }
       } else if (workflow.status === "WAITING_RESULT") {
-        const expiryDurationMs = parseInt(workflow.activeTimeframe!.replace('m', '')) * 60 * 1000;
+        const tfMinutes = parseInt(workflow.activeTimeframe!.replace(/\D/g, '')) || 5;
+        const expiryDurationMs = tfMinutes * 60 * 1000;
         const expiryTimestamp = workflow.targetTime! + expiryDurationMs;
         
         if (now >= expiryTimestamp + 2000) { // Wait 2s for candle close
