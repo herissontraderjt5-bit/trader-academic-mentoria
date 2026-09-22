@@ -7,7 +7,8 @@ import {
   ShieldAlert,
   CheckCircle2,
   TrendingUp,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Radio
 } from 'lucide-react';
 import { TelegramSignalSettings } from '../../types';
 import { telegramService } from '../../services/telegramService';
