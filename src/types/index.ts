@@ -198,6 +198,7 @@ export interface TelegramSignalSettings {
   nightEndTime: string;
   startMessageTemplate: string;
   endMessageTemplate: string;
+  dailyResultMessageTemplate: string;
   preAlertMessageTemplate: string;
   confirmationMessageTemplate: string;
   preAlertMinutes: number;

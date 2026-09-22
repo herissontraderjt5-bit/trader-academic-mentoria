@@ -160,6 +160,7 @@ export default function CandleXWorkstation({
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [isScanningModalOpen, setIsScanningModalOpen] = useState<boolean>(false);
   const pendingAnalysisRef = useRef<AiAnalysisResult | null>(null);
+  const lastSessionActiveRef = useRef<boolean>(false);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [selectedTool, setSelectedTool] = useState<string>("crosshair");
 
@@ -788,7 +789,32 @@ export default function CandleXWorkstation({
     const cleanPair = (pair: string) => pair.replace('/', '').replace(' (OTC)', '_OTC').trim();
 
     const signalInterval = setInterval(async () => {
-      if (!isWithinAllowedTime()) {
+      const currentlyInWindow = isWithinAllowedTime();
+      
+      // Session Start / End Triggers
+      if (currentlyInWindow && !lastSessionActiveRef.current) {
+        lastSessionActiveRef.current = true;
+        if (telegramSettings.startMessageTemplate) {
+           telegramService.sendMessage(telegramSettings, telegramSettings.startMessageTemplate);
+        }
+      } else if (!currentlyInWindow && lastSessionActiveRef.current) {
+        lastSessionActiveRef.current = false;
+        if (telegramSettings.endMessageTemplate) {
+           let endMsg = telegramSettings.endMessageTemplate;
+           const wins = signalBotSession.wins;
+           const losses = signalBotSession.losses;
+           const dojis = signalBotSession.dojis || 0;
+           const total = wins + losses + dojis;
+           const assertividade = total > 0 ? Math.round((wins / total) * 100) : 0;
+
+           endMsg = endMsg.replace(/{WINS}/g, wins.toString());
+           endMsg = endMsg.replace(/{LOSSES}/g, losses.toString());
+           endMsg = endMsg.replace(/{ASSERTIVIDADE}/g, assertividade.toString());
+           telegramService.sendMessage(telegramSettings, endMsg);
+        }
+      }
+
+      if (!currentlyInWindow) {
         if (signalBotSession.workflow?.status !== "IDLE") {
           setSignalBotSession(prev => ({ ...prev, workflow: { status: "IDLE" } }));
         }
@@ -1880,8 +1906,27 @@ export default function CandleXWorkstation({
         isOpen={isSignalBotOpen}
         onClose={() => setIsSignalBotOpen(false)}
         config={signalBotConfig}
-        onChangeConfig={setSignalBotConfig}
+        onChangeConfig={(newCfg) => {
+          setSignalBotConfig(newCfg);
+          localStorage.setItem("signalBotConfig", JSON.stringify(newCfg));
+        }}
         session={signalBotSession}
+        onSendDailyResult={() => {
+          if (telegramSettings?.dailyResultMessageTemplate) {
+             let msg = telegramSettings.dailyResultMessageTemplate;
+             const wins = signalBotSession.wins;
+             const losses = signalBotSession.losses;
+             const dojis = signalBotSession.dojis || 0;
+             const total = wins + losses + dojis;
+             const assertividade = total > 0 ? Math.round((wins / total) * 100) : 0;
+             msg = msg.replace(/{WINS}/g, wins.toString());
+             msg = msg.replace(/{LOSSES}/g, losses.toString());
+             msg = msg.replace(/{ASSERTIVIDADE}/g, assertividade.toString());
+             telegramService.sendMessage(telegramSettings, msg);
+             soundManager.speakAlert("Relatório do dia enviado para o Telegram!");
+             setIsSignalBotOpen(false);
+          }
+        }}
       />
 
       <OperationsModal

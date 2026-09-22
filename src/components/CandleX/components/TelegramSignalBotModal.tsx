@@ -15,6 +15,7 @@ interface TelegramSignalBotModalProps {
   config: SignalBotConfig;
   onChangeConfig: (newConfig: SignalBotConfig) => void;
   session: SignalBotSession;
+  onSendDailyResult: () => void;
 }
 
 export const TelegramSignalBotModal: React.FC<TelegramSignalBotModalProps> = ({
@@ -23,6 +24,7 @@ export const TelegramSignalBotModal: React.FC<TelegramSignalBotModalProps> = ({
   config,
   onChangeConfig,
   session,
+  onSendDailyResult,
 }) => {
   if (!isOpen) return null;
 
@@ -198,6 +200,14 @@ export const TelegramSignalBotModal: React.FC<TelegramSignalBotModalProps> = ({
               Certifique-se de que os turnos de operação e ativos permitidos estão ajustados lá.
             </p>
           </div>
+
+          <button
+            onClick={onSendDailyResult}
+            className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <Send className="w-4 h-4" />
+            <span>Enviar Relatório Diário no Telegram</span>
+          </button>
         </div>
       </div>
     </div>

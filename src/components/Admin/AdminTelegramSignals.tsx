@@ -264,6 +264,43 @@ Lucro Total: +R$ 450,00`;
             </div>
             <p className="text-[10px] text-gray-500 font-mono">Variáveis suportadas: {"{TICKER}"}, {"{TIMEFRAME}"}, {"{DIRECTION}"}, {"{ENTRY_TIME}"}, {"{EXPIRY_TIME}"}</p>
           </div>
+
+          <div className="space-y-3 pt-4 border-t border-[#222230]">
+            <div>
+              <label className="block text-xs font-bold text-gray-300 mb-1 font-mono uppercase">
+                Mensagem de Início de Sessão
+              </label>
+              <textarea
+                value={formData.startMessageTemplate || ''}
+                onChange={(e) => setFormData({ ...formData, startMessageTemplate: e.target.value })}
+                className="w-full p-3 rounded-xl bg-[#171724] border border-[#272738] text-white text-xs focus:outline-none focus:border-[#0088cc] min-h-[60px]"
+                placeholder="Ex: Iniciando as operações do dia..."
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-300 mb-1 font-mono uppercase">
+                Mensagem de Fim de Sessão
+              </label>
+              <textarea
+                value={formData.endMessageTemplate || ''}
+                onChange={(e) => setFormData({ ...formData, endMessageTemplate: e.target.value })}
+                className="w-full p-3 rounded-xl bg-[#171724] border border-[#272738] text-white text-xs focus:outline-none focus:border-[#0088cc] min-h-[60px]"
+                placeholder="Ex: Fim das operações da sessão."
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-300 mb-1 font-mono uppercase">
+                Mensagem de Resultado do Dia
+              </label>
+              <textarea
+                value={formData.dailyResultMessageTemplate || ''}
+                onChange={(e) => setFormData({ ...formData, dailyResultMessageTemplate: e.target.value })}
+                className="w-full p-3 rounded-xl bg-[#171724] border border-[#272738] text-white text-xs focus:outline-none focus:border-[#0088cc] min-h-[80px]"
+                placeholder="Ex: RESULTADO DO DIA! Wins: {WINS} | Losses: {LOSSES}"
+              />
+            </div>
+            <p className="text-[10px] text-gray-500 font-mono">Variáveis suportadas p/ Fim e Resultado: {"{WINS}"}, {"{LOSSES}"}, {"{ASSERTIVIDADE}"}</p>
+          </div>
         </div>
 
         {/* Emojis & Formatação */}
