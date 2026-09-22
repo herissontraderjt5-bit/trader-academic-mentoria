@@ -1340,9 +1340,9 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
                   </span>
                 </div>
                 <img 
-                  src={generateChartImageBase64({ candles, support: indicators.support, resistance: indicators.resistance, width: 600, height: 250 })} 
+                  src={generateChartImageBase64({ candles, support: indicators.support, resistance: indicators.resistance, width: 800, height: 400 })} 
                   alt="Gráfico de Análise"
-                  className="w-full h-auto object-cover max-h-[140px]"
+                  className="w-full h-auto object-cover max-h-[220px]"
                 />
               </div>
             )}

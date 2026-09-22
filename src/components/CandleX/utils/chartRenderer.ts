@@ -7,7 +7,7 @@ export interface ChartRenderOptions {
 }
 
 export function generateChartImageBase64(options: ChartRenderOptions): string {
-  const { candles, support, resistance, width = 600, height = 400 } = options;
+  const { candles, support, resistance, width = 800, height = 400 } = options;
   if (!candles || candles.length === 0) return '';
 
   const canvas = document.createElement('canvas');
@@ -38,7 +38,7 @@ export function generateChartImageBase64(options: ChartRenderOptions): string {
   const priceRange = maxPrice - minPrice;
   const numCandles = Math.min(candles.length, 50); // Show last 50 candles max
   const displayCandles = candles.slice(-numCandles);
-  const candleWidth = (width - 40) / numCandles; // 40px for y-axis
+  const candleWidth = (width - 60) / numCandles; // 60px for y-axis
 
   // Draw Grid
   ctx.strokeStyle = '#1F2937';
@@ -47,7 +47,7 @@ export function generateChartImageBase64(options: ChartRenderOptions): string {
   for (let i = 0; i < 5; i++) {
     const y = (height / 5) * i;
     ctx.moveTo(0, y);
-    ctx.lineTo(width - 40, y);
+    ctx.lineTo(width - 60, y);
   }
   ctx.stroke();
 
@@ -59,31 +59,31 @@ export function generateChartImageBase64(options: ChartRenderOptions): string {
   if (resistance) {
     const y = getPriceY(resistance);
     ctx.strokeStyle = '#ef4444'; // Red for resistance
-    ctx.lineWidth = 2;
-    ctx.setLineDash([5, 5]);
+    ctx.lineWidth = 3;
+    ctx.setLineDash([8, 8]);
     ctx.beginPath();
     ctx.moveTo(0, y);
-    ctx.lineTo(width - 40, y);
+    ctx.lineTo(width - 60, y);
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.fillStyle = '#ef4444';
-    ctx.font = '12px Arial';
-    ctx.fillText('RESISTANCE', width - 110, y - 5);
+    ctx.font = 'bold 16px Arial';
+    ctx.fillText('RESISTANCE', width - 170, y - 8);
   }
 
   if (support) {
     const y = getPriceY(support);
     ctx.strokeStyle = '#22c55e'; // Green for support
-    ctx.lineWidth = 2;
-    ctx.setLineDash([5, 5]);
+    ctx.lineWidth = 3;
+    ctx.setLineDash([8, 8]);
     ctx.beginPath();
     ctx.moveTo(0, y);
-    ctx.lineTo(width - 40, y);
+    ctx.lineTo(width - 60, y);
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.fillStyle = '#22c55e';
-    ctx.font = '12px Arial';
-    ctx.fillText('SUPPORT', width - 90, y - 5);
+    ctx.font = 'bold 16px Arial';
+    ctx.fillText('SUPPORT', width - 145, y - 8);
   }
 
   // Draw Candles
@@ -100,7 +100,7 @@ export function generateChartImageBase64(options: ChartRenderOptions): string {
 
     // Wick
     ctx.strokeStyle = color;
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(x, highY);
     ctx.lineTo(x, lowY);
@@ -109,17 +109,17 @@ export function generateChartImageBase64(options: ChartRenderOptions): string {
     // Body
     ctx.fillStyle = color;
     const bodyTop = Math.min(openY, closeY);
-    const bodyHeight = Math.max(Math.abs(openY - closeY), 1); // at least 1px
-    ctx.fillRect(x - candleWidth * 0.35, bodyTop, candleWidth * 0.7, bodyHeight);
+    const bodyHeight = Math.max(Math.abs(openY - closeY), 2); // at least 2px
+    ctx.fillRect(x - candleWidth * 0.4, bodyTop, candleWidth * 0.8, bodyHeight);
   });
 
   // Draw y-axis labels
   ctx.fillStyle = '#9CA3AF';
-  ctx.font = '10px Arial';
+  ctx.font = '14px Arial';
   for (let i = 0; i <= 5; i++) {
     const y = (height / 5) * i;
     const priceVal = maxPrice - (priceRange * (i / 5));
-    ctx.fillText(priceVal.toFixed(5), width - 35, y === 0 ? 10 : y);
+    ctx.fillText(priceVal.toFixed(5), width - 55, y === 0 ? 15 : y);
   }
 
   return canvas.toDataURL('image/png');
