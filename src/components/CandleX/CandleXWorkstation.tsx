@@ -199,6 +199,10 @@ export default function CandleXWorkstation({
   const [isSignalBotOpen, setIsSignalBotOpen] = useState<boolean>(false);
   const [signalBotConfig, setSignalBotConfig] = useState<SignalBotConfig>(INITIAL_SIGNAL_BOT_CONFIG);
   const [signalBotSession, setSignalBotSession] = useState<SignalBotSession>(INITIAL_SIGNAL_BOT_SESSION);
+  const signalBotSessionRef = useRef(signalBotSession);
+  useEffect(() => {
+    signalBotSessionRef.current = signalBotSession;
+  }, [signalBotSession]);
   const [telegramSettings, setTelegramSettings] = useState<any>(null);
 
   const fetchTelegramSettings = useCallback(() => {
@@ -832,9 +836,9 @@ export default function CandleXWorkstation({
         lastSessionActiveRef.current = false;
         if (telegramSettings.endMessageTemplate) {
            let endMsg = telegramSettings.endMessageTemplate;
-           const wins = signalBotSession.wins;
-           const losses = signalBotSession.losses;
-           const dojis = signalBotSession.dojis || 0;
+           const wins = signalBotSessionRef.current.wins;
+           const losses = signalBotSessionRef.current.losses;
+           const dojis = signalBotSessionRef.current.dojis || 0;
            const total = wins + losses + dojis;
            const assertividade = total > 0 ? Math.round((wins / total) * 100) : 0;
 
@@ -846,13 +850,13 @@ export default function CandleXWorkstation({
       }
 
       if (!currentlyInWindow) {
-        if (signalBotSession.workflow?.status !== "IDLE") {
+        if (signalBotSessionRef.current.workflow?.status !== "IDLE") {
           setSignalBotSession(prev => ({ ...prev, workflow: { status: "IDLE" } }));
         }
         return;
       }
 
-      const workflow = signalBotSession.workflow || { status: "IDLE" };
+      const workflow = signalBotSessionRef.current.workflow || { status: "IDLE" };
       const now = Date.now();
 
       // Format template helper
