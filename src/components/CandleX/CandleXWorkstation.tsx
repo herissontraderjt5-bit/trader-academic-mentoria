@@ -857,19 +857,26 @@ export default function CandleXWorkstation({
       // Format template helper
       const formatTemplate = (template: string, ticker: string, tf: string, dir: string, targetTimestamp?: number) => {
         let msg = template || '';
+        
+        // Safely extract minutes from tf (e.g. 'M5' -> 5, '15m' -> 15, '5' -> 5)
+        const tfMinutes = parseInt(tf.replace(/\D/g, '')) || 5;
+
         msg = msg.replace(/{TICKER}/g, ticker);
         msg = msg.replace(/{TIMEFRAME}/g, tf.toUpperCase());
         msg = msg.replace(/{TIMERFRAME}/g, tf.toUpperCase()); // Alias in case user typoes
-        msg = msg.replace(/{MINUTES}/g, parseInt(tf).toString()); // Just the number (e.g. 5)
+        msg = msg.replace(/{MINUTES}/g, tfMinutes.toString());
         
         const emojiDir = dir === "CALL" ? "🟩 COMPRA (CALL)" : "🟥 VENDA (PUT)";
         msg = msg.replace(/{DIRECTION}/g, emojiDir);
 
         if (targetTimestamp) {
           const entryDate = new Date(targetTimestamp);
-          const expiryDate = new Date(targetTimestamp + (parseInt(tf) * 60 * 1000));
+          const expiryDate = new Date(targetTimestamp + (tfMinutes * 60 * 1000));
           
-          const formatTime = (d: Date) => d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          const formatTime = (d: Date) => {
+            if (isNaN(d.getTime())) return '--:--';
+            return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          };
           
           msg = msg.replace(/{TIME}/g, formatTime(entryDate));
           msg = msg.replace(/{ENTRY_TIME}/g, formatTime(entryDate));

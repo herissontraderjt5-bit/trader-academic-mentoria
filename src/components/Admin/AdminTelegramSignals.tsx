@@ -344,7 +344,6 @@ Lucro Total: +R$ 450,00`;
                 className="w-full p-3 rounded-xl bg-amber-950/20 border border-amber-500/20 text-white text-lg text-center focus:outline-none focus:border-amber-500"
               />
             </div>
-            </div>
           </div>
 
           <div className="grid grid-cols-3 gap-4 pt-2">

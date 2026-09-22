@@ -255,11 +255,7 @@ export const NeuralAnalyzerSidebar: React.FC<NeuralAnalyzerSidebarProps> = ({
             <span className="text-[10px] font-mono font-bold bg-[#FF7A00] text-slate-950 px-2.5 py-0.5 rounded-full">
               ABRIR ROBÔ 🤖
             </span>
-          </button>
-
-          </button>
-
-          {/* SINAIS TELEGRAM BUTTON - SOMENTE ADMIN */}
+          </button>          {/* SINAIS TELEGRAM BUTTON - SOMENTE ADMIN */}
           {isAdmin && (
             <button
               type="button"
