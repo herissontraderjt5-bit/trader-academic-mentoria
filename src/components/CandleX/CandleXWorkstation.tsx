@@ -161,6 +161,11 @@ export default function CandleXWorkstation({
   const [isScanningModalOpen, setIsScanningModalOpen] = useState<boolean>(false);
   const pendingAnalysisRef = useRef<AiAnalysisResult | null>(null);
   const lastSessionActiveRef = useRef<boolean>(false);
+  const candlesRef = useRef<Candle[]>([]);
+  const indicatorsRef = useRef<TechnicalIndicators | null>(null);
+  const tradesRef = useRef<TradeRecord[]>([]);
+  const activeTickerRef = useRef<string>(activeTicker);
+  const timeframeRef = useRef<string>(timeframe);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [selectedTool, setSelectedTool] = useState<string>("crosshair");
 
@@ -195,11 +200,22 @@ export default function CandleXWorkstation({
   const [signalBotSession, setSignalBotSession] = useState<SignalBotSession>(INITIAL_SIGNAL_BOT_SESSION);
   const [telegramSettings, setTelegramSettings] = useState<any>(null);
 
-  useEffect(() => {
+  const fetchTelegramSettings = useCallback(() => {
     supabaseService.getTelegramSignalSettings().then(data => {
       if (data) setTelegramSettings(data);
     });
   }, []);
+
+  useEffect(() => {
+    fetchTelegramSettings();
+  }, [fetchTelegramSettings]);
+
+  // Refetch settings when bot is enabled to ensure we have the latest times
+  useEffect(() => {
+    if (signalBotConfig.enabled) {
+      fetchTelegramSettings();
+    }
+  }, [signalBotConfig.enabled, fetchTelegramSettings]);
 
   // Hiove integration states
   const [hioveAccountInfo, setHioveAccountInfo] = useState<{ balance: number; demoBalance: number; token: string | null; userId: string | null }>({
@@ -761,6 +777,14 @@ export default function CandleXWorkstation({
     return () => clearInterval(interval);
   }, [fetchMarketData]);
 
+  useEffect(() => {
+    candlesRef.current = candles;
+    indicatorsRef.current = indicators;
+    tradesRef.current = trades;
+    activeTickerRef.current = activeTicker;
+    timeframeRef.current = timeframe;
+  }, [candles, indicators, trades, activeTicker, timeframe]);
+
   // TELEGRAM SIGNAL BOT POLLING ENGINE
   useEffect(() => {
     if (!signalBotConfig.enabled || !telegramSettings || !telegramSettings.isActive) return;
@@ -777,7 +801,13 @@ export default function CandleXWorkstation({
 
       const inWindow = (start: string, end: string) => {
         if (!start || !end) return false;
-        return currentMinutes >= parseTime(start) && currentMinutes <= parseTime(end);
+        const s = parseTime(start);
+        const e = parseTime(end);
+        if (s > e) {
+          // Crosses midnight (e.g. 23:00 to 02:00)
+          return currentMinutes >= s || currentMinutes <= e;
+        }
+        return currentMinutes >= s && currentMinutes <= e;
       };
 
       return inWindow(telegramSettings.morningStartTime, telegramSettings.morningEndTime) ||
@@ -957,7 +987,8 @@ export default function CandleXWorkstation({
         if (now >= expiryTimestamp + 2000) { // Wait 2s for candle close
           try {
              // Find the corresponding pending trade to resolve
-             const pendingTradeIndex = trades.findIndex(t => t.strategyUsed === "TELEGRAM_SIGNAL" && t.result === "PENDING" && t.ticker === workflow.activeTicker);
+             const currentTrades = tradesRef.current;
+             const pendingTradeIndex = currentTrades.findIndex(t => t.strategyUsed === "TELEGRAM_SIGNAL" && t.result === "PENDING" && t.ticker === workflow.activeTicker);
              
              // Fetch close candle
              const cands = await candlexApiService.getCandles(workflow.activeTicker!, workflow.activeTimeframe!, 2);
@@ -977,7 +1008,7 @@ export default function CandleXWorkstation({
                 const pnl = outcome === "WIN" ? (t.stake * (t.payoutPercent || 85)) / 100 : (outcome === "LOSS" ? -t.stake : 0);
                 
                 // Update Trade Locally
-                const newTrades = [...trades];
+                const newTrades = [...currentTrades];
                 newTrades[pendingTradeIndex] = { ...t, result: outcome, pnl, expiryPrice };
                 setTrades(newTrades);
                 
@@ -1024,25 +1055,28 @@ export default function CandleXWorkstation({
     }, 15000); // Check every 15 seconds for precision
 
     return () => clearInterval(signalInterval);
-  }, [signalBotConfig.enabled, telegramSettings, activeTicker, timeframe, candles, indicators, trades, currentUser]);
+  }, [signalBotConfig.enabled, telegramSettings, currentUser]);
 
   const lastAnalysisTimeRef = useRef<number>(0);
 
   // Manual Trigger: User clicks to analyze or re-scan -> runs visual 6-pillar scan then delivers signal
   const runManualAiScan = useCallback(async () => {
-    if (candles.length === 0) return;
-    setAiAnalysis(null);
-    setIsScanningModalOpen(true);
-    setIsAnalyzing(true);
-    lastAnalysisTimeRef.current = Date.now();
-
     try {
-      const latestIndicators = indicators || calculateAllIndicators(candles);
+      const cands = candlesRef.current;
+      const indics = indicatorsRef.current;
+      if (cands.length === 0) return;
+
+      const latestCandle = cands[cands.length - 1];
+      setAiAnalysis(null);
+      setIsScanningModalOpen(true);
+      setIsAnalyzing(true);
+      lastAnalysisTimeRef.current = Date.now();
+
       const result = await candlexApiService.analyze(
-        activeTicker,
-        timeframe.toUpperCase(),
-        candles,
-        latestIndicators
+        activeTickerRef.current,
+        timeframeRef.current.toUpperCase(),
+        cands,
+        indics || calculateAllIndicators(cands)
       );
       pendingAnalysisRef.current = result;
     } catch (e) {
