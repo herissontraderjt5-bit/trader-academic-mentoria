@@ -1024,22 +1024,22 @@ export default function CandleXWorkstation({
              const closeCandle = cands[cands.length - 1];
              const expiryPrice = closeCandle?.close || 0;
              
-             if (pendingTradeIndex >= 0 && expiryPrice > 0) {
-                const t = trades[pendingTradeIndex];
-                const entryPrice = t.entryPrice;
-                
-                let outcome: "WIN" | "LOSS" | "DRAW" = "DRAW";
-                const diff = expiryPrice - entryPrice;
-                if (Math.abs(diff) <= 0.000001) outcome = "DRAW";
-                else if (t.direction === "CALL") outcome = expiryPrice > entryPrice ? "WIN" : "LOSS";
-                else outcome = expiryPrice < entryPrice ? "WIN" : "LOSS";
-                
-                const pnl = outcome === "WIN" ? (t.stake * (t.payoutPercent || 85)) / 100 : (outcome === "LOSS" ? -t.stake : 0);
-                
-                // Update Trade Locally
-                const newTrades = [...currentTrades];
-                newTrades[pendingTradeIndex] = { ...t, result: outcome, pnl, expiryPrice };
-                setTrades(newTrades);
+              if (pendingTradeIndex >= 0 && expiryPrice > 0) {
+                 const t = currentTrades[pendingTradeIndex];
+                 const entryPrice = t.entryPrice;
+                 
+                 let outcome: "WIN" | "LOSS" | "DRAW" = "DRAW";
+                 const diff = expiryPrice - entryPrice;
+                 if (Math.abs(diff) <= 0.000001) outcome = "DRAW";
+                 else if (t.direction === "CALL") outcome = expiryPrice > entryPrice ? "WIN" : "LOSS";
+                 else outcome = expiryPrice < entryPrice ? "WIN" : "LOSS";
+                 
+                 const pnl = outcome === "WIN" ? (t.stake * (t.payoutPercent || 85)) / 100 : (outcome === "LOSS" ? -t.stake : 0);
+                 
+                 // Update Trade Locally
+                 const newTrades = [...currentTrades];
+                 newTrades[pendingTradeIndex] = { ...t, result: outcome, pnl, expiryPrice };
+                 setTrades(newTrades);
                 
                 // Handle Telegram Message
                 const maxGale = telegramSettings?.martingaleLevel || 0;
