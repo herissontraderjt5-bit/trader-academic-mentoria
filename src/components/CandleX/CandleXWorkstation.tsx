@@ -203,6 +203,10 @@ export default function CandleXWorkstation({
   useEffect(() => {
     signalBotSessionRef.current = signalBotSession;
   }, [signalBotSession]);
+
+  useEffect(() => {
+    tradesRef.current = trades;
+  }, [trades]);
   const [telegramSettings, setTelegramSettings] = useState<any>(null);
 
   const fetchTelegramSettings = useCallback(() => {
