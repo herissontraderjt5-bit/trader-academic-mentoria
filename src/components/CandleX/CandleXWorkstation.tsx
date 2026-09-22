@@ -799,12 +799,26 @@ export default function CandleXWorkstation({
       const now = Date.now();
 
       // Format template helper
-      const formatTemplate = (template: string, ticker: string, tf: string, dir: string) => {
+      const formatTemplate = (template: string, ticker: string, tf: string, dir: string, targetTimestamp?: number) => {
         let msg = template || '';
         msg = msg.replace(/{TICKER}/g, ticker);
         msg = msg.replace(/{TIMEFRAME}/g, tf.toUpperCase());
+        msg = msg.replace(/{TIMERFRAME}/g, tf.toUpperCase()); // Alias in case user typoes
+        
         const emojiDir = dir === "CALL" ? "🟩 COMPRA (CALL)" : "🟥 VENDA (PUT)";
         msg = msg.replace(/{DIRECTION}/g, emojiDir);
+
+        if (targetTimestamp) {
+          const entryDate = new Date(targetTimestamp);
+          const expiryDate = new Date(targetTimestamp + (parseInt(tf) * 60 * 1000));
+          
+          const formatTime = (d: Date) => d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          
+          msg = msg.replace(/{TIME}/g, formatTime(entryDate));
+          msg = msg.replace(/{ENTRY_TIME}/g, formatTime(entryDate));
+          msg = msg.replace(/{EXPIRY_TIME}/g, formatTime(expiryDate));
+        }
+
         return msg;
       };
 
@@ -835,7 +849,7 @@ export default function CandleXWorkstation({
                 // Check if we have enough time to send a pre-alert
                 if (now < preAlertTime + 30000) {
                   // Send Pre-Alert
-                  const msg = formatTemplate(telegramSettings.preAlertMessageTemplate, cleanPairName, tf, result.direction);
+                  const msg = formatTemplate(telegramSettings.preAlertMessageTemplate, cleanPairName, tf, result.direction, targetTimestamp);
                   telegramService.sendMessage(telegramSettings, msg);
 
                   setSignalBotSession(prev => ({
@@ -868,7 +882,7 @@ export default function CandleXWorkstation({
 
             if (result && result.direction === workflow.activeDirection && result.confidenceScore >= (signalBotConfig.minAiConfidence - 5)) {
               // CONFIRMED!
-              const msg = formatTemplate(telegramSettings.confirmationMessageTemplate, workflow.activeTicker!, workflow.activeTimeframe!, workflow.activeDirection!);
+              const msg = formatTemplate(telegramSettings.confirmationMessageTemplate, workflow.activeTicker!, workflow.activeTimeframe!, workflow.activeDirection!, workflow.targetTime);
               telegramService.sendMessage(telegramSettings, msg);
 
               // Dispatch the Trade for tracking

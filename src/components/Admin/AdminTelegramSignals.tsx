@@ -262,7 +262,7 @@ Lucro Total: +R$ 450,00`;
                 placeholder="Ex: ENTRADA CONFIRMADA! {DIRECTION} em {TICKER}"
               />
             </div>
-            <p className="text-[10px] text-gray-500 font-mono">Variáveis suportadas: {"{TICKER}"}, {"{TIMEFRAME}"}, {"{DIRECTION}"}</p>
+            <p className="text-[10px] text-gray-500 font-mono">Variáveis suportadas: {"{TICKER}"}, {"{TIMEFRAME}"}, {"{DIRECTION}"}, {"{ENTRY_TIME}"}, {"{EXPIRY_TIME}"}</p>
           </div>
         </div>
 
