@@ -89,15 +89,16 @@ async function fetchPublicCandles(ticker: string, interval: string, limit: numbe
     ADA: "ADAUSDT",
     BNB: "BNBUSDT",
   };
+  let binanceSymbol = symbol;
   if (forexToCryptoMap[symbol]) {
-    symbol = forexToCryptoMap[symbol];
+    binanceSymbol = forexToCryptoMap[symbol];
   }
 
   const sources = [
-    `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=${fetchInterval}&limit=${fetchLimit}`,
-    `https://api.binance.us/api/v3/klines?symbol=${symbol}&interval=${fetchInterval}&limit=${fetchLimit}`,
-    `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${fetchInterval}&limit=${fetchLimit}`,
-    `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${fetchInterval}&limit=${fetchLimit}`,
+    `https://data-api.binance.vision/api/v3/klines?symbol=${binanceSymbol}&interval=${fetchInterval}&limit=${fetchLimit}`,
+    `https://api.binance.us/api/v3/klines?symbol=${binanceSymbol}&interval=${fetchInterval}&limit=${fetchLimit}`,
+    `https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=${fetchInterval}&limit=${fetchLimit}`,
+    `https://fapi.binance.com/fapi/v1/klines?symbol=${binanceSymbol}&interval=${fetchInterval}&limit=${fetchLimit}`,
   ];
 
   let fetchedCandles: Candle[] | null = null;
@@ -123,11 +124,54 @@ async function fetchPublicCandles(ticker: string, interval: string, limit: numbe
     }
   }
 
+  // Yahoo Finance public fallback for Forex (much closer to OANDA)
+  if (!fetchedCandles && (symbol.length === 6 || symbol.includes('='))) {
+    try {
+      let yahooSymbol = symbol;
+      if (symbol.length === 6 && !symbol.includes('USDT') && !symbol.includes('BTC') && !symbol.includes('=')) {
+        yahooSymbol = `${symbol}=X`;
+      }
+      
+      const yahooInterval = fetchInterval === "1m" ? "1m" : fetchInterval === "2m" ? "2m" : fetchInterval === "5m" ? "5m" : fetchInterval === "15m" ? "15m" : fetchInterval === "30m" ? "30m" : "60m";
+      const yahooRes = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=${yahooInterval}&range=5d`, { signal: AbortSignal.timeout(3500) });
+      
+      if (yahooRes.ok) {
+        const data = await yahooRes.json();
+        if (data.chart?.result?.[0]) {
+          const chartData = data.chart.result[0];
+          const timestamps = chartData.timestamp || [];
+          const quotes = chartData.indicators?.quote?.[0] || {};
+          
+          if (timestamps.length > 0 && quotes.close) {
+             const yahooCandles: Candle[] = [];
+             for (let i = 0; i < timestamps.length; i++) {
+                if (quotes.close[i] !== null && quotes.close[i] !== undefined) {
+                  yahooCandles.push({
+                     time: timestamps[i],
+                     open: quotes.open[i] || quotes.close[i],
+                     high: quotes.high[i] || quotes.close[i],
+                     low: quotes.low[i] || quotes.close[i],
+                     close: quotes.close[i],
+                     volume: quotes.volume[i] || 0
+                  });
+                }
+             }
+             if (yahooCandles.length > 0) {
+               fetchedCandles = yahooCandles;
+             }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Yahoo finance fallback failed:", e);
+    }
+  }
+
   // Bybit public fallback
   if (!fetchedCandles) {
     try {
       const bybitInterval = fetchInterval === "5m" ? "5" : fetchInterval === "15m" ? "15" : fetchInterval === "30m" ? "30" : fetchInterval === "1h" ? "60" : fetchInterval === "3m" ? "3" : "1";
-      const bybitUrl = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${symbol}&interval=${bybitInterval}&limit=${fetchLimit}`;
+      const bybitUrl = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${binanceSymbol}&interval=${bybitInterval}&limit=${fetchLimit}`;
       const bybitRes = await fetch(bybitUrl, { signal: AbortSignal.timeout(3500) });
       if (bybitRes.ok) {
         const data = await bybitRes.json();
