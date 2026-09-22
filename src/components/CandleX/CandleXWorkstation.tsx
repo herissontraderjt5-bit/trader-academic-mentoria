@@ -1050,6 +1050,10 @@ export default function CandleXWorkstation({
                 } else {
                    // Final Result
                    let emoji = outcome === "WIN" ? telegramSettings.emojiWin || "✅" : (outcome === "LOSS" ? telegramSettings.emojiLoss || "❌" : telegramSettings.emojiDoji || "➖");
+                   if (emoji.length > 15) {
+                     // Prevents user from pasting long Sticker IDs into the Emoji field
+                     emoji = outcome === "WIN" ? "✅" : (outcome === "LOSS" ? "❌" : "➖");
+                   }
                    let text = outcome === "WIN" ? "WIN" : (outcome === "LOSS" ? "LOSS" : "EMPATE / DOJI");
                    
                    const stickerId = outcome === "WIN" ? telegramSettings.winStickerId : (outcome === "LOSS" ? telegramSettings.lossStickerId : telegramSettings.dojiStickerId);
