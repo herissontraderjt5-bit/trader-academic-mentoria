@@ -136,6 +136,39 @@ export const TelegramSignalBotModal: React.FC<TelegramSignalBotModalProps> = ({
                 Apenas análises com score acima deste valor serão enviadas.
               </p>
             </div>
+
+            <div className="p-4 rounded-xl bg-black/30 border border-white/5 space-y-3">
+              <label className="text-xs font-bold text-zinc-300 block">Timeframes de Escaneamento</label>
+              <div className="flex gap-2">
+                {['1m', '2m', '5m'].map(tf => {
+                  const isSelected = config.timeframes.includes(tf);
+                  return (
+                    <button
+                      key={tf}
+                      disabled={isRunning}
+                      onClick={() => {
+                        const newTfs = isSelected
+                          ? config.timeframes.filter(t => t !== tf)
+                          : [...config.timeframes, tf];
+                        if (newTfs.length > 0) { // Prevent empty selection
+                          onChangeConfig({ ...config, timeframes: newTfs });
+                        }
+                      }}
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase transition-all ${
+                        isSelected
+                          ? 'bg-[#0088cc] text-white'
+                          : 'bg-zinc-800/50 text-zinc-400 hover:bg-zinc-700/50'
+                      }`}
+                    >
+                      {tf.toUpperCase()}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[10px] text-zinc-500">
+                O bot irá escanear todos os ativos nestes tempos gráficos simultaneamente.
+              </p>
+            </div>
           </div>
 
           {/* Session Stats */}
