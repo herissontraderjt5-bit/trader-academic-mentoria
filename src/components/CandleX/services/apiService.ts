@@ -599,8 +599,13 @@ export const candlexApiService = {
       // Ignore and trigger client-side public fallback
     }
 
-    // Client-side fallback: direct Binance/Bybit API request
-    const publicCandles = await fetchPublicCandles(ticker, normInterval, limit);
+    // Client-side fallback: direct Binance/Bybit API request (Skip for OTC markets)
+    const isOtc = ticker.toUpperCase().includes('OTC');
+    let publicCandles: Candle[] | null = null;
+    
+    if (!isOtc) {
+      publicCandles = await fetchPublicCandles(ticker, normInterval, limit);
+    }
     if (publicCandles && publicCandles.length > 0) {
       localPriceCache[ticker] = {
         lastPrice: publicCandles[publicCandles.length - 1].close,
