@@ -307,6 +307,46 @@ Lucro Total: +R$ 450,00`;
                 className="w-full p-3 rounded-xl bg-amber-950/20 border border-amber-500/20 text-white text-lg text-center focus:outline-none focus:border-amber-500"
               />
             </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4 pt-2">
+            <div>
+              <label className="block text-xs font-bold text-gray-300 mb-1 font-mono uppercase flex items-center gap-1">
+                <ImageIcon className="w-3.5 h-3.5 text-emerald-400" /> Sticker ID (WIN)
+              </label>
+              <input
+                type="text"
+                placeholder="Ex: CAACAgIAAxkBA..."
+                value={formData.winStickerId || ''}
+                onChange={(e) => setFormData({ ...formData, winStickerId: e.target.value })}
+                className="w-full p-3 rounded-xl bg-emerald-950/20 border border-emerald-500/20 text-white text-xs focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-300 mb-1 font-mono uppercase flex items-center gap-1">
+                <ImageIcon className="w-3.5 h-3.5 text-red-400" /> Sticker ID (LOSS)
+              </label>
+              <input
+                type="text"
+                placeholder="Ex: CAACAgIAAxkBA..."
+                value={formData.lossStickerId || ''}
+                onChange={(e) => setFormData({ ...formData, lossStickerId: e.target.value })}
+                className="w-full p-3 rounded-xl bg-red-950/20 border border-red-500/20 text-white text-xs focus:outline-none focus:border-red-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-300 mb-1 font-mono uppercase flex items-center gap-1">
+                <ImageIcon className="w-3.5 h-3.5 text-amber-400" /> Sticker ID (DOJI)
+              </label>
+              <input
+                type="text"
+                placeholder="Ex: CAACAgIAAxkBA..."
+                value={formData.dojiStickerId || ''}
+                onChange={(e) => setFormData({ ...formData, dojiStickerId: e.target.value })}
+                className="w-full p-3 rounded-xl bg-amber-950/20 border border-amber-500/20 text-white text-xs focus:outline-none focus:border-amber-500"
+              />
+            </div>
           </div>
           
           <div>

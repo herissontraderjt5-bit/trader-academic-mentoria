@@ -1070,10 +1070,13 @@ export const supabaseService = {
         confirmationMessageTemplate: data.confirmation_message_template || 'SINAL CONFIRMADO! 🟢 Entrada: {DIRECTION} | Ativo: {TICKER} | Tempo: {TIMEFRAME}',
         preAlertMinutes: data.pre_alert_minutes ?? 1,
         martingaleLevel: data.martingale_level ?? 0,
-        emojiWin: data.emoji_win,
-        emojiLoss: data.emoji_loss,
-        emojiDoji: data.emoji_doji,
-        isActive: data.is_active,
+        emojiWin: data.emoji_win || "✅",
+        emojiLoss: data.emoji_loss || "❌",
+        emojiDoji: data.emoji_doji || "➖",
+        winStickerId: data.win_sticker_id || undefined,
+        lossStickerId: data.loss_sticker_id || undefined,
+        dojiStickerId: data.doji_sticker_id || undefined,
+        isActive: data.is_active ?? false,
       };
     } catch (e) {
       console.error('Error fetching Telegram signal settings:', e);
@@ -1104,6 +1107,9 @@ export const supabaseService = {
         emoji_win: settings.emojiWin,
         emoji_loss: settings.emojiLoss,
         emoji_doji: settings.emojiDoji,
+        win_sticker_id: settings.winStickerId,
+        loss_sticker_id: settings.lossStickerId,
+        doji_sticker_id: settings.dojiStickerId,
         is_active: settings.isActive,
         updated_at: new Date().toISOString(),
       });

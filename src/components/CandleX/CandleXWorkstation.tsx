@@ -924,6 +924,76 @@ export default function CandleXWorkstation({
              setSignalBotSession(prev => ({ ...prev, workflow: { status: "IDLE" } }));
           }
         }
+      } else if (workflow.status === "WAITING_RESULT") {
+        const expiryDurationMs = parseInt(workflow.activeTimeframe!.replace('m', '')) * 60 * 1000;
+        const expiryTimestamp = workflow.targetTime! + expiryDurationMs;
+        
+        if (now >= expiryTimestamp + 2000) { // Wait 2s for candle close
+          try {
+             // Find the corresponding pending trade to resolve
+             const pendingTradeIndex = trades.findIndex(t => t.strategyUsed === "TELEGRAM_SIGNAL" && t.result === "PENDING" && t.ticker === workflow.activeTicker);
+             
+             // Fetch close candle
+             const cands = await candlexApiService.getCandles(workflow.activeTicker!, workflow.activeTimeframe!, 2);
+             const closeCandle = cands[cands.length - 1];
+             const expiryPrice = closeCandle?.close || 0;
+             
+             if (pendingTradeIndex >= 0 && expiryPrice > 0) {
+                const t = trades[pendingTradeIndex];
+                const entryPrice = t.entryPrice;
+                
+                let outcome: "WIN" | "LOSS" | "DRAW" = "DRAW";
+                const diff = expiryPrice - entryPrice;
+                if (Math.abs(diff) <= 0.000001) outcome = "DRAW";
+                else if (t.direction === "CALL") outcome = expiryPrice > entryPrice ? "WIN" : "LOSS";
+                else outcome = expiryPrice < entryPrice ? "WIN" : "LOSS";
+                
+                const pnl = outcome === "WIN" ? (t.stake * (t.payoutPercent || 85)) / 100 : (outcome === "LOSS" ? -t.stake : 0);
+                
+                // Update Trade Locally
+                const newTrades = [...trades];
+                newTrades[pendingTradeIndex] = { ...t, result: outcome, pnl, expiryPrice };
+                setTrades(newTrades);
+                
+                // Handle Telegram Message
+                const maxGale = telegramSettings?.martingaleLevel || 0;
+                const currentGaleCount = workflow.galeCount || 0;
+                
+                if (outcome === "LOSS" && currentGaleCount < maxGale) {
+                   telegramService.sendMessage(telegramSettings, `⚠️ <b>PREPARAR GALE ${currentGaleCount + 1}!</b>\nEntrem novamente para mesma direção.`);
+                   
+                   const galeTrade: TradeRecord = { ...newTrades[pendingTradeIndex], id: "sig_gale_" + Date.now(), result: "PENDING", pnl: 0, stake: t.stake * 2, timestamp: Date.now() };
+                   setTrades([galeTrade, ...newTrades]);
+                   setSignalBotSession(prev => ({ ...prev, workflow: { ...prev.workflow, galeCount: currentGaleCount + 1, targetTime: Date.now() }}));
+                } else {
+                   // Final Result
+                   let emoji = outcome === "WIN" ? telegramSettings.emojiWin || "✅" : (outcome === "LOSS" ? telegramSettings.emojiLoss || "❌" : telegramSettings.emojiDoji || "➖");
+                   let text = outcome === "WIN" ? "WIN" : (outcome === "LOSS" ? "LOSS" : "EMPATE / DOJI");
+                   
+                   const stickerId = outcome === "WIN" ? telegramSettings.winStickerId : (outcome === "LOSS" ? telegramSettings.lossStickerId : telegramSettings.dojiStickerId);
+                   
+                   if (stickerId) {
+                     telegramService.sendSticker(telegramSettings, stickerId);
+                   } else {
+                     telegramService.sendMessage(telegramSettings, `${emoji} <b>RESULTADO FINAL: ${text}</b>\nPar: ${t.ticker}\nPreço Fechamento: ${expiryPrice}`);
+                   }
+                   
+                   setSignalBotSession(prev => ({
+                     ...prev,
+                     wins: prev.wins + (outcome === "WIN" ? 1 : 0),
+                     losses: prev.losses + (outcome === "LOSS" ? 1 : 0),
+                     dojis: prev.dojis + (outcome === "DRAW" ? 1 : 0),
+                     workflow: { status: "IDLE" }
+                   }));
+                }
+             } else {
+                setSignalBotSession(prev => ({ ...prev, workflow: { status: "IDLE" } }));
+             }
+          } catch(e) {
+             console.warn("Failed to resolve telegram trade result", e);
+             setSignalBotSession(prev => ({ ...prev, workflow: { status: "IDLE" } }));
+          }
+        }
       }
     }, 15000); // Check every 15 seconds for precision
 
@@ -1382,78 +1452,8 @@ export default function CandleXWorkstation({
 
         // TELEGRAM SIGNAL BOT - Result Dispatch
         if (t.strategyUsed === "TELEGRAM_SIGNAL") {
-          const maxGale = telegramSettings?.martingaleLevel || 0;
-          const currentGaleCount = signalBotSession.workflow?.galeCount || 0;
-
-          if (outcome === "LOSS" && currentGaleCount < maxGale) {
-            // FIRE GALE
-            telegramService.sendMessage(telegramSettings, `⚠️ <b>PREPARAR GALE ${currentGaleCount + 1}!</b> Entrem novamente para mesma direção.`);
-            
-            // Re-dispatch trade for Gale
-            const galeTrade: TradeRecord = {
-              id: "sig_gale_" + Date.now(),
-              timestamp: Date.now(),
-              ticker: t.ticker,
-              direction: t.direction,
-              entryPrice: expiryPrice,
-              stake: t.stake * 2,
-              payoutPercent: t.payoutPercent,
-              expiryMinutes: t.expiryMinutes,
-              result: "PENDING",
-              pnl: 0,
-              strategyUsed: "TELEGRAM_SIGNAL",
-              confidenceAtEntry: t.confidenceAtEntry
-            };
-            
-            setTrades(prev => [galeTrade, ...prev]);
-            setSignalBotSession(prev => ({
-              ...prev,
-              workflow: {
-                ...prev.workflow,
-                status: "WAITING_RESULT",
-                galeCount: currentGaleCount + 1
-              }
-            }));
-            
-            return { ...t, result: outcome, pnl, expiryPrice }; // Return original as loss, but keep workflow running for gale
-          }
-
-          // Final Result
-          setSignalBotSession(prev => ({
-            ...prev,
-            wins: prev.wins + (outcome === "WIN" ? 1 : 0),
-            losses: prev.losses + (outcome === "LOSS" ? 1 : 0),
-            dojis: prev.dojis + (outcome === "DRAW" ? 1 : 0),
-            workflow: { status: "IDLE" } // Resume scanning
-          }));
-
-          if (telegramSettings && telegramSettings.isActive) {
-            let resultEmoji = telegramSettings.emojiDoji;
-            let resultText = "EMPATE";
-            if (outcome === "WIN") { resultEmoji = telegramSettings.emojiWin; resultText = "WIN"; }
-            else if (outcome === "LOSS") { resultEmoji = telegramSettings.emojiLoss; resultText = "LOSS"; }
-
-            if (telegramService.isStickerId(resultEmoji)) {
-              // Send sticker first, then send the text without the ugly file ID string
-              telegramService.sendSticker(telegramSettings, resultEmoji);
-              const msg = `
-<b>RESULTADO DO SINAL: ${resultText}</b>
-🎯 <b>Ativo:</b> ${t.ticker}
-📉 <b>Preço Final:</b> ${expiryPrice}
-${currentGaleCount > 0 ? `🔄 <b>Gale Utilizado:</b> G${currentGaleCount}` : ''}
-`;
-              telegramService.sendMessage(telegramSettings, msg);
-            } else {
-              // Send normal text message with emoji
-              const msg = `
-${resultEmoji} <b>RESULTADO DO SINAL: ${resultText}</b>
-🎯 <b>Ativo:</b> ${t.ticker}
-📉 <b>Preço Final:</b> ${expiryPrice}
-${currentGaleCount > 0 ? `🔄 <b>Gale Utilizado:</b> G${currentGaleCount}` : ''}
-`;
-              telegramService.sendMessage(telegramSettings, msg);
-            }
-          }
+           // Skip resolution side effects here, the background bot handles its own telegram messages
+           return { ...t, result: outcome, pnl, expiryPrice };
         }
 
         const resolvedTrade = { ...t, result: outcome, pnl, expiryPrice };

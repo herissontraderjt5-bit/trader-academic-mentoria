@@ -205,6 +205,9 @@ export interface TelegramSignalSettings {
   emojiWin: string;
   emojiLoss: string;
   emojiDoji: string;
+  winStickerId?: string;
+  lossStickerId?: string;
+  dojiStickerId?: string;
   isActive: boolean;
 }
 
