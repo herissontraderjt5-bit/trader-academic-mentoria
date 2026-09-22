@@ -94,44 +94,12 @@ async function fetchPublicCandles(ticker: string, interval: string, limit: numbe
     binanceSymbol = forexToCryptoMap[symbol];
   }
 
-  const sources = [
-    `https://data-api.binance.vision/api/v3/klines?symbol=${binanceSymbol}&interval=${fetchInterval}&limit=${fetchLimit}`,
-    `https://api.binance.us/api/v3/klines?symbol=${binanceSymbol}&interval=${fetchInterval}&limit=${fetchLimit}`,
-    `https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=${fetchInterval}&limit=${fetchLimit}`,
-    `https://fapi.binance.com/fapi/v1/klines?symbol=${binanceSymbol}&interval=${fetchInterval}&limit=${fetchLimit}`,
-  ];
-
   let fetchedCandles: Candle[] | null = null;
-  for (const url of sources) {
-    try {
-      const response = await fetch(url, { signal: AbortSignal.timeout(3500) });
-      if (response.ok) {
-        const rawData = await response.json();
-        if (Array.isArray(rawData) && rawData.length > 0) {
-          fetchedCandles = rawData.map((item: any) => ({
-            time: Math.floor(item[0] / 1000),
-            open: parseFloat(item[1]),
-            high: parseFloat(item[2]),
-            low: parseFloat(item[3]),
-            close: parseFloat(item[4]),
-            volume: parseFloat(item[5]),
-          }));
-          break;
-        }
-      }
-    } catch {
-      // Continue
-    }
-  }
 
-  // Yahoo Finance public fallback for Forex (much closer to OANDA)
-  if (!fetchedCandles && (symbol.length === 6 || symbol.includes('='))) {
+  // 1. Yahoo Finance public fetch for Forex (Prioritized over crypto equivalent)
+  if (symbol.length === 6 && !symbol.includes('USDT') && !symbol.includes('BTC') && !symbol.includes('=')) {
     try {
-      let yahooSymbol = symbol;
-      if (symbol.length === 6 && !symbol.includes('USDT') && !symbol.includes('BTC') && !symbol.includes('=')) {
-        yahooSymbol = `${symbol}=X`;
-      }
-      
+      const yahooSymbol = `${symbol}=X`;
       const yahooInterval = fetchInterval === "1m" ? "1m" : fetchInterval === "2m" ? "2m" : fetchInterval === "5m" ? "5m" : fetchInterval === "15m" ? "15m" : fetchInterval === "30m" ? "30m" : "60m";
       const yahooRes = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=${yahooInterval}&range=5d`, { signal: AbortSignal.timeout(3500) });
       
@@ -157,13 +125,46 @@ async function fetchPublicCandles(ticker: string, interval: string, limit: numbe
                 }
              }
              if (yahooCandles.length > 0) {
-               fetchedCandles = yahooCandles;
+               // Limit to fetchLimit to match standard behavior
+               fetchedCandles = yahooCandles.slice(-fetchLimit);
              }
           }
         }
       }
     } catch (e) {
-      console.warn("Yahoo finance fallback failed:", e);
+      console.warn("Yahoo finance fetch failed:", e);
+    }
+  }
+
+  // 2. Binance fetch (if not fetched by Yahoo Finance)
+  if (!fetchedCandles) {
+    const sources = [
+      `https://data-api.binance.vision/api/v3/klines?symbol=${binanceSymbol}&interval=${fetchInterval}&limit=${fetchLimit}`,
+      `https://api.binance.us/api/v3/klines?symbol=${binanceSymbol}&interval=${fetchInterval}&limit=${fetchLimit}`,
+      `https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=${fetchInterval}&limit=${fetchLimit}`,
+      `https://fapi.binance.com/fapi/v1/klines?symbol=${binanceSymbol}&interval=${fetchInterval}&limit=${fetchLimit}`,
+    ];
+
+    for (const url of sources) {
+      try {
+        const response = await fetch(url, { signal: AbortSignal.timeout(3500) });
+        if (response.ok) {
+          const rawData = await response.json();
+          if (Array.isArray(rawData) && rawData.length > 0) {
+            fetchedCandles = rawData.map((item: any) => ({
+              time: Math.floor(item[0] / 1000),
+              open: parseFloat(item[1]),
+              high: parseFloat(item[2]),
+              low: parseFloat(item[3]),
+              close: parseFloat(item[4]),
+              volume: parseFloat(item[5]),
+            }));
+            break;
+          }
+        }
+      } catch {
+        // Continue
+      }
     }
   }
 
