@@ -55,6 +55,7 @@ interface NeuralAnalyzerSidebarProps {
   lossesCount?: number;
   drawsCount?: number;
   onOpenSignalBot?: () => void;
+  isAdmin?: boolean;
 }
 
 const AVAILABLE_ASSETS = [
@@ -119,6 +120,7 @@ export const NeuralAnalyzerSidebar: React.FC<NeuralAnalyzerSidebarProps> = ({
   lossesCount = 0,
   drawsCount = 0,
   onOpenSignalBot,
+  isAdmin = false,
 }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [copiedSignal, setCopiedSignal] = useState(false);
@@ -255,15 +257,19 @@ export const NeuralAnalyzerSidebar: React.FC<NeuralAnalyzerSidebarProps> = ({
             </span>
           </button>
 
-          {/* SINAIS TELEGRAM BUTTON */}
-          <button
-            type="button"
-            onClick={onOpenSignalBot}
-            className="w-full py-2.5 px-3 mt-2 rounded-xl bg-[#0088cc]/10 border border-[#0088cc]/30 hover:border-[#0088cc]/70 text-[#0088cc] font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md group"
-          >
-            <Zap className="w-4 h-4 group-hover:scale-110 transition-transform" />
-            <span className="font-extrabold uppercase tracking-wider text-white">Modo Sinais Telegram</span>
           </button>
+
+          {/* SINAIS TELEGRAM BUTTON - SOMENTE ADMIN */}
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={onOpenSignalBot}
+              className="w-full py-2.5 px-3 mt-2 rounded-xl bg-[#0088cc]/10 border border-[#0088cc]/30 hover:border-[#0088cc]/70 text-[#0088cc] font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md group"
+            >
+              <Zap className="w-4 h-4 group-hover:scale-110 transition-transform" />
+              <span className="font-extrabold uppercase tracking-wider text-white">Modo Sinais Telegram</span>
+            </button>
+          )}
         </div>
 
         {/* TIMEFRAME */}

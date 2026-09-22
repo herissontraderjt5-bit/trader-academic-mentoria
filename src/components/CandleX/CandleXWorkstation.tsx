@@ -1783,6 +1783,7 @@ ${currentGaleCount > 0 ? `🔄 <b>Gale Utilizado:</b> G${currentGaleCount}` : ''
             lossesCount={trades.filter((t) => t.result === "LOSS").length}
             drawsCount={trades.filter((t) => t.result === "DRAW").length}
             onOpenSignalBot={() => setIsSignalBotOpen(true)}
+            isAdmin={isAdmin}
           />
         </div>
 
