@@ -1167,8 +1167,24 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
                 />
               </div>
             </div>
+
+            {/* Imagem do Gráfico com S/R e Fibo */}
+            {candles && indicators && (
+              <div className="bg-[#0A0E18] rounded-xl border border-[#1C2538] overflow-hidden mt-2 max-w-sm mx-auto">
+                <div className="px-3 py-1.5 bg-[#141A26] border-b border-[#1C2538] flex items-center justify-between">
+                  <span className="text-[10px] font-mono text-slate-300 uppercase font-bold flex items-center gap-1">
+                    <BarChart3 className="w-3.5 h-3.5 text-indigo-400" /> Snapshot da Análise
+                  </span>
+                </div>
+                <img 
+                  src={generateChartImageBase64({ candles, support: indicators.support, resistance: indicators.resistance, width: 800, height: 400 })} 
+                  alt="Gráfico de Análise"
+                  className="w-full h-auto object-cover max-h-[220px]"
+                />
+              </div>
+            )}
             
-            <div className="bg-[#090D15] p-2.5 rounded-lg border border-[#1E293B] text-[11px] font-mono text-slate-300 max-w-sm mx-auto">
+            <div className="bg-[#090D15] p-2.5 rounded-lg border border-[#1E293B] text-[11px] font-mono text-slate-300 max-w-sm mx-auto mt-2">
               <span>Ativo: <strong className="text-white">{activeTicker}</strong> | Expiração: <strong className="text-cyan-400">{expiryTimeStr}</strong></span>
             </div>
 
