@@ -32,6 +32,7 @@ import { AiAnalysisResult, TechnicalIndicators, Candle, TradeRecord, BankrollCon
 import { soundManager } from "../utils/soundEffects";
 import { candlexApiService } from "../services/apiService";
 import { getCandleTimeRemaining, getSynchronizedDate, getSynchronizedTimestamp, detectColorAlternation } from "../utils/technicalIndicators";
+import { generateChartImageBase64 } from "../utils/chartRenderer";
 import confetti from "canvas-confetti";
 
 interface CenterSignalOverlayProps {
@@ -1329,6 +1330,22 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
                 />
               </div>
             </div>
+
+            {/* Imagem do Gráfico com S/R */}
+            {candles && indicators && (
+              <div className="bg-[#0A0E18] rounded-xl border border-[#1C2538] overflow-hidden mt-2">
+                <div className="px-3 py-1.5 bg-[#141A26] border-b border-[#1C2538] flex items-center justify-between">
+                  <span className="text-[10px] font-mono text-slate-300 uppercase font-bold flex items-center gap-1">
+                    <BarChart3 className="w-3.5 h-3.5 text-indigo-400" /> Snapshot da Análise
+                  </span>
+                </div>
+                <img 
+                  src={generateChartImageBase64({ candles, support: indicators.support, resistance: indicators.resistance, width: 600, height: 250 })} 
+                  alt="Gráfico de Análise"
+                  className="w-full h-auto object-cover max-h-[140px]"
+                />
+              </div>
+            )}
 
             {/* 4. VALOR DA NEGOCIAÇÃO & CONFIGURAÇÃO DO ROBÔ AUTO TRADER IA */}
             <div className="bg-[#0A0E18] p-3 rounded-xl border border-indigo-500/40 space-y-2.5 shadow-md">
