@@ -65,6 +65,57 @@ export const telegramService = {
     }
   },
 
+  async sendPhoto(settings: TelegramSignalSettings, photoBase64: string, caption?: string): Promise<{ success: boolean; message?: string }> {
+    if (!settings.isActive) {
+      return { success: false, message: 'O envio de sinais está desativado.' };
+    }
+    if (!settings.botToken || !settings.channelId) {
+      return { success: false, message: 'Token ou ID do Canal não configurados.' };
+    }
+
+    try {
+      // Remove data:image/png;base64, prefix if present
+      const base64Data = photoBase64.split(',')[1] || photoBase64;
+      
+      // Convert base64 to Blob
+      const byteCharacters = atob(base64Data);
+      const byteArrays = [];
+      for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+        const slice = byteCharacters.slice(offset, offset + 512);
+        const byteNumbers = new Array(slice.length);
+        for (let i = 0; i < slice.length; i++) {
+          byteNumbers[i] = slice.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        byteArrays.push(byteArray);
+      }
+      const blob = new Blob(byteArrays, { type: 'image/png' });
+
+      const formData = new FormData();
+      formData.append('chat_id', settings.channelId);
+      formData.append('photo', blob, 'chart.png');
+      if (caption) {
+        formData.append('caption', caption);
+        formData.append('parse_mode', 'HTML');
+      }
+
+      const url = `https://api.telegram.org/bot${settings.botToken}/sendPhoto`;
+      const response = await fetch(url, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (!data.ok) {
+        return { success: false, message: data.description || 'Erro ao enviar foto.' };
+      }
+      return { success: true };
+    } catch (e: any) {
+      console.error('Error sending Telegram photo:', e);
+      return { success: false, message: e.message || 'Erro de conexão.' };
+    }
+  },
+
   isStickerId(text: string): boolean {
     // Basic heuristic: Telegram file IDs are long strings without spaces
     return text && text.length > 20 && !text.includes(' ');

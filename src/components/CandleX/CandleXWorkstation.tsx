@@ -53,6 +53,7 @@ import {
 } from "../../types";
 
 import { calculateAllIndicators, getCandleTimeRemaining, getSynchronizedDate } from "./utils/technicalIndicators";
+import { generateChartImageBase64 } from "./utils/chartRenderer";
 import { soundManager } from "./utils/soundEffects";
 import { candlexApiService } from "./services/apiService";
 import { hioveUserbotsService } from "./services/hioveUserbotsService";
@@ -912,9 +913,21 @@ export default function CandleXWorkstation({
 
                 // Check if we have enough time to send a pre-alert
                 if (now < preAlertTime + 30000) {
-                  // Send Pre-Alert
+                  // Send Pre-Alert Image and Message
                   const msg = formatTemplate(telegramSettings.preAlertMessageTemplate, cleanPairName, tf, result.direction, targetTimestamp);
-                  telegramService.sendMessage(telegramSettings, msg);
+                  
+                  // Generate chart image
+                  const photoBase64 = generateChartImageBase64({
+                    candles: cands,
+                    support: inds.support,
+                    resistance: inds.resistance,
+                  });
+
+                  if (photoBase64) {
+                    telegramService.sendPhoto(telegramSettings, photoBase64, msg);
+                  } else {
+                    telegramService.sendMessage(telegramSettings, msg);
+                  }
 
                   setSignalBotSession(prev => ({
                     ...prev,
