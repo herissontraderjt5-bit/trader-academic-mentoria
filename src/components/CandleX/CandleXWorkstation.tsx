@@ -1315,12 +1315,24 @@ export default function CandleXWorkstation({
             if (outcome === "WIN") { resultEmoji = telegramSettings.emojiWin; resultText = "WIN"; }
             else if (outcome === "LOSS") { resultEmoji = telegramSettings.emojiLoss; resultText = "LOSS"; }
 
-            const msg = `
+            if (telegramService.isStickerId(resultEmoji)) {
+              // Send sticker first, then send the text without the ugly file ID string
+              telegramService.sendSticker(telegramSettings, resultEmoji);
+              const msg = `
+<b>RESULTADO DO SINAL: ${resultText}</b>
+🎯 <b>Ativo:</b> ${t.ticker}
+📉 <b>Preço Final:</b> ${expiryPrice}
+`;
+              telegramService.sendMessage(telegramSettings, msg);
+            } else {
+              // Send normal text message with emoji
+              const msg = `
 ${resultEmoji} <b>RESULTADO DO SINAL: ${resultText}</b>
 🎯 <b>Ativo:</b> ${t.ticker}
 📉 <b>Preço Final:</b> ${expiryPrice}
 `;
-            telegramService.sendMessage(telegramSettings, msg);
+              telegramService.sendMessage(telegramSettings, msg);
+            }
           }
         }
 
