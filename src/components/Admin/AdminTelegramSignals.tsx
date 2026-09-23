@@ -534,6 +534,21 @@ Lucro Total: +R$ 450,00`;
               className="w-full p-3 rounded-xl bg-[#171724] border border-[#272738] text-white text-xs focus:outline-none focus:border-[#0088cc]"
               placeholder="Ex: Bom dia Traders! O mercado está aberto e vamos analisar as melhores oportunidades..."
             ></textarea>
+            <div className="mt-2 flex items-center gap-3">
+              <input 
+                type="file" 
+                accept="image/*"
+                onChange={(e) => handleFileUpload(e, 'sessionStartImageUrl')}
+                disabled={uploadingFile}
+                className="text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-[#0088cc]/10 file:text-[#0088cc] hover:file:bg-[#0088cc]/20 cursor-pointer"
+              />
+              {formData.sessionStartImageUrl && (
+                <a href={formData.sessionStartImageUrl} target="_blank" rel="noreferrer" className="text-xs text-emerald-400 underline">
+                  Ver Imagem
+                </a>
+              )}
+              {uploadingFile && <span className="text-xs text-gray-500">Enviando...</span>}
+            </div>
           </div>
 
           <div>
@@ -547,6 +562,21 @@ Lucro Total: +R$ 450,00`;
               className="w-full p-3 rounded-xl bg-[#171724] border border-[#272738] text-white text-xs focus:outline-none focus:border-[#0088cc]"
               placeholder="Ex: Fechamos as análises de hoje! Confiram o placar das nossas indicações."
             ></textarea>
+            <div className="mt-2 flex items-center gap-3">
+              <input 
+                type="file" 
+                accept="image/*"
+                onChange={(e) => handleFileUpload(e, 'sessionEndImageUrl')}
+                disabled={uploadingFile}
+                className="text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-[#0088cc]/10 file:text-[#0088cc] hover:file:bg-[#0088cc]/20 cursor-pointer"
+              />
+              {formData.sessionEndImageUrl && (
+                <a href={formData.sessionEndImageUrl} target="_blank" rel="noreferrer" className="text-xs text-emerald-400 underline">
+                  Ver Imagem
+                </a>
+              )}
+              {uploadingFile && <span className="text-xs text-gray-500">Enviando...</span>}
+            </div>
           </div>
         </div>
 
