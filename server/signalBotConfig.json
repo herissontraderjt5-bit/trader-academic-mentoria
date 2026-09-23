@@ -1,0 +1,5 @@
+{
+  "enabled": true,
+  "timeframes": ["5m"],
+  "minAiConfidence": 70
+}

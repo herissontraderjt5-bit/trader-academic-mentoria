@@ -1700,6 +1700,10 @@ export default function CandleXWorkstation({
         onChangeConfig={async (newCfg) => {
           setSignalBotConfig(newCfg);
           localStorage.setItem("signalBotConfig", JSON.stringify(newCfg));
+          fetch("/api/signal-bot-config", {
+            method: "POST",
+            body: JSON.stringify(newCfg)
+          }).catch(console.error);
           
           let currentSettings = telegramSettings;
           if (!currentSettings) {

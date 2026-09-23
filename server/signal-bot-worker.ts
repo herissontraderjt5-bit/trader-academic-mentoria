@@ -4,6 +4,8 @@ import { fetchPublicCandles, generateAlgorithmicAnalysis } from '../src/componen
 import { calculateAllIndicators } from '../src/components/CandleX/utils/technicalIndicators.js';
 import { telegramService } from '../src/services/telegramService.js';
 import { GoogleGenAI } from '@google/genai';
+import fs from 'fs';
+import path from 'path';
 
 dotenv.config({ path: '../.env' });
 
@@ -32,15 +34,26 @@ let signalBotSession = {
 let trades: any[] = [];
 let activeSession: 'MORNING' | 'AFTERNOON' | 'NIGHT' | null = null;
 let dailyStats = { wins: 0, losses: 0, dojis: 0 };
+let pairCooldowns: Record<string, number> = {};
 
-// Settings that were in localStorage
-// We'll define sensible defaults since the worker runs globally.
-// A better approach would be to add these to telegram_signal_settings.
-const signalBotConfig = {
+let signalBotConfig = {
   enabled: true,
   timeframes: ['1m', '2m', '5m', '15m'],
   minAiConfidence: 70, // Lowered from 85 temporarily to prove it sends signals
 };
+
+function loadSignalBotConfig() {
+  try {
+    const configPath = path.join(process.cwd(), 'signalBotConfig.json');
+    if (fs.existsSync(configPath)) {
+      const data = fs.readFileSync(configPath, 'utf8');
+      const parsed = JSON.parse(data);
+      signalBotConfig = { ...signalBotConfig, ...parsed, timeframes: parsed.timeframes || signalBotConfig.timeframes };
+    }
+  } catch (e) {
+    // ignore
+  }
+}
 
 async function generateSafeAiContent(prompt: string) {
   if (!ai) return null;
@@ -124,8 +137,10 @@ const cleanPair = (pair: string) => pair.replace('/', '').replace(' (OTC)', '_OT
 
 async function runWorkerLoop() {
   console.log('Worker loop tick...');
+  loadSignalBotConfig();
+  
   telegramSettings = await fetchSettings();
-  if (!telegramSettings || !telegramSettings.isActive) {
+  if (!telegramSettings || !telegramSettings.isActive || !signalBotConfig.enabled) {
     console.log('Bot is disabled or settings not found. Sleeping...');
     return;
   }
@@ -230,6 +245,12 @@ async function runWorkerLoop() {
 
     for (const pair of telegramSettings.allowedPairs) {
       const cleanPairName = cleanPair(pair);
+      
+      // Skip this pair if it is on cooldown (took a loss recently)
+      if (pairCooldowns[cleanPairName] && Date.now() < pairCooldowns[cleanPairName]) {
+         continue;
+      }
+
       for (const tf of signalBotConfig.timeframes) {
         await new Promise(r => setTimeout(r, 200));
         try {
@@ -284,16 +305,48 @@ async function runWorkerLoop() {
     console.log(`In PRE_ALERT state. now=${new Date(now).toISOString()}, confirmationTime=${new Date(confirmationTime).toISOString()}`);
     
     if (now >= confirmationTime) {
-       // Confirmed (simplified, normally we re-analyze)
+       // --- Regra Anti-Loss ---
+       // Verifica se a vela atual (que está prestes a fechar) tem a mesma cor do sinal.
+       const checkCands = await fetchPublicCandles(workflow.activeTicker, workflow.activeTimeframe, 2);
+       if (checkCands && checkCands.length > 0) {
+         const currentCandle = checkCands[checkCands.length - 1];
+         const isGreen = currentCandle.close > currentCandle.open;
+         const isRed = currentCandle.close < currentCandle.open;
+         
+         let isCanceled = false;
+         let cancelReason = "";
+         
+         if (workflow.activeDirection === "CALL" && !isGreen) {
+           isCanceled = true;
+           cancelReason = "Vela de pré-entrada não está Verde (Alta).";
+         } else if (workflow.activeDirection === "PUT" && !isRed) {
+           isCanceled = true;
+           cancelReason = "Vela de pré-entrada não está Vermelha (Baixa).";
+         }
+         
+         if (isCanceled) {
+           console.log(`Signal Canceled (Anti-Loss): ${workflow.activeTicker} ${workflow.activeDirection} - ${cancelReason}`);
+           const cancelMsg = `❌ <b>SINAL CANCELADO</b> ❌\n\nAtivo: ${workflow.activeTicker}\nTempo: ${workflow.activeTimeframe.toUpperCase()}\nDireção: ${workflow.activeDirection === "CALL" ? "🟩 COMPRA (CALL)" : "🟥 VENDA (PUT)"}\n\n<b>Motivo:</b> Regra Anti-Loss (${cancelReason})`;
+           await telegramService.sendMessage(telegramSettings, cancelMsg);
+           
+           signalBotSession.workflow = { status: "IDLE" };
+           lastCancelTime = Date.now();
+           return;
+         }
+       }
+       // -----------------------
+
+       // Confirmed
        const msg = formatTemplate(telegramSettings.confirmationMessageTemplate, workflow.activeTicker, workflow.activeTimeframe, workflow.activeDirection, workflow.targetTime);
        
        // Generate and send image on CONFIRMATION as requested
        try {
          const { generateChartImageBase64Node } = await import('./chartRendererNode.js');
-         const cands = await fetchPublicCandles(workflow.activeTicker, workflow.activeTimeframe, 60);
-         const inds = calculateAllIndicators(cands);
+         // We already fetched checkCands, but we need more candles for the chart
+         const chartCands = await fetchPublicCandles(workflow.activeTicker, workflow.activeTimeframe, 60);
+         const inds = calculateAllIndicators(chartCands);
          const photoBase64 = generateChartImageBase64Node({
-           candles: cands,
+           candles: chartCands,
            support: inds.support,
            resistance: inds.resistance,
          });
@@ -399,6 +452,8 @@ async function runWorkerLoop() {
             if (outcome === "LOSS") {
                signalBotSession.losses++;
                dailyStats.losses++;
+               // 1-hour cooldown to force switching asset
+               pairCooldowns[t.ticker] = Date.now() + 60 * 60 * 1000; 
             }
             if (outcome === "DRAW") {
                signalBotSession.dojis++;

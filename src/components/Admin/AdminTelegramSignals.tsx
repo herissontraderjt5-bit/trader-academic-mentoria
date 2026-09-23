@@ -53,11 +53,18 @@ export const AdminTelegramSignals: React.FC = () => {
     fetchSettings();
   }, []);
 
-  // Add robust split for allowed pairs handling
+  const [rawPairs, setRawPairs] = React.useState('');
+  React.useEffect(() => {
+    if (formData.allowedPairs.length > 0 && !rawPairs) {
+      setRawPairs(formData.allowedPairs.join(', '));
+    }
+  }, [formData.allowedPairs.length]);
+
   const handlePairsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value;
+    setRawPairs(rawValue);
     const pairs = rawValue.split(',').map(p => p.trim()).filter(p => p.length > 0);
-    setFormData({ ...formData, allowedPairs: pairs });
+    setFormData(prev => ({ ...prev, allowedPairs: pairs }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -392,7 +399,7 @@ Lucro Total: +R$ 450,00`;
             <input
               type="text"
               placeholder="EUR/USD, GBP/USD, USD/JPY"
-              value={formData.allowedPairs.join(', ')}
+              value={rawPairs}
               onChange={handlePairsChange}
               className="w-full p-3 rounded-xl bg-[#171724] border border-[#272738] text-white text-xs focus:outline-none focus:border-[#0088cc]"
             />
