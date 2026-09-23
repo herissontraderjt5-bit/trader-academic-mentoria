@@ -1,0 +1,20 @@
+{
+  "name": "candlex-signal-worker",
+  "version": "1.0.0",
+  "description": "Background worker for Telegram Signal Bot",
+  "main": "signal-bot-worker.js",
+  "type": "module",
+  "scripts": {
+    "start": "node signal-bot-worker.js"
+  },
+  "dependencies": {
+    "@google/genai": "^2.4.0",
+    "@napi-rs/canvas": "^1.0.9",
+    "@supabase/supabase-js": "^2.112.3",
+    "canvas": "^3.2.3",
+    "dotenv": "^17.2.3"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.15"
+  }
+}

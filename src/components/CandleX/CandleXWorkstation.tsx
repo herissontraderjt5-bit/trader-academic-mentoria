@@ -162,6 +162,7 @@ export default function CandleXWorkstation({
   const [isScanningModalOpen, setIsScanningModalOpen] = useState<boolean>(false);
   const pendingAnalysisRef = useRef<AiAnalysisResult | null>(null);
   const lastSessionActiveRef = useRef<boolean>(false);
+  const lastCancelTimeRef = useRef<number>(0);
   const candlesRef = useRef<Candle[]>([]);
   const indicatorsRef = useRef<TechnicalIndicators | null>(null);
   const tradesRef = useRef<TradeRecord[]>([]);
@@ -197,7 +198,13 @@ export default function CandleXWorkstation({
 
   // Telegram Signal Bot Config & Session
   const [isSignalBotOpen, setIsSignalBotOpen] = useState<boolean>(false);
-  const [signalBotConfig, setSignalBotConfig] = useState<SignalBotConfig>(INITIAL_SIGNAL_BOT_CONFIG);
+  const [signalBotConfig, setSignalBotConfig] = useState<SignalBotConfig>(() => {
+    try {
+      const saved = localStorage.getItem("signalBotConfig");
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return INITIAL_SIGNAL_BOT_CONFIG;
+  });
   const [signalBotSession, setSignalBotSession] = useState<SignalBotSession>(INITIAL_SIGNAL_BOT_SESSION);
   const signalBotSessionRef = useRef(signalBotSession);
   useEffect(() => {
@@ -211,7 +218,9 @@ export default function CandleXWorkstation({
 
   const fetchTelegramSettings = useCallback(() => {
     supabaseService.getTelegramSignalSettings().then(data => {
-      if (data) setTelegramSettings(data);
+      if (data) {
+        setTelegramSettings(data);
+      }
     });
   }, []);
 
@@ -794,303 +803,16 @@ export default function CandleXWorkstation({
     timeframeRef.current = timeframe;
   }, [candles, indicators, trades, activeTicker, timeframe]);
 
-  // TELEGRAM SIGNAL BOT POLLING ENGINE
+  // ----------------------------------------------------------------------------------
+  // TELEGRAM SIGNAL BOT - BACKGROUND WORKER (MIGRATED TO SERVER)
+  // ----------------------------------------------------------------------------------
+  // A lógica de varredura e envio automático de sinais foi migrada para o backend
+  // e agora executa de forma independente através do arquivo server/signal-bot-worker.ts
+  // O front-end apenas gerencia as configurações.
   useEffect(() => {
-    if (!signalBotConfig.enabled || !telegramSettings || !telegramSettings.isActive) return;
-
-    // Helper: Check if current time is within allowed windows
-    const isWithinAllowedTime = () => {
-      const now = new Date();
-      const currentMinutes = now.getHours() * 60 + now.getMinutes();
-      
-      const parseTime = (timeStr: string) => {
-        const [h, m] = timeStr.split(':').map(Number);
-        return h * 60 + m;
-      };
-
-      const inWindow = (start: string, end: string) => {
-        if (!start || !end) return false;
-        const s = parseTime(start);
-        const e = parseTime(end);
-        if (s > e) {
-          // Crosses midnight (e.g. 23:00 to 02:00)
-          return currentMinutes >= s || currentMinutes <= e;
-        }
-        return currentMinutes >= s && currentMinutes <= e;
-      };
-
-      return inWindow(telegramSettings.morningStartTime, telegramSettings.morningEndTime) ||
-             inWindow(telegramSettings.afternoonStartTime, telegramSettings.afternoonEndTime) ||
-             inWindow(telegramSettings.nightStartTime, telegramSettings.nightEndTime);
-    };
-
-    // Helper: Format pair (e.g. "EUR/USD" -> "EURUSD")
-    const cleanPair = (pair: string) => pair.replace('/', '').replace(' (OTC)', '_OTC').trim();
-
-    const signalInterval = setInterval(async () => {
-      const currentlyInWindow = isWithinAllowedTime();
-      
-      // Session Start / End Triggers
-      if (currentlyInWindow && !lastSessionActiveRef.current) {
-        lastSessionActiveRef.current = true;
-        if (telegramSettings.startMessageTemplate) {
-           telegramService.sendMessage(telegramSettings, telegramSettings.startMessageTemplate);
-        }
-      } else if (!currentlyInWindow && lastSessionActiveRef.current) {
-        lastSessionActiveRef.current = false;
-        if (telegramSettings.endMessageTemplate) {
-           let endMsg = telegramSettings.endMessageTemplate;
-           const wins = signalBotSessionRef.current.wins;
-           const losses = signalBotSessionRef.current.losses;
-           const dojis = signalBotSessionRef.current.dojis || 0;
-           const total = wins + losses + dojis;
-           const assertividade = total > 0 ? Math.round((wins / total) * 100) : 0;
-
-           endMsg = endMsg.replace(/{WINS}/g, wins.toString());
-           endMsg = endMsg.replace(/{LOSSES}/g, losses.toString());
-           endMsg = endMsg.replace(/{ASSERTIVIDADE}/g, assertividade.toString());
-           telegramService.sendMessage(telegramSettings, endMsg);
-        }
-      }
-
-      if (!currentlyInWindow) {
-        if (signalBotSessionRef.current.workflow?.status !== "IDLE") {
-          setSignalBotSession(prev => ({ ...prev, workflow: { status: "IDLE" } }));
-        }
-        return;
-      }
-
-      const workflow = signalBotSessionRef.current.workflow || { status: "IDLE" };
-      const now = Date.now();
-
-      // Format template helper
-      const formatTemplate = (template: string, ticker: string, tf: string, dir: string, targetTimestamp?: number) => {
-        let msg = template || '';
-        
-        // Safely extract minutes from tf (e.g. 'M5' -> 5, '15m' -> 15, '5' -> 5)
-        const tfMinutes = parseInt(tf.replace(/\D/g, '')) || 5;
-
-        msg = msg.replace(/{TICKER}/g, ticker);
-        msg = msg.replace(/{TIMEFRAME}/g, tf.toUpperCase());
-        msg = msg.replace(/{TIMERFRAME}/g, tf.toUpperCase()); // Alias in case user typoes
-        msg = msg.replace(/{MINUTES}/g, tfMinutes.toString());
-        
-        const emojiDir = dir === "CALL" ? "🟩 COMPRA (CALL)" : "🟥 VENDA (PUT)";
-        msg = msg.replace(/{DIRECTION}/g, emojiDir);
-
-        if (targetTimestamp) {
-          const entryDate = new Date(targetTimestamp);
-          const expiryDate = new Date(targetTimestamp + (tfMinutes * 60 * 1000));
-          
-          const formatTime = (d: Date) => {
-            if (isNaN(d.getTime())) return '--:--';
-            return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-          };
-          
-          msg = msg.replace(/{TIME}/g, formatTime(entryDate));
-          msg = msg.replace(/{ENTRY_TIME}/g, formatTime(entryDate));
-          msg = msg.replace(/{EXPIRY_TIME}/g, formatTime(expiryDate));
-        }
-
-        return msg;
-      };
-
-      if (workflow.status === "IDLE") {
-        // SCANNING PHASE
-        for (const pair of telegramSettings.allowedPairs) {
-          const cleanPairName = cleanPair(pair);
-          for (const tf of signalBotConfig.timeframes) {
-            // Avoid rate limits and UI freeze by yielding
-            await new Promise(r => setTimeout(r, 200));
-            try {
-              const cands = await candlexApiService.getCandles(cleanPairName, tf, 60);
-              if (!cands || cands.length === 0) continue;
-              const inds = calculateAllIndicators(cands);
-              const result = await candlexApiService.analyze(cleanPairName, tf.toUpperCase(), cands, inds);
-
-              if (result && result.direction !== "NEUTRAL" && result.confidenceScore >= signalBotConfig.minAiConfidence) {
-                // Calculate target time: next candle open (rough approximation)
-                const tfMinutes = parseInt(tf.replace('m', '')) || 1;
-                const currentMinute = new Date().getMinutes();
-                const minutesToNextCandle = tfMinutes - (currentMinute % tfMinutes);
-                const nextCandleTime = new Date();
-                nextCandleTime.setMinutes(currentMinute + minutesToNextCandle, 0, 0);
-                
-                const targetTimestamp = nextCandleTime.getTime();
-                const preAlertTime = targetTimestamp - ((telegramSettings.preAlertMinutes || 1) * 60 * 1000);
-
-                // Check if we have enough time to send a pre-alert
-                if (now < preAlertTime + 30000) {
-                  // Send Pre-Alert Image and Message
-                  const msg = formatTemplate(telegramSettings.preAlertMessageTemplate, cleanPairName, tf, result.direction, targetTimestamp);
-                  
-                  // Generate chart image
-                  const photoBase64 = generateChartImageBase64({
-                    candles: cands,
-                    support: inds.support,
-                    resistance: inds.resistance,
-                  });
-
-                  if (photoBase64) {
-                    telegramService.sendPhoto(telegramSettings, photoBase64, msg);
-                  } else {
-                    telegramService.sendMessage(telegramSettings, msg);
-                  }
-
-                  setSignalBotSession(prev => ({
-                    ...prev,
-                    workflow: {
-                      status: "PRE_ALERT",
-                      activeTicker: cleanPairName,
-                      activeTimeframe: tf,
-                      activeDirection: result.direction,
-                      targetTime: targetTimestamp,
-                      galeCount: 0
-                    }
-                  }));
-                  return; // Stop scanning, focus on this signal
-                }
-              }
-            } catch (e) {
-              console.warn("Signal bot error scanning pair:", cleanPairName, e);
-            }
-          }
-        }
-      } else if (workflow.status === "PRE_ALERT") {
-        // WAITING FOR CONFIRMATION TIME (e.g. 15 seconds before target time)
-        if (workflow.targetTime && now >= workflow.targetTime - 15000) {
-          // Re-analyze to confirm
-          try {
-            const cands = await candlexApiService.getCandles(workflow.activeTicker!, workflow.activeTimeframe!, 60);
-            const inds = calculateAllIndicators(cands);
-            const result = await candlexApiService.analyze(workflow.activeTicker!, workflow.activeTimeframe!.toUpperCase(), cands, inds);
-
-            if (result && result.direction === workflow.activeDirection && result.confidenceScore >= (signalBotConfig.minAiConfidence - 5)) {
-              // CONFIRMED!
-              const msg = formatTemplate(telegramSettings.confirmationMessageTemplate, workflow.activeTicker!, workflow.activeTimeframe!, workflow.activeDirection!, workflow.targetTime);
-              telegramService.sendMessage(telegramSettings, msg);
-
-              // Dispatch the Trade for tracking
-              const newTrade: TradeRecord = {
-                id: "sig_" + Date.now() + "_" + Math.random().toString(36).substr(2, 3),
-                timestamp: Date.now(),
-                ticker: workflow.activeTicker!,
-                direction: workflow.activeDirection!,
-                entryPrice: cands[cands.length - 1]?.close || 0,
-                stake: 10,
-                payoutPercent: 85,
-                expiryMinutes: parseInt(workflow.activeTimeframe!.replace('m', '')) || 1,
-                result: "PENDING",
-                pnl: 0,
-                strategyUsed: "TELEGRAM_SIGNAL",
-                confidenceAtEntry: result.confidenceScore,
-                notes: result.rationale
-              };
-
-              const updatedTrades = [newTrade, ...trades];
-              setTrades(updatedTrades);
-              setSignalBotSession(prev => ({
-                ...prev,
-                signalsGenerated: prev.signalsGenerated + 1,
-                workflow: { ...prev.workflow, status: "WAITING_RESULT" }
-              }));
-              
-              if (currentUser && currentUser.id !== 'usr-guest') {
-                localStorage.setItem(`candlex_trades_${currentUser.id}`, JSON.stringify(updatedTrades));
-                supabaseService.saveCandleXTrade(currentUser.id, newTrade);
-              }
-            } else {
-              // Canceled
-              telegramService.sendMessage(telegramSettings, `⚠️ <b>SINAL CANCELADO!</b>\nO mercado virou e a IA abortou a entrada em ${workflow.activeTicker}.`);
-              setSignalBotSession(prev => ({ ...prev, workflow: { status: "IDLE" } }));
-            }
-          } catch (e) {
-             setSignalBotSession(prev => ({ ...prev, workflow: { status: "IDLE" } }));
-          }
-        }
-      } else if (workflow.status === "WAITING_RESULT") {
-        const tfMinutes = parseInt(workflow.activeTimeframe!.replace(/\D/g, '')) || 5;
-        const expiryDurationMs = tfMinutes * 60 * 1000;
-        const expiryTimestamp = workflow.targetTime! + expiryDurationMs;
-        
-        if (now >= expiryTimestamp + 2000) { // Wait 2s for candle close
-          try {
-             // Find the corresponding pending trade to resolve
-             const currentTrades = tradesRef.current;
-             const pendingTradeIndex = currentTrades.findIndex(t => t.strategyUsed === "TELEGRAM_SIGNAL" && t.result === "PENDING" && t.ticker === workflow.activeTicker);
-             
-             // Use local candles to avoid network failures
-             const cands = candlesRef.current;
-             const closeCandle = cands[cands.length - 1];
-             const expiryPrice = closeCandle?.close || 0;
-             
-              if (pendingTradeIndex >= 0 && expiryPrice > 0) {
-                 const t = currentTrades[pendingTradeIndex];
-                 const entryPrice = t.entryPrice;
-                 
-                 let outcome: "WIN" | "LOSS" | "DRAW" = "DRAW";
-                 const diff = expiryPrice - entryPrice;
-                 if (Math.abs(diff) <= 0.000001) outcome = "DRAW";
-                 else if (t.direction === "CALL") outcome = expiryPrice > entryPrice ? "WIN" : "LOSS";
-                 else outcome = expiryPrice < entryPrice ? "WIN" : "LOSS";
-                 
-                 const pnl = outcome === "WIN" ? (t.stake * (t.payoutPercent || 85)) / 100 : (outcome === "LOSS" ? -t.stake : 0);
-                 
-                 // Update Trade Locally
-                 const newTrades = [...currentTrades];
-                 newTrades[pendingTradeIndex] = { ...t, result: outcome, pnl, expiryPrice };
-                 setTrades(newTrades);
-                
-                // Handle Telegram Message
-                const maxGale = telegramSettings?.martingaleLevel || 0;
-                const currentGaleCount = workflow.galeCount || 0;
-                
-                if (outcome === "LOSS" && currentGaleCount < maxGale) {
-                   telegramService.sendMessage(telegramSettings, `⚠️ <b>PREPARAR GALE ${currentGaleCount + 1}!</b>\nEntrem novamente para mesma direção.`);
-                   
-                   const galeTrade: TradeRecord = { ...newTrades[pendingTradeIndex], id: "sig_gale_" + Date.now(), result: "PENDING", pnl: 0, stake: t.stake * 2, timestamp: Date.now() };
-                   setTrades([galeTrade, ...newTrades]);
-                   setSignalBotSession(prev => ({ ...prev, workflow: { ...prev.workflow, galeCount: currentGaleCount + 1, targetTime: Date.now() }}));
-                } else {
-                   // Final Result
-                   let emoji = outcome === "WIN" ? telegramSettings.emojiWin || "✅" : (outcome === "LOSS" ? telegramSettings.emojiLoss || "❌" : telegramSettings.emojiDoji || "➖");
-                   if (emoji.length > 15) {
-                     // Prevents user from pasting long Sticker IDs into the Emoji field
-                     emoji = outcome === "WIN" ? "✅" : (outcome === "LOSS" ? "❌" : "➖");
-                   }
-                   let text = outcome === "WIN" ? "WIN" : (outcome === "LOSS" ? "LOSS" : "EMPATE / DOJI");
-                   
-                   const stickerId = outcome === "WIN" ? telegramSettings.winStickerId : (outcome === "LOSS" ? telegramSettings.lossStickerId : telegramSettings.dojiStickerId);
-                   
-                   // ALWAYS send the text message first
-                   await telegramService.sendMessage(telegramSettings, `${emoji} <b>RESULTADO FINAL: ${text}</b>\nPar: ${t.ticker}\nPreço Fechamento: ${expiryPrice}`);
-                   
-                   // Then try to send the sticker if it exists
-                   if (stickerId && stickerId.trim() !== '') {
-                     await telegramService.sendSticker(telegramSettings, stickerId);
-                   }
-                   
-                   setSignalBotSession(prev => ({
-                     ...prev,
-                     wins: prev.wins + (outcome === "WIN" ? 1 : 0),
-                     losses: prev.losses + (outcome === "LOSS" ? 1 : 0),
-                     dojis: prev.dojis + (outcome === "DRAW" ? 1 : 0),
-                     workflow: { status: "IDLE" }
-                   }));
-                }
-             } else {
-                setSignalBotSession(prev => ({ ...prev, workflow: { status: "IDLE" } }));
-             }
-          } catch(e) {
-             console.warn("Failed to resolve telegram trade result", e);
-             setSignalBotSession(prev => ({ ...prev, workflow: { status: "IDLE" } }));
-          }
-        }
-      }
-    }, 15000); // Check every 15 seconds for precision
-
-    return () => clearInterval(signalInterval);
-  }, [signalBotConfig.enabled, telegramSettings, currentUser]);
+    // Client-side execution removed to prevent duplicated signals
+    // and allow execution when the browser is closed.
+  }, []);
 
   const lastAnalysisTimeRef = useRef<number>(0);
 
@@ -1975,9 +1697,20 @@ export default function CandleXWorkstation({
         isOpen={isSignalBotOpen}
         onClose={() => setIsSignalBotOpen(false)}
         config={signalBotConfig}
-        onChangeConfig={(newCfg) => {
+        onChangeConfig={async (newCfg) => {
           setSignalBotConfig(newCfg);
           localStorage.setItem("signalBotConfig", JSON.stringify(newCfg));
+          
+          let currentSettings = telegramSettings;
+          if (!currentSettings) {
+             currentSettings = await supabaseService.getTelegramSignalSettings();
+          }
+          
+          if (currentSettings) {
+             const updated = { ...currentSettings, isActive: newCfg.enabled };
+             setTelegramSettings(updated);
+             supabaseService.saveTelegramSignalSettings(updated);
+          }
         }}
         session={signalBotSession}
         onSendDailyResult={() => {
