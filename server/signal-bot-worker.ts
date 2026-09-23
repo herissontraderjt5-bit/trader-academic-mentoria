@@ -106,6 +106,8 @@ async function fetchSettings() {
     lossStickerId: data.loss_sticker_id,
     dojiStickerId: data.doji_sticker_id,
     isActive: data.is_active ?? false,
+    sessionStartImageUrl: data.session_start_image_url || undefined,
+    sessionEndImageUrl: data.session_end_image_url || undefined,
   };
 }
 
@@ -162,7 +164,12 @@ async function runWorkerLoop() {
        endMsg = endMsg.replace(/{WINS}/g, wins.toString());
        endMsg = endMsg.replace(/{LOSSES}/g, losses.toString());
        endMsg = endMsg.replace(/{ASSERTIVIDADE}/g, assertividade.toString());
-       await telegramService.sendMessage(telegramSettings, endMsg);
+       
+       if (telegramSettings.sessionEndImageUrl) {
+         await telegramService.sendPhoto(telegramSettings, telegramSettings.sessionEndImageUrl, endMsg);
+       } else {
+         await telegramService.sendMessage(telegramSettings, endMsg);
+       }
     }
     
     signalBotSession.wins = 0;
@@ -194,7 +201,11 @@ async function runWorkerLoop() {
   if (currentSession !== null && activeSession === null) {
     activeSession = currentSession;
     if (telegramSettings.startMessageTemplate) {
-       await telegramService.sendMessage(telegramSettings, telegramSettings.startMessageTemplate);
+       if (telegramSettings.sessionStartImageUrl) {
+         await telegramService.sendPhoto(telegramSettings, telegramSettings.sessionStartImageUrl, telegramSettings.startMessageTemplate);
+       } else {
+         await telegramService.sendMessage(telegramSettings, telegramSettings.startMessageTemplate);
+       }
     }
   } else if (currentSession === null && activeSession !== null) {
     await endActiveSession(activeSession);
@@ -203,7 +214,11 @@ async function runWorkerLoop() {
     await endActiveSession(activeSession);
     activeSession = currentSession;
     if (telegramSettings.startMessageTemplate) {
-       await telegramService.sendMessage(telegramSettings, telegramSettings.startMessageTemplate);
+       if (telegramSettings.sessionStartImageUrl) {
+         await telegramService.sendPhoto(telegramSettings, telegramSettings.sessionStartImageUrl, telegramSettings.startMessageTemplate);
+       } else {
+         await telegramService.sendMessage(telegramSettings, telegramSettings.startMessageTemplate);
+       }
     }
   }
 

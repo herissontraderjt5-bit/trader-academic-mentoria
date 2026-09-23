@@ -71,3 +71,8 @@ ALTER TABLE public.candlex_trades ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Candlex trades full access" ON public.candlex_trades;
 CREATE POLICY "Candlex trades full access"
   ON public.candlex_trades FOR ALL USING (true) WITH CHECK (true);
+
+
+-- Add image URLs for Telegram session messages
+ALTER TABLE telegram_signal_settings ADD COLUMN IF NOT EXISTS session_start_image_url TEXT;
+ALTER TABLE telegram_signal_settings ADD COLUMN IF NOT EXISTS session_end_image_url TEXT;

@@ -74,26 +74,30 @@ export const telegramService = {
     }
 
     try {
-      // Remove data:image/png;base64, prefix if present
-      const base64Data = photoBase64.split(',')[1] || photoBase64;
-      
-      // Convert base64 to Blob
-      const byteCharacters = atob(base64Data);
-      const byteArrays = [];
-      for (let offset = 0; offset < byteCharacters.length; offset += 512) {
-        const slice = byteCharacters.slice(offset, offset + 512);
-        const byteNumbers = new Array(slice.length);
-        for (let i = 0; i < slice.length; i++) {
-          byteNumbers[i] = slice.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        byteArrays.push(byteArray);
-      }
-      const blob = new Blob(byteArrays, { type: 'image/png' });
-
       const formData = new FormData();
       formData.append('chat_id', settings.channelId);
-      formData.append('photo', blob, 'chart.png');
+
+      if (photoBase64.startsWith('http')) {
+        formData.append('photo', photoBase64);
+      } else {
+        // Remove data:image/png;base64, prefix if present
+        const base64Data = photoBase64.split(',')[1] || photoBase64;
+        
+        // Convert base64 to Blob
+        const byteCharacters = atob(base64Data);
+        const byteArrays = [];
+        for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+          const slice = byteCharacters.slice(offset, offset + 512);
+          const byteNumbers = new Array(slice.length);
+          for (let i = 0; i < slice.length; i++) {
+            byteNumbers[i] = slice.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          byteArrays.push(byteArray);
+        }
+        const blob = new Blob(byteArrays, { type: 'image/png' });
+        formData.append('photo', blob, 'chart.png');
+      }
       if (caption) {
         formData.append('caption', caption);
         formData.append('parse_mode', 'HTML');

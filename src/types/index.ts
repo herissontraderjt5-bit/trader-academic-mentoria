@@ -210,6 +210,8 @@ export interface TelegramSignalSettings {
   lossStickerId?: string;
   dojiStickerId?: string;
   isActive: boolean;
+  sessionStartImageUrl?: string;
+  sessionEndImageUrl?: string;
 }
 
 

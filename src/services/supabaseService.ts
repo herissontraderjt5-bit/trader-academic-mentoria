@@ -1078,6 +1078,8 @@ export const supabaseService = {
         lossStickerId: data.loss_sticker_id || undefined,
         dojiStickerId: data.doji_sticker_id || undefined,
         isActive: data.is_active ?? false,
+        sessionStartImageUrl: data.session_start_image_url || undefined,
+        sessionEndImageUrl: data.session_end_image_url || undefined,
       };
     } catch (e) {
       console.error('Error fetching Telegram signal settings:', e);
@@ -1113,6 +1115,8 @@ export const supabaseService = {
         loss_sticker_id: settings.lossStickerId,
         doji_sticker_id: settings.dojiStickerId,
         is_active: settings.isActive,
+        session_start_image_url: settings.sessionStartImageUrl,
+        session_end_image_url: settings.sessionEndImageUrl,
         updated_at: new Date().toISOString(),
       });
       return !error;

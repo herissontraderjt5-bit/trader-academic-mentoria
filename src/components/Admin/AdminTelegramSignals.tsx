@@ -41,6 +41,22 @@ export const AdminTelegramSignals: React.FC = () => {
   const [isSaved, setIsSaved] = useState(false);
   const [testStatus, setTestStatus] = useState<{loading: boolean, success?: boolean, error?: string}>({ loading: false });
   const [reportStatus, setReportStatus] = useState<{loading: boolean, success?: boolean, error?: string}>({ loading: false });
+  const [uploadingFile, setUploadingFile] = useState(false);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'sessionStartImageUrl' | 'sessionEndImageUrl') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingFile(true);
+    try {
+      const url = await supabaseService.uploadMaterialFile(file);
+      setFormData(prev => ({ ...prev, [field]: url }));
+    } catch (error) {
+      alert('Erro ao fazer upload da imagem.');
+    } finally {
+      setUploadingFile(false);
+    }
+  };
 
   React.useEffect(() => {
     async function fetchSettings() {
@@ -283,6 +299,21 @@ Lucro Total: +R$ 450,00`;
                 className="w-full p-3 rounded-xl bg-[#171724] border border-[#272738] text-white text-xs focus:outline-none focus:border-[#0088cc] min-h-[60px]"
                 placeholder="Ex: Iniciando as operações do dia..."
               />
+              <div className="mt-2 flex items-center gap-3">
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  onChange={(e) => handleFileUpload(e, 'sessionStartImageUrl')}
+                  disabled={uploadingFile}
+                  className="text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-[#0088cc]/10 file:text-[#0088cc] hover:file:bg-[#0088cc]/20 cursor-pointer"
+                />
+                {formData.sessionStartImageUrl && (
+                  <a href={formData.sessionStartImageUrl} target="_blank" rel="noreferrer" className="text-xs text-emerald-400 underline">
+                    Ver Imagem
+                  </a>
+                )}
+                {uploadingFile && <span className="text-xs text-gray-500">Enviando...</span>}
+              </div>
             </div>
             <div>
               <label className="block text-xs font-bold text-gray-300 mb-1 font-mono uppercase">
@@ -294,6 +325,21 @@ Lucro Total: +R$ 450,00`;
                 className="w-full p-3 rounded-xl bg-[#171724] border border-[#272738] text-white text-xs focus:outline-none focus:border-[#0088cc] min-h-[60px]"
                 placeholder="Ex: Fim das operações da sessão."
               />
+              <div className="mt-2 flex items-center gap-3">
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  onChange={(e) => handleFileUpload(e, 'sessionEndImageUrl')}
+                  disabled={uploadingFile}
+                  className="text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-[#0088cc]/10 file:text-[#0088cc] hover:file:bg-[#0088cc]/20 cursor-pointer"
+                />
+                {formData.sessionEndImageUrl && (
+                  <a href={formData.sessionEndImageUrl} target="_blank" rel="noreferrer" className="text-xs text-emerald-400 underline">
+                    Ver Imagem
+                  </a>
+                )}
+                {uploadingFile && <span className="text-xs text-gray-500">Enviando...</span>}
+              </div>
             </div>
             <div>
               <label className="block text-xs font-bold text-gray-300 mb-1 font-mono uppercase">
