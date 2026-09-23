@@ -1,4 +1,4 @@
-import { createCanvas } from '@napi-rs/canvas';
+import { createCanvas } from 'canvas';
 
 export interface ChartRenderOptions {
   candles: any[]; // Array of candles { open, high, low, close }

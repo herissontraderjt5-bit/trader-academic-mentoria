@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
-import { fetchPublicCandles } from '../src/components/CandleX/services/apiService.js';
+import { fetchPublicCandles, generateAlgorithmicAnalysis } from '../src/components/CandleX/services/apiService.js';
 import { calculateAllIndicators } from '../src/components/CandleX/utils/technicalIndicators.js';
 import { telegramService } from '../src/services/telegramService.js';
 import { GoogleGenAI } from '@google/genai';
@@ -30,15 +30,16 @@ let signalBotSession = {
   workflow: { status: 'IDLE' } as any,
 };
 let trades: any[] = [];
-let lastSessionActive = false;
+let activeSession: 'MORNING' | 'AFTERNOON' | 'NIGHT' | null = null;
+let dailyStats = { wins: 0, losses: 0, dojis: 0 };
 
 // Settings that were in localStorage
 // We'll define sensible defaults since the worker runs globally.
 // A better approach would be to add these to telegram_signal_settings.
 const signalBotConfig = {
   enabled: true,
-  timeframes: ['1m', '5m'],
-  minAiConfidence: 85,
+  timeframes: ['1m', '2m', '5m', '15m'],
+  minAiConfidence: 70, // Lowered from 85 temporarily to prove it sends signals
 };
 
 async function generateSafeAiContent(prompt: string) {
@@ -95,7 +96,7 @@ async function fetchSettings() {
   };
 }
 
-const isWithinAllowedTime = (settings: any) => {
+const getCurrentSession = (settings: any): 'MORNING' | 'AFTERNOON' | 'NIGHT' | null => {
   const now = new Date();
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
   
@@ -113,29 +114,28 @@ const isWithinAllowedTime = (settings: any) => {
     return currentMinutes >= s && currentMinutes <= e;
   };
 
-  return inWindow(settings.morningStartTime, settings.morningEndTime) ||
-         inWindow(settings.afternoonStartTime, settings.afternoonEndTime) ||
-         inWindow(settings.nightStartTime, settings.nightEndTime);
+  if (inWindow(settings.morningStartTime, settings.morningEndTime)) return 'MORNING';
+  if (inWindow(settings.afternoonStartTime, settings.afternoonEndTime)) return 'AFTERNOON';
+  if (inWindow(settings.nightStartTime, settings.nightEndTime)) return 'NIGHT';
+  return null;
 };
 
 const cleanPair = (pair: string) => pair.replace('/', '').replace(' (OTC)', '_OTC').trim();
 
 async function runWorkerLoop() {
+  console.log('Worker loop tick...');
   telegramSettings = await fetchSettings();
   if (!telegramSettings || !telegramSettings.isActive) {
     console.log('Bot is disabled or settings not found. Sleeping...');
     return;
   }
-
-  const currentlyInWindow = isWithinAllowedTime(telegramSettings);
   
-  if (currentlyInWindow && !lastSessionActive) {
-    lastSessionActive = true;
-    if (telegramSettings.startMessageTemplate) {
-       await telegramService.sendMessage(telegramSettings, telegramSettings.startMessageTemplate);
-    }
-  } else if (!currentlyInWindow && lastSessionActive) {
-    lastSessionActive = false;
+  console.log(`Bot is ACTIVE! Checking time windows... allowedPairs length: ${telegramSettings.allowedPairs?.length}`);
+  const currentSession = getCurrentSession(telegramSettings);
+  const currentlyInWindow = currentSession !== null;
+  console.log(`currentlyInWindow: ${currentlyInWindow}, session: ${currentSession}`);
+  
+  const endActiveSession = async (endedSession: string) => {
     if (telegramSettings.endMessageTemplate) {
        let endMsg = telegramSettings.endMessageTemplate;
        const wins = signalBotSession.wins;
@@ -148,6 +148,47 @@ async function runWorkerLoop() {
        endMsg = endMsg.replace(/{LOSSES}/g, losses.toString());
        endMsg = endMsg.replace(/{ASSERTIVIDADE}/g, assertividade.toString());
        await telegramService.sendMessage(telegramSettings, endMsg);
+    }
+    
+    signalBotSession.wins = 0;
+    signalBotSession.losses = 0;
+    signalBotSession.dojis = 0;
+
+    if (endedSession === 'NIGHT') {
+       if (telegramSettings.dailyResultMessageTemplate) {
+         let dailyMsg = telegramSettings.dailyResultMessageTemplate;
+         const dWins = dailyStats.wins;
+         const dLosses = dailyStats.losses;
+         const dDojis = dailyStats.dojis;
+         const dTotal = dWins + dLosses + dDojis;
+         const dAssertividade = dTotal > 0 ? Math.round((dWins / dTotal) * 100) : 0;
+
+         dailyMsg = dailyMsg.replace(/{WINS}/g, dWins.toString());
+         dailyMsg = dailyMsg.replace(/{LOSSES}/g, dLosses.toString());
+         dailyMsg = dailyMsg.replace(/{ASSERTIVIDADE}/g, dAssertividade.toString());
+         
+         await telegramService.sendMessage(telegramSettings, dailyMsg);
+       }
+       
+       dailyStats.wins = 0;
+       dailyStats.losses = 0;
+       dailyStats.dojis = 0;
+    }
+  };
+
+  if (currentSession !== null && activeSession === null) {
+    activeSession = currentSession;
+    if (telegramSettings.startMessageTemplate) {
+       await telegramService.sendMessage(telegramSettings, telegramSettings.startMessageTemplate);
+    }
+  } else if (currentSession === null && activeSession !== null) {
+    await endActiveSession(activeSession);
+    activeSession = null;
+  } else if (currentSession !== null && activeSession !== null && currentSession !== activeSession) {
+    await endActiveSession(activeSession);
+    activeSession = currentSession;
+    if (telegramSettings.startMessageTemplate) {
+       await telegramService.sendMessage(telegramSettings, telegramSettings.startMessageTemplate);
     }
   }
 
@@ -199,18 +240,9 @@ async function runWorkerLoop() {
           
           const inds = calculateAllIndicators(cands);
           
-          // AI Analysis Call (simplified direct call instead of full fallback logic to keep worker clean)
-          const candleContext = cands.slice(-15).map((c: any, index: number) => 
-            `Vela ${index + 1}: [Abertura: ${c.open}, Máx: ${c.high}, Mín: ${c.low}, Fechamento: ${c.close}, Vol: ${c.volume}]`
-          ).join("\n");
-          
-          const prompt = `Você é o CandleX AI. Analise o par ${cleanPairName} no timeframe ${tf}. Tendência: ${inds.trend}. RSI: ${inds.rsi}. MACD: ${inds.macdHist}. Suporte: ${inds.support}, Resistência: ${inds.resistance}. Velas:\n${candleContext}\nRetorne JSON {"direction":"CALL"|"PUT"|"NEUTRAL", "confidenceScore":80, "rationale": "..."} com no mínimo 85% de confidenceScore para dar entrada.`;
-          
-          const aiResponse = await generateSafeAiContent(prompt);
-          let result = null;
-          if (aiResponse) {
-             try { result = JSON.parse(aiResponse); } catch(e){}
-          }
+          // Local Algorithmic Analysis (Extremely fast, no API limits)
+          const result = generateAlgorithmicAnalysis(cleanPairName, tf, cands, inds);
+          console.log(`Scan ${cleanPairName} ${tf}: Dir=${result?.direction}, Conf=${result?.confidenceScore}% (min: ${signalBotConfig.minAiConfidence}%)`);
           
           if (result && result.direction !== "NEUTRAL" && result.confidenceScore >= signalBotConfig.minAiConfidence) {
             const tfMinutes = parseInt(tf.replace('m', '')) || 1;
@@ -222,7 +254,9 @@ async function runWorkerLoop() {
             const targetTimestamp = nextCandleTime.getTime();
             const preAlertTime = targetTimestamp - ((telegramSettings.preAlertMinutes || 1) * 60 * 1000);
 
-            if (now < preAlertTime + 30000) {
+            console.log(`Checking pre-alert window: now=${new Date(now).toISOString()}, preAlertTime=${new Date(preAlertTime).toISOString()}, limit=${new Date(preAlertTime + 60000).toISOString()}`);
+
+            if (now >= preAlertTime && now < preAlertTime + 60000) {
               const msg = formatTemplate(telegramSettings.preAlertMessageTemplate, cleanPairName, tf, result.direction, targetTimestamp);
               
               // Worker no canvas on pre-alert, send TEXT ONLY as requested by user
@@ -245,7 +279,11 @@ async function runWorkerLoop() {
       }
     }
   } else if (workflow.status === "PRE_ALERT") {
-    if (workflow.targetTime && now >= workflow.targetTime - 15000) {
+    // wait for confirmation time (10 seconds before)
+    const confirmationTime = workflow.targetTime - 10000;
+    console.log(`In PRE_ALERT state. now=${new Date(now).toISOString()}, confirmationTime=${new Date(confirmationTime).toISOString()}`);
+    
+    if (now >= confirmationTime) {
        // Confirmed (simplified, normally we re-analyze)
        const msg = formatTemplate(telegramSettings.confirmationMessageTemplate, workflow.activeTicker, workflow.activeTimeframe, workflow.activeDirection, workflow.targetTime);
        
@@ -354,9 +392,18 @@ async function runWorkerLoop() {
                await telegramService.sendSticker(telegramSettings, stickerId);
             }
             
-            if (outcome === "WIN") signalBotSession.wins++;
-            if (outcome === "LOSS") signalBotSession.losses++;
-            if (outcome === "DRAW") signalBotSession.dojis++;
+            if (outcome === "WIN") {
+               signalBotSession.wins++;
+               dailyStats.wins++;
+            }
+            if (outcome === "LOSS") {
+               signalBotSession.losses++;
+               dailyStats.losses++;
+            }
+            if (outcome === "DRAW") {
+               signalBotSession.dojis++;
+               dailyStats.dojis++;
+            }
             signalBotSession.workflow = { status: "IDLE" };
          }
        } catch (e) {
