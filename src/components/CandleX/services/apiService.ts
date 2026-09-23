@@ -62,7 +62,7 @@ function normalizeInterval(raw: string): string {
   return "1m";
 }
 
-async function fetchPublicCandles(ticker: string, interval: string, limit: number): Promise<Candle[] | null> {
+export async function fetchPublicCandles(ticker: string, interval: string, limit: number): Promise<Candle[] | null> {
   const normInterval = normalizeInterval(interval);
   const isCustomTimeframe = normInterval === "2m";
   const fetchInterval = isCustomTimeframe ? "1m" : normInterval;

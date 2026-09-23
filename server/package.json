@@ -5,7 +5,7 @@
   "main": "signal-bot-worker.js",
   "type": "module",
   "scripts": {
-    "start": "node signal-bot-worker.js"
+    "start": "tsx signal-bot-worker.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
