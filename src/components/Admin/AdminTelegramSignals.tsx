@@ -63,6 +63,7 @@ export const AdminTelegramSignals: React.FC = () => {
       const data = await supabaseService.getTelegramSignalSettings();
       if (data) {
         setFormData(data);
+        setRawPairs(data.allowedPairs.join(', '));
       }
       setIsLoading(false);
     }
@@ -70,11 +71,6 @@ export const AdminTelegramSignals: React.FC = () => {
   }, []);
 
   const [rawPairs, setRawPairs] = React.useState('');
-  React.useEffect(() => {
-    if (formData.allowedPairs.length > 0 && !rawPairs) {
-      setRawPairs(formData.allowedPairs.join(', '));
-    }
-  }, [formData.allowedPairs.length]);
 
   const handlePairsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value;
