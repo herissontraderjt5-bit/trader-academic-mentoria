@@ -2,9 +2,6 @@ import { TelegramSignalSettings } from '../types';
 
 export const telegramService = {
   async sendMessage(settings: TelegramSignalSettings, text: string): Promise<{ success: boolean; message?: string }> {
-    if (!settings.isActive) {
-      return { success: false, message: 'O envio de sinais está desativado nas configurações.' };
-    }
     if (!settings.botToken || !settings.channelId) {
       return { success: false, message: 'Token ou ID do Canal não configurados.' };
     }
@@ -36,9 +33,6 @@ export const telegramService = {
   },
 
   async sendSticker(settings: TelegramSignalSettings, stickerFileId: string): Promise<{ success: boolean; message?: string }> {
-    if (!settings.isActive) {
-      return { success: false, message: 'O envio de sinais está desativado.' };
-    }
     if (!settings.botToken || !settings.channelId) {
       return { success: false, message: 'Token ou ID do Canal não configurados.' };
     }
@@ -66,9 +60,6 @@ export const telegramService = {
   },
 
   async sendPhoto(settings: TelegramSignalSettings, photoBase64: string, caption?: string): Promise<{ success: boolean; message?: string }> {
-    if (!settings.isActive) {
-      return { success: false, message: 'O envio de sinais está desativado.' };
-    }
     if (!settings.botToken || !settings.channelId) {
       return { success: false, message: 'Token ou ID do Canal não configurados.' };
     }
