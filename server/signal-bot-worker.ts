@@ -150,10 +150,8 @@ async function runWorkerLoop() {
 
   if (!isEnabled) {
     if (wasBotEnabled) {
-       if (activeSession) {
-         await endActiveSession(activeSession);
-         activeSession = null;
-       }
+       await endActiveSession(activeSession || 'MANUAL_STOP');
+       activeSession = null;
        wasBotEnabled = false;
     }
     console.log('Bot is disabled or settings not found. Sleeping...');
