@@ -174,6 +174,21 @@ export function generateChartImageBase64Node(options: ChartRenderOptions): strin
     ctx.fillText(priceVal.toFixed(decimals), chartWidth + 8, y === 0 ? 15 : (y === height ? height - 5 : y + 4));
   }
 
+  // Draw Volume
+  const maxVolume = Math.max(...displayCandles.map(c => c.volume || 0));
+  if (maxVolume > 0) {
+    const volumeHeight = height * 0.15; // Volume takes bottom 15%
+    displayCandles.forEach((candle, i) => {
+      const x = i * candleWidth + (candleWidth / 2);
+      const isUp = candle.close >= candle.open;
+      const color = isUp ? 'rgba(8, 153, 129, 0.4)' : 'rgba(242, 54, 69, 0.4)';
+      
+      const volH = ((candle.volume || 0) / maxVolume) * volumeHeight;
+      ctx.fillStyle = color;
+      ctx.fillRect(x - candleBodyWidth / 2, height - volH, candleBodyWidth, volH);
+    });
+  }
+
   // Add current price tag
   if (displayCandles.length > 0) {
      const lastCandle = displayCandles[displayCandles.length - 1];

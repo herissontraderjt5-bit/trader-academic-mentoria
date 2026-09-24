@@ -35,6 +35,7 @@ let trades: any[] = [];
 let activeSession: 'MORNING' | 'AFTERNOON' | 'NIGHT' | null = null;
 let dailyStats = { wins: 0, losses: 0, dojis: 0 };
 let pairCooldowns: Record<string, number> = {};
+let consecutiveLosses: Record<string, number> = {};
 
 let signalBotConfig = {
   enabled: true,
@@ -320,36 +321,7 @@ async function runWorkerLoop() {
     console.log(`In PRE_ALERT state. now=${new Date(now).toISOString()}, confirmationTime=${new Date(confirmationTime).toISOString()}`);
     
     if (now >= confirmationTime) {
-       // --- Regra Anti-Loss ---
-       // Verifica se a vela atual (que está prestes a fechar) tem a mesma cor do sinal.
-       const checkCands = await fetchPublicCandles(workflow.activeTicker, workflow.activeTimeframe, 2);
-       if (checkCands && checkCands.length > 0) {
-         const currentCandle = checkCands[checkCands.length - 1];
-         const isGreen = currentCandle.close > currentCandle.open;
-         const isRed = currentCandle.close < currentCandle.open;
-         
-         let isCanceled = false;
-         let cancelReason = "";
-         
-         if (workflow.activeDirection === "CALL" && !isGreen) {
-           isCanceled = true;
-           cancelReason = "Vela de pré-entrada não está Verde (Alta).";
-         } else if (workflow.activeDirection === "PUT" && !isRed) {
-           isCanceled = true;
-           cancelReason = "Vela de pré-entrada não está Vermelha (Baixa).";
-         }
-         
-         if (isCanceled) {
-           console.log(`Signal Canceled (Anti-Loss): ${workflow.activeTicker} ${workflow.activeDirection} - ${cancelReason}`);
-           const cancelMsg = `❌ <b>SINAL CANCELADO</b> ❌\n\nAtivo: ${workflow.activeTicker}\nTempo: ${workflow.activeTimeframe.toUpperCase()}\nDireção: ${workflow.activeDirection === "CALL" ? "🟩 COMPRA (CALL)" : "🟥 VENDA (PUT)"}\n\n<b>Motivo:</b> Regra Anti-Loss (${cancelReason})`;
-           await telegramService.sendMessage(telegramSettings, cancelMsg);
-           
-           signalBotSession.workflow = { status: "IDLE" };
-           lastCancelTime = Date.now();
-           return;
-         }
-       }
-       // -----------------------
+       // Confirmado (Regra Anti-Loss foi removida para evitar cancelamentos excessivos)
 
        // Confirmed
        const msg = formatTemplate(telegramSettings.confirmationMessageTemplate, workflow.activeTicker, workflow.activeTimeframe, workflow.activeDirection, workflow.targetTime);
@@ -463,12 +435,17 @@ async function runWorkerLoop() {
             if (outcome === "WIN") {
                signalBotSession.wins++;
                dailyStats.wins++;
+               consecutiveLosses[t.ticker] = 0;
             }
             if (outcome === "LOSS") {
                signalBotSession.losses++;
                dailyStats.losses++;
-               // 1-hour cooldown to force switching asset
-               pairCooldowns[t.ticker] = Date.now() + 60 * 60 * 1000; 
+               consecutiveLosses[t.ticker] = (consecutiveLosses[t.ticker] || 0) + 1;
+               if (consecutiveLosses[t.ticker] >= 2) {
+                 // 1-hour cooldown to force switching asset after 2 consecutive losses
+                 pairCooldowns[t.ticker] = Date.now() + 60 * 60 * 1000; 
+                 consecutiveLosses[t.ticker] = 0;
+               }
             }
             if (outcome === "DRAW") {
                signalBotSession.dojis++;
@@ -486,5 +463,12 @@ async function runWorkerLoop() {
 
 // Start worker loop
 console.log("Starting CandleX Signal Bot Worker...");
-setInterval(runWorkerLoop, 15000);
-runWorkerLoop();
+async function startLoop() {
+  await runWorkerLoop();
+  let delay = 15000;
+  if (signalBotSession.workflow.status !== 'IDLE') {
+    delay = 1000;
+  }
+  setTimeout(startLoop, delay);
+}
+startLoop();
