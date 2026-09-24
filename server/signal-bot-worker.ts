@@ -37,6 +37,7 @@ let dailyStats = { wins: 0, losses: 0, dojis: 0 };
 let pairCooldowns: Record<string, number> = {};
 let consecutiveLosses: Record<string, number> = {};
 let wasBotEnabled = false;
+let globalCooldownUntil = 0;
 
 let signalBotConfig = {
   enabled: true,
@@ -254,6 +255,11 @@ async function runWorkerLoop() {
 
   const workflow = signalBotSession.workflow;
   const now = Date.now();
+
+  if (workflow.status === "IDLE" && now < globalCooldownUntil) {
+     // Em pausa de cooldown, não escaneia
+     return;
+  }
 
   const formatTemplate = (template: string, ticker: string, tf: string, dir: string, targetTimestamp?: number) => {
     let msg = template || '';
@@ -473,10 +479,19 @@ async function runWorkerLoop() {
                  pairCooldowns[t.ticker] = Date.now() + 60 * 60 * 1000; 
                  consecutiveLosses[t.ticker] = 0;
                }
+               
+               // Pausa global de 5 minutos do robô após um LOSS
+               globalCooldownUntil = Date.now() + 5 * 60 * 1000;
+               telegramService.sendMessage(telegramSettings, `⏳ <b>PAUSA DE ANÁLISE: 5 MINUTOS</b>\nO robô entrará em modo de observação após o Loss. Retornaremos em breve.`);
             }
             if (outcome === "DRAW") {
                signalBotSession.dojis++;
                dailyStats.dojis++;
+               globalCooldownUntil = Date.now() + 5 * 60 * 1000;
+            }
+            if (outcome === "WIN") {
+               // Pausa global de 2 minutos após um WIN para respirar
+               globalCooldownUntil = Date.now() + 2 * 60 * 1000;
             }
             signalBotSession.workflow = { status: "IDLE" };
          }
