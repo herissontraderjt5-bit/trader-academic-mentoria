@@ -36,6 +36,7 @@ let activeSession: 'MORNING' | 'AFTERNOON' | 'NIGHT' | null = null;
 let dailyStats = { wins: 0, losses: 0, dojis: 0 };
 let pairCooldowns: Record<string, number> = {};
 let consecutiveLosses: Record<string, number> = {};
+let wasBotEnabled = false;
 
 let signalBotConfig = {
   enabled: true,
@@ -133,7 +134,7 @@ const getCurrentSession = (settings: any): 'MORNING' | 'AFTERNOON' | 'NIGHT' | n
   if (inWindow(settings.morningStartTime, settings.morningEndTime)) return 'MORNING';
   if (inWindow(settings.afternoonStartTime, settings.afternoonEndTime)) return 'AFTERNOON';
   if (inWindow(settings.nightStartTime, settings.nightEndTime)) return 'NIGHT';
-  return null;
+  return 'MORNING'; // Fallback to ensure it always runs when enabled
 };
 
 const cleanPair = (pair: string) => pair.replace('/', '').replace(' (OTC)', '_OTC').trim();
@@ -143,14 +144,27 @@ async function runWorkerLoop() {
   loadSignalBotConfig();
   
   telegramSettings = await fetchSettings();
-  if (!telegramSettings || !telegramSettings.isActive || !signalBotConfig.enabled) {
+  const isEnabled = telegramSettings && telegramSettings.isActive && signalBotConfig.enabled;
+
+  if (!isEnabled) {
+    if (wasBotEnabled) {
+       if (activeSession) {
+         await endActiveSession(activeSession);
+         activeSession = null;
+       }
+       wasBotEnabled = false;
+    }
     console.log('Bot is disabled or settings not found. Sleeping...');
     return;
   }
+
+  if (!wasBotEnabled) {
+     wasBotEnabled = true;
+  }
   
   console.log(`Bot is ACTIVE! Checking time windows... allowedPairs length: ${telegramSettings.allowedPairs?.length}`);
-  const currentSession = getCurrentSession(telegramSettings);
-  const currentlyInWindow = currentSession !== null;
+  const currentSession = getCurrentSession(telegramSettings) || 'MORNING';
+  const currentlyInWindow = true; // Forçar execução se estiver ligado
   console.log(`currentlyInWindow: ${currentlyInWindow}, session: ${currentSession}`);
   
   const endActiveSession = async (endedSession: string) => {
