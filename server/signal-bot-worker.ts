@@ -38,6 +38,7 @@ let pairCooldowns: Record<string, number> = {};
 let consecutiveLosses: Record<string, number> = {};
 let wasBotEnabled = false;
 let globalCooldownUntil = 0;
+let waitingForScheduleAlertSent = false;
 
 let signalBotConfig = {
   enabled: true,
@@ -135,7 +136,7 @@ const getCurrentSession = (settings: any): 'MORNING' | 'AFTERNOON' | 'NIGHT' | n
   if (inWindow(settings.morningStartTime, settings.morningEndTime)) return 'MORNING';
   if (inWindow(settings.afternoonStartTime, settings.afternoonEndTime)) return 'AFTERNOON';
   if (inWindow(settings.nightStartTime, settings.nightEndTime)) return 'NIGHT';
-  return 'MORNING'; // Fallback to ensure it always runs when enabled
+  return null;
 };
 
 const cleanPair = (pair: string) => pair.replace('/', '').replace(' (OTC)', '_OTC').trim();
@@ -161,12 +162,13 @@ async function runWorkerLoop() {
 
   if (!wasBotEnabled) {
      wasBotEnabled = true;
+     waitingForScheduleAlertSent = false;
   }
   
-  console.log(`Bot is ACTIVE! Checking time windows... allowedPairs length: ${telegramSettings.allowedPairs?.length}`);
-  const currentSession = getCurrentSession(telegramSettings) || 'MORNING';
-  const currentlyInWindow = true; // Forçar execução se estiver ligado
-  console.log(`currentlyInWindow: ${currentlyInWindow}, session: ${currentSession}`);
+  // console.log(`Bot is ACTIVE! Checking time windows... allowedPairs length: ${telegramSettings.allowedPairs?.length}`);
+  const currentSession = getCurrentSession(telegramSettings);
+  const currentlyInWindow = currentSession !== null;
+  // console.log(`currentlyInWindow: ${currentlyInWindow}, session: ${currentSession}`);
   
   async function endActiveSession(endedSession: string) {
     if (telegramSettings.endMessageTemplate) {
@@ -192,28 +194,26 @@ async function runWorkerLoop() {
     signalBotSession.losses = 0;
     signalBotSession.dojis = 0;
 
-    if (endedSession === 'NIGHT') {
-       if (telegramSettings.dailyResultMessageTemplate) {
-         console.log("Sending daily result message");
-         let dailyMsg = telegramSettings.dailyResultMessageTemplate;
-         const dWins = dailyStats.wins;
-         const dLosses = dailyStats.losses;
-         const dDojis = dailyStats.dojis;
-         const dTotal = dWins + dLosses + dDojis;
-         const dAssertividade = dTotal > 0 ? Math.round((dWins / dTotal) * 100) : 0;
+    if (telegramSettings.dailyResultMessageTemplate) {
+      console.log("Sending session result message");
+      let dailyMsg = telegramSettings.dailyResultMessageTemplate;
+      const dWins = dailyStats.wins;
+      const dLosses = dailyStats.losses;
+      const dDojis = dailyStats.dojis;
+      const dTotal = dWins + dLosses + dDojis;
+      const dAssertividade = dTotal > 0 ? Math.round((dWins / dTotal) * 100) : 0;
 
-         dailyMsg = dailyMsg.replace(/{WINS}/g, dWins.toString());
-         dailyMsg = dailyMsg.replace(/{LOSSES}/g, dLosses.toString());
-         dailyMsg = dailyMsg.replace(/{ASSERTIVIDADE}/g, dAssertividade.toString());
-         
-         const res = await telegramService.sendMessage(telegramSettings, dailyMsg);
-         console.log("Daily result send response:", res);
-       }
-       
-       dailyStats.wins = 0;
-       dailyStats.losses = 0;
-       dailyStats.dojis = 0;
+      dailyMsg = dailyMsg.replace(/{WINS}/g, dWins.toString());
+      dailyMsg = dailyMsg.replace(/{LOSSES}/g, dLosses.toString());
+      dailyMsg = dailyMsg.replace(/{ASSERTIVIDADE}/g, dAssertividade.toString());
+      
+      const res = await telegramService.sendMessage(telegramSettings, dailyMsg);
+      console.log("Session result send response:", res);
     }
+    
+    dailyStats.wins = 0;
+    dailyStats.losses = 0;
+    dailyStats.dojis = 0;
   };
 
   if (currentSession !== null && activeSession === null) {
@@ -250,8 +250,15 @@ async function runWorkerLoop() {
     if (signalBotSession.workflow.status !== "IDLE") {
       signalBotSession.workflow = { status: "IDLE" };
     }
+    if (!waitingForScheduleAlertSent && wasBotEnabled) {
+       telegramService.sendMessage(telegramSettings, `⏳ <b>SISTEMA ATIVADO</b>\nO robô está ligado e operando em segundo plano. Aguardando o horário da próxima sessão agendada para iniciar o envio de sinais...`);
+       waitingForScheduleAlertSent = true;
+    }
     return;
   }
+
+  // Se entrou na janela e a flag de espera estava true, reseta ela
+  waitingForScheduleAlertSent = false;
 
   const workflow = signalBotSession.workflow;
   const now = Date.now();
