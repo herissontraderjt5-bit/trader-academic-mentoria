@@ -193,6 +193,7 @@ async function runWorkerLoop() {
 
     if (endedSession === 'NIGHT') {
        if (telegramSettings.dailyResultMessageTemplate) {
+         console.log("Sending daily result message");
          let dailyMsg = telegramSettings.dailyResultMessageTemplate;
          const dWins = dailyStats.wins;
          const dLosses = dailyStats.losses;
@@ -204,7 +205,8 @@ async function runWorkerLoop() {
          dailyMsg = dailyMsg.replace(/{LOSSES}/g, dLosses.toString());
          dailyMsg = dailyMsg.replace(/{ASSERTIVIDADE}/g, dAssertividade.toString());
          
-         await telegramService.sendMessage(telegramSettings, dailyMsg);
+         const res = await telegramService.sendMessage(telegramSettings, dailyMsg);
+         console.log("Daily result send response:", res);
        }
        
        dailyStats.wins = 0;
@@ -214,13 +216,19 @@ async function runWorkerLoop() {
   };
 
   if (currentSession !== null && activeSession === null) {
+    console.log("Transitioning to session:", currentSession);
     activeSession = currentSession;
     if (telegramSettings.startMessageTemplate) {
+       console.log("Sending session start message");
        if (telegramSettings.sessionStartImageUrl) {
-         await telegramService.sendPhoto(telegramSettings, telegramSettings.sessionStartImageUrl, telegramSettings.startMessageTemplate);
+         const res = await telegramService.sendPhoto(telegramSettings, telegramSettings.sessionStartImageUrl, telegramSettings.startMessageTemplate);
+         console.log("Start photo response:", res);
        } else {
-         await telegramService.sendMessage(telegramSettings, telegramSettings.startMessageTemplate);
+         const res = await telegramService.sendMessage(telegramSettings, telegramSettings.startMessageTemplate);
+         console.log("Start text response:", res);
        }
+    } else {
+       console.log("No startMessageTemplate configured!");
     }
   } else if (currentSession === null && activeSession !== null) {
     await endActiveSession(activeSession);
@@ -353,13 +361,18 @@ async function runWorkerLoop() {
          });
          
          if (photoBase64) {
-           await telegramService.sendPhoto(telegramSettings, photoBase64, msg);
+           console.log("Sending confirmation photo...");
+           const res = await telegramService.sendPhoto(telegramSettings, photoBase64, msg);
+           console.log("Confirmation photo response:", res);
          } else {
-           await telegramService.sendMessage(telegramSettings, msg);
+           console.log("Sending confirmation text (no photo)...");
+           const res = await telegramService.sendMessage(telegramSettings, msg);
+           console.log("Confirmation text response:", res);
          }
        } catch(e) {
          console.error("Error generating confirmation image", e);
-         await telegramService.sendMessage(telegramSettings, msg);
+         const res = await telegramService.sendMessage(telegramSettings, msg);
+         console.log("Fallback confirmation text response:", res);
        }
 
        const newTrade = {
