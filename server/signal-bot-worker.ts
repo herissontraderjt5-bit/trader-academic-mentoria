@@ -480,18 +480,19 @@ async function runWorkerLoop() {
                  consecutiveLosses[t.ticker] = 0;
                }
                
-               // Pausa global de 5 minutos do robô após um LOSS
-               globalCooldownUntil = Date.now() + 5 * 60 * 1000;
-               telegramService.sendMessage(telegramSettings, `⏳ <b>PAUSA DE ANÁLISE: 5 MINUTOS</b>\nO robô entrará em modo de observação após o Loss. Retornaremos em breve.`);
+               // Pausa global de 10 minutos do robô após um LOSS
+               globalCooldownUntil = Date.now() + 10 * 60 * 1000;
+               telegramService.sendMessage(telegramSettings, `⏳ <b>PAUSA DE ANÁLISE: 10 MINUTOS</b>\nO robô entrará em modo de observação após o Loss. Retornaremos em breve.`);
             }
             if (outcome === "DRAW") {
                signalBotSession.dojis++;
                dailyStats.dojis++;
-               globalCooldownUntil = Date.now() + 5 * 60 * 1000;
+               globalCooldownUntil = Date.now() + 10 * 60 * 1000;
             }
             if (outcome === "WIN") {
-               // Pausa global de 2 minutos após um WIN para respirar
-               globalCooldownUntil = Date.now() + 2 * 60 * 1000;
+               // Pausa global de 5 minutos após um WIN
+               globalCooldownUntil = Date.now() + 5 * 60 * 1000;
+               telegramService.sendMessage(telegramSettings, `⏳ <b>PAUSA DE ANÁLISE: 5 MINUTOS</b>\nO robô fará uma breve pausa para escanear novos padrões de fluxo no mercado.`);
             }
             signalBotSession.workflow = { status: "IDLE" };
          }
