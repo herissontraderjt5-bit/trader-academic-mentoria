@@ -559,12 +559,36 @@ export function generateAlgorithmicAnalysis(
   const N = detectedPatterns.length;
 
   // Realistic statistical probability calibration for Binary Options (M1/M5)
-  let rawConfidence = 71.5;
-  if (N === 2) rawConfidence = 72.0;
-  else if (N === 3) rawConfidence = 74.5;
-  else if (N === 4) rawConfidence = 77.0;
-  else if (N === 5) rawConfidence = 79.5;
-  else rawConfidence = Math.min(84.0, 81.0 + (N - 5) * 0.8);
+  // DEIXANDO MAIS CONSERVADOR E ASSERTIVO:
+  let rawConfidence = 65.0; // Base menor
+  
+  // Se não estiver seguindo a tendência principal e a macro, penaliza pesado
+  const isTrendAligned = (direction === "CALL" && trend === "ALTA" && currentPrice > sma50) || 
+                         (direction === "PUT" && trend === "BAIXA" && currentPrice < sma50);
+                         
+  if (!isTrendAligned) {
+      // Contra a tendência macra, no máximo 72%
+      rawConfidence = Math.min(72.0, 65.0 + (N * 1.5));
+  } else {
+      // A favor da macro-tendência, escala mais forte
+      if (N === 2) rawConfidence = 70.0;
+      else if (N === 3) rawConfidence = 73.0;
+      else if (N === 4) rawConfidence = 76.5;
+      else if (N === 5) rawConfidence = 78.5;
+      else if (N === 6) rawConfidence = 80.5;
+      else if (N === 7) rawConfidence = 82.5;
+      else rawConfidence = Math.min(88.0, 82.5 + (N - 7) * 0.8);
+      
+      // Bônus se tiver volume institucional a favor
+      if ((direction === "CALL" && volumeDelta > 5) || (direction === "PUT" && volumeDelta < -5)) {
+          rawConfidence += 2.0;
+      }
+      
+      // Bônus se o estocástico e RSI estiverem filtrados
+      if ((direction === "CALL" && rsi > 40 && rsi < 65) || (direction === "PUT" && rsi < 60 && rsi > 35)) {
+          rawConfidence += 1.5;
+      }
+  }
 
 
   const confidenceScore = parseFloat(rawConfidence.toFixed(1));

@@ -167,7 +167,7 @@ async function runWorkerLoop() {
   const currentlyInWindow = true; // Forçar execução se estiver ligado
   console.log(`currentlyInWindow: ${currentlyInWindow}, session: ${currentSession}`);
   
-  const endActiveSession = async (endedSession: string) => {
+  async function endActiveSession(endedSession: string) {
     if (telegramSettings.endMessageTemplate) {
        let endMsg = telegramSettings.endMessageTemplate;
        const wins = signalBotSession.wins;
