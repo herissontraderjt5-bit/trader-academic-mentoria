@@ -1080,6 +1080,7 @@ export const supabaseService = {
         isActive: data.is_active ?? false,
         sessionStartImageUrl: data.session_start_image_url || undefined,
         sessionEndImageUrl: data.session_end_image_url || undefined,
+        lastRestartCommand: data.last_restart_command || undefined,
       };
     } catch (e) {
       console.error('Error fetching Telegram signal settings:', e);
@@ -1117,6 +1118,7 @@ export const supabaseService = {
         is_active: settings.isActive,
         session_start_image_url: settings.sessionStartImageUrl,
         session_end_image_url: settings.sessionEndImageUrl,
+        last_restart_command: settings.lastRestartCommand,
         updated_at: new Date().toISOString(),
       });
       return !error;

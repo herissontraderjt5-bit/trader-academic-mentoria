@@ -623,6 +623,18 @@ Lucro Total: +R$ 450,00`;
               </span>
             )}
             <button
+              type="button"
+              onClick={async () => {
+                const success = await supabaseService.saveTelegramSignalSettings(formData);
+                if (success) {
+                  alert("Comando de reinício enviado! O worker será reiniciado no próximo ciclo (até 15s).");
+                }
+              }}
+              className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-extrabold text-xs transition-colors shadow-lg shadow-orange-600/20 cursor-pointer"
+            >
+              <span>Reiniciar Worker</span>
+            </button>
+            <button
               type="submit"
               className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-[#0088cc] hover:bg-[#0099e6] text-white font-extrabold text-xs transition-colors shadow-lg shadow-[#0088cc]/20 cursor-pointer"
             >

@@ -212,6 +212,7 @@ export interface TelegramSignalSettings {
   isActive: boolean;
   sessionStartImageUrl?: string;
   sessionEndImageUrl?: string;
+  lastRestartCommand?: string;
 }
 
 

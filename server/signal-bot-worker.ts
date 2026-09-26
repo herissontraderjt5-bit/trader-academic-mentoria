@@ -84,7 +84,11 @@ async function generateSafeAiContent(prompt: string) {
 
 async function fetchSettings() {
   const { data, error } = await supabase.from('telegram_signal_settings').select('*').eq('id', 'default').single();
-  if (error || !data) return null;
+  if (error) {
+     console.warn("Error fetching telegram settings:", error);
+     return telegramSettings; // return cached settings on network error
+  }
+  if (!data) return null;
   return {
     id: data.id,
     botToken: data.bot_token,
@@ -112,12 +116,14 @@ async function fetchSettings() {
     isActive: data.is_active ?? false,
     sessionStartImageUrl: data.session_start_image_url || undefined,
     sessionEndImageUrl: data.session_end_image_url || undefined,
+    updatedAt: data.updated_at,
   };
 }
 
 const getCurrentSession = (settings: any): 'MORNING' | 'AFTERNOON' | 'NIGHT' | null => {
   const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const spTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+  const currentMinutes = spTime.getHours() * 60 + spTime.getMinutes();
   
   const parseTime = (timeStr: string) => {
     if (!timeStr) return -1;
@@ -141,11 +147,30 @@ const getCurrentSession = (settings: any): 'MORNING' | 'AFTERNOON' | 'NIGHT' | n
 
 const cleanPair = (pair: string) => pair.replace('/', '').replace(' (OTC)', '_OTC').trim();
 
+let lastSettingsUpdatedAt: string | null = null;
+
 async function runWorkerLoop() {
   console.log('Worker loop tick...');
   loadSignalBotConfig();
   
   telegramSettings = await fetchSettings();
+  
+  if (telegramSettings && telegramSettings.updatedAt) {
+    if (lastSettingsUpdatedAt !== null && lastSettingsUpdatedAt !== telegramSettings.updatedAt) {
+        console.log("Settings updated! Hard resetting worker state...");
+        signalBotSession = { wins: 0, losses: 0, dojis: 0, signalsGenerated: 0, workflow: { status: 'IDLE' } as any };
+        trades = [];
+        activeSession = null;
+        dailyStats = { wins: 0, losses: 0, dojis: 0 };
+        pairCooldowns = {};
+        consecutiveLosses = {};
+        wasBotEnabled = false;
+        globalCooldownUntil = 0;
+        waitingForScheduleAlertSent = false;
+    }
+    lastSettingsUpdatedAt = telegramSettings.updatedAt;
+  }
+
   const isEnabled = telegramSettings && telegramSettings.isActive && signalBotConfig.enabled;
 
   if (!isEnabled) {
@@ -169,6 +194,7 @@ async function runWorkerLoop() {
   // console.log(`currentlyInWindow: ${currentlyInWindow}, session: ${currentSession}`);
   
   async function endActiveSession(endedSession: string) {
+    if (!telegramSettings) return;
     if (telegramSettings.endMessageTemplate) {
        let endMsg = telegramSettings.endMessageTemplate;
        const wins = signalBotSession.wins;
@@ -281,7 +307,7 @@ async function runWorkerLoop() {
     if (targetTimestamp) {
       const entryDate = new Date(targetTimestamp);
       const expiryDate = new Date(targetTimestamp + (tfMinutes * 60 * 1000));
-      const formatTime = (d: Date) => isNaN(d.getTime()) ? '--:--' : d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const formatTime = (d: Date) => isNaN(d.getTime()) ? '--:--' : d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
       msg = msg.replace(/{TIME}/g, formatTime(entryDate));
       msg = msg.replace(/{ENTRY_TIME}/g, formatTime(entryDate));
       msg = msg.replace(/{EXPIRY_TIME}/g, formatTime(expiryDate));
@@ -512,7 +538,11 @@ async function runWorkerLoop() {
 // Start worker loop
 console.log("Starting CandleX Signal Bot Worker...");
 async function startLoop() {
-  await runWorkerLoop();
+  try {
+    await runWorkerLoop();
+  } catch (err) {
+    console.error("Critical error in runWorkerLoop:", err);
+  }
   let delay = 15000;
   if (signalBotSession.workflow.status !== 'IDLE') {
     delay = 1000;
