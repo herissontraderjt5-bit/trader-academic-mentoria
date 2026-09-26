@@ -116,6 +116,7 @@ async function fetchSettings() {
     isActive: data.is_active ?? false,
     sessionStartImageUrl: data.session_start_image_url || undefined,
     sessionEndImageUrl: data.session_end_image_url || undefined,
+    lastRestartCommand: data.last_restart_command || undefined,
     updatedAt: data.updated_at,
   };
 }
@@ -147,7 +148,7 @@ const getCurrentSession = (settings: any): 'MORNING' | 'AFTERNOON' | 'NIGHT' | n
 
 const cleanPair = (pair: string) => pair.replace('/', '').replace(' (OTC)', '_OTC').trim();
 
-let lastSettingsUpdatedAt: string | null = null;
+let lastRestartCommandValue: string | null = null;
 
 async function runWorkerLoop() {
   console.log('Worker loop tick...');
@@ -155,9 +156,9 @@ async function runWorkerLoop() {
   
   telegramSettings = await fetchSettings();
   
-  if (telegramSettings && telegramSettings.updatedAt) {
-    if (lastSettingsUpdatedAt !== null && lastSettingsUpdatedAt !== telegramSettings.updatedAt) {
-        console.log("Settings updated! Hard resetting worker state...");
+  if (telegramSettings && telegramSettings.lastRestartCommand) {
+    if (lastRestartCommandValue !== null && lastRestartCommandValue !== telegramSettings.lastRestartCommand) {
+        console.log("Restart command received! Hard resetting worker state...");
         signalBotSession = { wins: 0, losses: 0, dojis: 0, signalsGenerated: 0, workflow: { status: 'IDLE' } as any };
         trades = [];
         activeSession = null;
@@ -168,7 +169,7 @@ async function runWorkerLoop() {
         globalCooldownUntil = 0;
         waitingForScheduleAlertSent = false;
     }
-    lastSettingsUpdatedAt = telegramSettings.updatedAt;
+    lastRestartCommandValue = telegramSettings.lastRestartCommand;
   }
 
   const isEnabled = telegramSettings && telegramSettings.isActive && signalBotConfig.enabled;

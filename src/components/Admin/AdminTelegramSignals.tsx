@@ -625,7 +625,8 @@ Lucro Total: +R$ 450,00`;
             <button
               type="button"
               onClick={async () => {
-                const success = await supabaseService.saveTelegramSignalSettings(formData);
+                const updatedData = { ...formData, lastRestartCommand: Date.now().toString() };
+                const success = await supabaseService.saveTelegramSignalSettings(updatedData);
                 if (success) {
                   alert("Comando de reinício enviado! O worker será reiniciado no próximo ciclo (até 15s).");
                 }
