@@ -65,36 +65,51 @@ export const telegramService = {
     }
 
     try {
+      const url = `https://api.telegram.org/bot${settings.botToken}/sendPhoto`;
+
+      if (photoBase64.startsWith('http')) {
+        // Send as JSON for URLs
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: settings.channelId,
+            photo: photoBase64,
+            caption: caption,
+            parse_mode: 'HTML'
+          }),
+        });
+        const data = await response.json();
+        if (!data.ok) {
+          return { success: false, message: data.description || 'Erro ao enviar foto.' };
+        }
+        return { success: true };
+      }
+
+      // Send as FormData for Base64 (canvas rendered images)
       const formData = new FormData();
       formData.append('chat_id', settings.channelId);
 
-      if (photoBase64.startsWith('http')) {
-        formData.append('photo', photoBase64);
-      } else {
-        // Remove data:image/png;base64, prefix if present
-        const base64Data = photoBase64.split(',')[1] || photoBase64;
-        
-        // Convert base64 to Blob
-        const byteCharacters = atob(base64Data);
-        const byteArrays = [];
-        for (let offset = 0; offset < byteCharacters.length; offset += 512) {
-          const slice = byteCharacters.slice(offset, offset + 512);
-          const byteNumbers = new Array(slice.length);
-          for (let i = 0; i < slice.length; i++) {
-            byteNumbers[i] = slice.charCodeAt(i);
-          }
-          const byteArray = new Uint8Array(byteNumbers);
-          byteArrays.push(byteArray);
+      const base64Data = photoBase64.split(',')[1] || photoBase64;
+      const byteCharacters = atob(base64Data);
+      const byteArrays = [];
+      for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+        const slice = byteCharacters.slice(offset, offset + 512);
+        const byteNumbers = new Array(slice.length);
+        for (let i = 0; i < slice.length; i++) {
+          byteNumbers[i] = slice.charCodeAt(i);
         }
-        const blob = new Blob(byteArrays, { type: 'image/png' });
-        formData.append('photo', blob, 'chart.png');
+        const byteArray = new Uint8Array(byteNumbers);
+        byteArrays.push(byteArray);
       }
+      const blob = new Blob(byteArrays, { type: 'image/png' });
+      formData.append('photo', blob, 'chart.png');
+
       if (caption) {
         formData.append('caption', caption);
         formData.append('parse_mode', 'HTML');
       }
 
-      const url = `https://api.telegram.org/bot${settings.botToken}/sendPhoto`;
       const response = await fetch(url, {
         method: 'POST',
         body: formData,
