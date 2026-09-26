@@ -175,7 +175,7 @@ async function runWorkerLoop() {
 
   if (!isEnabled) {
     if (wasBotEnabled) {
-       await endActiveSession(activeSession || 'MANUAL_STOP');
+       await endActiveSession('MANUAL_STOP');
        activeSession = null;
        wasBotEnabled = false;
     }
@@ -186,12 +186,19 @@ async function runWorkerLoop() {
   if (!wasBotEnabled) {
      wasBotEnabled = true;
      waitingForScheduleAlertSent = false;
+     activeSession = "MANUAL_START" as any;
+     console.log("Bot manually activated. Sending session start message...");
+     if (telegramSettings.startMessageTemplate) {
+        if (telegramSettings.sessionStartImageUrl) {
+           await telegramService.sendPhoto(telegramSettings, telegramSettings.sessionStartImageUrl, telegramSettings.startMessageTemplate);
+        } else {
+           await telegramService.sendMessage(telegramSettings, telegramSettings.startMessageTemplate);
+        }
+     }
   }
   
-  // console.log(`Bot is ACTIVE! Checking time windows... allowedPairs length: ${telegramSettings.allowedPairs?.length}`);
   const currentSession = getCurrentSession(telegramSettings);
   const currentlyInWindow = currentSession !== null;
-  // console.log(`currentlyInWindow: ${currentlyInWindow}, session: ${currentSession}`);
   
   async function endActiveSession(endedSession: string) {
     if (!telegramSettings) return;
@@ -240,35 +247,8 @@ async function runWorkerLoop() {
     dailyStats.dojis = 0;
   };
 
-  if (currentSession !== null && activeSession === null) {
-    console.log("Transitioning to session:", currentSession);
-    activeSession = currentSession;
-    if (telegramSettings.startMessageTemplate) {
-       console.log("Sending session start message");
-       if (telegramSettings.sessionStartImageUrl) {
-         const res = await telegramService.sendPhoto(telegramSettings, telegramSettings.sessionStartImageUrl, telegramSettings.startMessageTemplate);
-         console.log("Start photo response:", res);
-       } else {
-         const res = await telegramService.sendMessage(telegramSettings, telegramSettings.startMessageTemplate);
-         console.log("Start text response:", res);
-       }
-    } else {
-       console.log("No startMessageTemplate configured!");
-    }
-  } else if (currentSession === null && activeSession !== null) {
-    await endActiveSession(activeSession);
-    activeSession = null;
-  } else if (currentSession !== null && activeSession !== null && currentSession !== activeSession) {
-    await endActiveSession(activeSession);
-    activeSession = currentSession;
-    if (telegramSettings.startMessageTemplate) {
-       if (telegramSettings.sessionStartImageUrl) {
-         await telegramService.sendPhoto(telegramSettings, telegramSettings.sessionStartImageUrl, telegramSettings.startMessageTemplate);
-       } else {
-         await telegramService.sendMessage(telegramSettings, telegramSettings.startMessageTemplate);
-       }
-    }
-  }
+  // Automatic session transition messages removed as requested. 
+  // Session Start/End is now entirely controlled by the ON/OFF manual toggle.
 
   if (!currentlyInWindow) {
     if (signalBotSession.workflow.status !== "IDLE") {
