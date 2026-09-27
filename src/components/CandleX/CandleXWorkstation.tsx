@@ -293,17 +293,15 @@ export default function CandleXWorkstation({
             if (savedTr) setTrades(JSON.parse(savedTr));
           }
 
-          useEffect(() => {
-            const savedConfig = localStorage.getItem("signalBotConfig");
-            if (savedConfig) {
-              try {
-                const parsed = JSON.parse(savedConfig);
-                setSignalBotConfig({ ...INITIAL_SIGNAL_BOT_CONFIG, ...parsed, timeframes: parsed.timeframes || ["1m", "5m"] });
-              } catch (e) {
-                console.warn("Failed to parse signalBotConfig");
-              }
+          const savedConfig = localStorage.getItem("signalBotConfig");
+          if (savedConfig) {
+            try {
+              const parsed = JSON.parse(savedConfig);
+              setSignalBotConfig({ ...INITIAL_SIGNAL_BOT_CONFIG, ...parsed, timeframes: parsed.timeframes || ["1m", "5m"] });
+            } catch (e) {
+              console.warn("Failed to parse signalBotConfig");
             }
-          }, []);
+          }
 
           setSyncStatus('synced');
         } catch (e) {
@@ -316,7 +314,7 @@ export default function CandleXWorkstation({
     };
 
     loadData();
-  }, [currentUser]);
+  }, [currentUser?.id]);
 
   // Save changes to Supabase & localStorage helper
   const handleUpdateBankroll = async (newConfig: BankrollConfig) => {
