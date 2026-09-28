@@ -177,7 +177,19 @@ Lucro Total: +R$ 450,00`;
             <input
               type="checkbox"
               checked={formData.isActive}
-              onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+              onChange={async (e) => {
+                const newValue = e.target.checked;
+                setFormData({ ...formData, isActive: newValue });
+                const updatedData = { ...formData, isActive: newValue };
+                const success = await supabaseService.saveTelegramSignalSettings(updatedData);
+                if (success) {
+                  setIsSaved(true);
+                  setTimeout(() => setIsSaved(false), 2500);
+                } else {
+                  alert("Erro ao salvar as configurações");
+                  setFormData({ ...formData, isActive: !newValue }); // revert on error
+                }
+              }}
               className="sr-only peer"
             />
             <div className="w-12 h-6 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#0088cc]"></div>
@@ -628,6 +640,7 @@ Lucro Total: +R$ 450,00`;
                 const updatedData = { ...formData, lastRestartCommand: Date.now().toString() };
                 const success = await supabaseService.saveTelegramSignalSettings(updatedData);
                 if (success) {
+                  setFormData(updatedData);
                   alert("Comando de reinício enviado! O worker será reiniciado no próximo ciclo (até 15s).");
                 }
               }}
