@@ -120,16 +120,29 @@ export const AdminTelegramSignals: React.FC = () => {
 
     setReportStatus({ loading: true });
     try {
-      // Just a mock of result (you could get it from trades DB)
-      const mockResult = `Resultados de Hoje:
-${formData.emojiWin} WIN: 12
-${formData.emojiLoss} LOSS: 2
-${formData.emojiDoji} DOJI: 1
-Lucro Total: +R$ 450,00`;
+      let dailyMsg = formData.dailyResultMessageTemplate || `RESULTADO DO DIA!\nWins: {WINS}\nLosses: {LOSSES}`;
+      
+      // Mock stats
+      dailyMsg = dailyMsg.replace(/{WINS}/g, "12");
+      dailyMsg = dailyMsg.replace(/{LOSSES}/g, "2");
+      dailyMsg = dailyMsg.replace(/{ASSERTIVIDADE}/g, "85");
+      dailyMsg = dailyMsg.replace(/{SESSAO}/g, "MANHÃ");
 
-      const msg = `${formData.endMessageTemplate}\n\n${mockResult}`;
+      let endMsg = formData.endMessageTemplate || '';
+      endMsg = endMsg.replace(/{WINS}/g, "12");
+      endMsg = endMsg.replace(/{LOSSES}/g, "2");
+      endMsg = endMsg.replace(/{ASSERTIVIDADE}/g, "85");
+      endMsg = endMsg.replace(/{SESSAO}/g, "MANHÃ");
 
-      const res = await telegramService.sendMessage(formData, msg);
+      const msg = `${endMsg}\n\n${dailyMsg}`;
+
+      let res;
+      if (formData.sessionEndImageUrl) {
+        res = await telegramService.sendPhoto(formData, formData.sessionEndImageUrl, msg);
+      } else {
+        res = await telegramService.sendMessage(formData, msg);
+      }
+      
       if (res.success) {
         setReportStatus({ loading: false, success: true });
       } else {

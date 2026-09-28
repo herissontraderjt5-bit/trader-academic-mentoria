@@ -173,6 +173,15 @@ async function runWorkerLoop() {
   }
 
   const isEnabled = telegramSettings && telegramSettings.isActive && signalBotConfig.enabled;
+  const currentSession = getCurrentSession(telegramSettings);
+  const currentlyInWindow = currentSession !== null;
+  
+  function getSessionNameStr() {
+     if (currentSession === 'MORNING') return 'MANHÃ';
+     if (currentSession === 'AFTERNOON') return 'TARDE';
+     if (currentSession === 'NIGHT') return 'NOITE';
+     return 'EXTRA';
+  }
 
   if (!isEnabled) {
     if (wasBotEnabled) {
@@ -183,16 +192,6 @@ async function runWorkerLoop() {
     console.log('Bot is disabled or settings not found. Sleeping...');
     return;
   }
-
-  const currentSession = getCurrentSession(telegramSettings);
-  const currentlyInWindow = currentSession !== null;
-  
-  const getSessionNameStr = () => {
-     if (currentSession === 'MORNING') return 'MANHÃ';
-     if (currentSession === 'AFTERNOON') return 'TARDE';
-     if (currentSession === 'NIGHT') return 'NOITE';
-     return 'EXTRA';
-  };
 
   if (!wasBotEnabled) {
      wasBotEnabled = true;
