@@ -1716,20 +1716,63 @@ export default function CandleXWorkstation({
         }}
         session={signalBotSession}
         onSendDailyResult={() => {
-          if (telegramSettings?.dailyResultMessageTemplate) {
-             let msg = telegramSettings.dailyResultMessageTemplate;
-             const wins = signalBotSession.wins;
-             const losses = signalBotSession.losses;
-             const dojis = signalBotSession.dojis || 0;
-             const total = wins + losses + dojis;
-             const assertividade = total > 0 ? Math.round((wins / total) * 100) : 0;
-             msg = msg.replace(/{WINS}/g, wins.toString());
-             msg = msg.replace(/{LOSSES}/g, losses.toString());
-             msg = msg.replace(/{ASSERTIVIDADE}/g, assertividade.toString());
-             telegramService.sendMessage(telegramSettings, msg);
-             soundManager.speakAlert("Relatório do dia enviado para o Telegram!");
-             setIsSignalBotOpen(false);
-          }
+          if (!telegramSettings) return;
+
+          const now = new Date();
+          const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+          const todaysTrades = trades.filter(t => t.date >= startOfDay && (t.result === "WIN" || t.result === "LOSS" || t.result === "DRAW"));
+
+          let mWins = 0, mLosses = 0;
+          let aWins = 0, aLosses = 0;
+          let nWins = 0, nLosses = 0;
+          let totalPnlUsd = 0;
+
+          todaysTrades.forEach(t => {
+            const hour = new Date(t.date).getHours();
+            const isWin = t.result === "WIN";
+            const isLoss = t.result === "LOSS";
+            
+            if (isWin || isLoss) {
+              if (hour >= 6 && hour < 12) {
+                if (isWin) mWins++; else mLosses++;
+              } else if (hour >= 12 && hour < 18) {
+                if (isWin) aWins++; else aLosses++;
+              } else {
+                if (isWin) nWins++; else nLosses++;
+              }
+            }
+            
+            totalPnlUsd += (t.pnl || 0);
+          });
+
+          const totalWins = mWins + aWins + nWins;
+          const totalLosses = mLosses + aLosses + nLosses;
+          const totalTrades = totalWins + totalLosses;
+          const assertividade = totalTrades > 0 ? Math.round((totalWins / totalTrades) * 100) : 0;
+          const lucroBrl = (totalPnlUsd * 5).toFixed(2).replace('.', ',');
+
+          const msg = `📊 <b>RELATÓRIO GERAL DO DIA!</b> 📊
+
+🌅 <b>Sessão Manhã:</b>
+✅ Wins: ${mWins} | ❌ Losses: ${mLosses}
+
+☀️ <b>Sessão Tarde:</b>
+✅ Wins: ${aWins} | ❌ Losses: ${aLosses}
+
+🌙 <b>Sessão Noite:</b>
+✅ Wins: ${nWins} | ❌ Losses: ${nLosses}
+
+🏆 <b>RESULTADO FINAL:</b>
+✅ Total Wins: ${totalWins}
+❌ Total Losses: ${totalLosses}
+📈 Assertividade: ${assertividade}%
+💰 Lucro Estimado: <b>R$ ${lucroBrl}</b>
+
+🚀 <i>CandleX IA - Consistência e precisão!</i>`;
+
+          telegramService.sendMessage(telegramSettings, msg);
+          soundManager.speakAlert("Relatório geral do dia enviado para o Telegram!");
+          setIsSignalBotOpen(false);
         }}
       />
 
