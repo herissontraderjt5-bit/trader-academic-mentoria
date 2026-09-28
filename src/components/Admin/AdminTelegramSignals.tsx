@@ -637,14 +637,32 @@ Lucro Total: +R$ 450,00`;
             <button
               type="button"
               onClick={async () => {
-                const updatedData = { ...formData, lastRestartCommand: Date.now().toString() };
-                const success = await supabaseService.saveTelegramSignalSettings(updatedData);
-                if (success) {
-                  setFormData(updatedData);
-                  alert("Comando de reinício enviado! O worker será reiniciado no próximo ciclo (até 15s).");
+                const btn = document.getElementById('restart-worker-btn');
+                if (btn) btn.innerHTML = 'Reiniciando...';
+                try {
+                  const updatedData = { ...formData, lastRestartCommand: Date.now().toString() };
+                  const success = await supabaseService.saveTelegramSignalSettings(updatedData);
+                  if (success) {
+                    setFormData(updatedData);
+                    if (btn) {
+                      btn.innerHTML = 'Comando Enviado!';
+                      btn.classList.add('bg-emerald-600');
+                      btn.classList.remove('bg-orange-600');
+                      setTimeout(() => {
+                        btn.innerHTML = 'Reiniciar Worker';
+                        btn.classList.remove('bg-emerald-600');
+                        btn.classList.add('bg-orange-600');
+                      }, 3000);
+                    }
+                  } else {
+                    if (btn) btn.innerHTML = 'Erro ao Reiniciar';
+                  }
+                } catch (e) {
+                  if (btn) btn.innerHTML = 'Erro!';
                 }
               }}
-              className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-extrabold text-xs transition-colors shadow-lg shadow-orange-600/20 cursor-pointer"
+              id="restart-worker-btn"
+              className="flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-extrabold text-xs transition-colors shadow-lg shadow-orange-600/20 cursor-pointer min-w-[160px]"
             >
               <span>Reiniciar Worker</span>
             </button>
