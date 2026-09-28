@@ -360,7 +360,7 @@ Lucro Total: +R$ 450,00`;
                 placeholder="Ex: RESULTADO DO DIA! Wins: {WINS} | Losses: {LOSSES}"
               />
             </div>
-            <p className="text-[10px] text-gray-500 font-mono">Variáveis suportadas p/ Fim e Resultado: {"{WINS}"}, {"{LOSSES}"}, {"{ASSERTIVIDADE}"}</p>
+            <p className="text-[10px] text-gray-500 font-mono">Variáveis suportadas p/ Fim e Resultado: {"{WINS}"}, {"{LOSSES}"}, {"{ASSERTIVIDADE}"}, {"{SESSAO}"}</p>
           </div>
         </div>
 

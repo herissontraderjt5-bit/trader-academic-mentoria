@@ -184,22 +184,30 @@ async function runWorkerLoop() {
     return;
   }
 
+  const currentSession = getCurrentSession(telegramSettings);
+  const currentlyInWindow = currentSession !== null;
+  
+  const getSessionNameStr = () => {
+     if (currentSession === 'MORNING') return 'MANHÃ';
+     if (currentSession === 'AFTERNOON') return 'TARDE';
+     if (currentSession === 'NIGHT') return 'NOITE';
+     return 'EXTRA';
+  };
+
   if (!wasBotEnabled) {
      wasBotEnabled = true;
      waitingForScheduleAlertSent = false;
      activeSession = "MANUAL_START" as any;
      console.log("Bot manually activated. Sending session start message...");
      if (telegramSettings.startMessageTemplate) {
+        const startMsg = telegramSettings.startMessageTemplate.replace(/{SESSAO}/g, getSessionNameStr());
         if (telegramSettings.sessionStartImageUrl) {
-           await telegramService.sendPhoto(telegramSettings, telegramSettings.sessionStartImageUrl, telegramSettings.startMessageTemplate);
+           await telegramService.sendPhoto(telegramSettings, telegramSettings.sessionStartImageUrl, startMsg);
         } else {
-           await telegramService.sendMessage(telegramSettings, telegramSettings.startMessageTemplate);
+           await telegramService.sendMessage(telegramSettings, startMsg);
         }
      }
   }
-  
-  const currentSession = getCurrentSession(telegramSettings);
-  const currentlyInWindow = currentSession !== null;
   
   async function endActiveSession(endedSession: string) {
     if (!telegramSettings) return;
@@ -214,6 +222,7 @@ async function runWorkerLoop() {
        endMsg = endMsg.replace(/{WINS}/g, wins.toString());
        endMsg = endMsg.replace(/{LOSSES}/g, losses.toString());
        endMsg = endMsg.replace(/{ASSERTIVIDADE}/g, assertividade.toString());
+       endMsg = endMsg.replace(/{SESSAO}/g, getSessionNameStr());
        
        if (telegramSettings.sessionEndImageUrl) {
          await telegramService.sendPhoto(telegramSettings, telegramSettings.sessionEndImageUrl, endMsg);
