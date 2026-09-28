@@ -234,6 +234,7 @@ async function runWorkerLoop() {
     signalBotSession.losses = 0;
     signalBotSession.dojis = 0;
 
+    /*
     if (telegramSettings.dailyResultMessageTemplate) {
       console.log("Sending session result message");
       let dailyMsg = telegramSettings.dailyResultMessageTemplate;
@@ -250,6 +251,7 @@ async function runWorkerLoop() {
       const res = await telegramService.sendMessage(telegramSettings, dailyMsg);
       console.log("Session result send response:", res);
     }
+    */
     
     dailyStats.wins = 0;
     dailyStats.losses = 0;

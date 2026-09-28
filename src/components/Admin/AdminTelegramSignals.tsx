@@ -120,27 +120,17 @@ export const AdminTelegramSignals: React.FC = () => {
 
     setReportStatus({ loading: true });
     try {
-      let dailyMsg = formData.dailyResultMessageTemplate || `RESULTADO DO DIA!\nWins: {WINS}\nLosses: {LOSSES}`;
-      
-      // Mock stats
-      dailyMsg = dailyMsg.replace(/{WINS}/g, "12");
-      dailyMsg = dailyMsg.replace(/{LOSSES}/g, "2");
-      dailyMsg = dailyMsg.replace(/{ASSERTIVIDADE}/g, "85");
-      dailyMsg = dailyMsg.replace(/{SESSAO}/g, "MANHÃ");
-
       let endMsg = formData.endMessageTemplate || '';
       endMsg = endMsg.replace(/{WINS}/g, "12");
       endMsg = endMsg.replace(/{LOSSES}/g, "2");
       endMsg = endMsg.replace(/{ASSERTIVIDADE}/g, "85");
       endMsg = endMsg.replace(/{SESSAO}/g, "MANHÃ");
 
-      const msg = `${endMsg}\n\n${dailyMsg}`;
-
       let res;
       if (formData.sessionEndImageUrl) {
-        res = await telegramService.sendPhoto(formData, formData.sessionEndImageUrl, msg);
+        res = await telegramService.sendPhoto(formData, formData.sessionEndImageUrl, endMsg);
       } else {
-        res = await telegramService.sendMessage(formData, msg);
+        res = await telegramService.sendMessage(formData, endMsg);
       }
       
       if (res.success) {
