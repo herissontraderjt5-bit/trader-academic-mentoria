@@ -573,7 +573,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
                   Exigir Liberação Manual pelo Administrador para Novos Cadastros
                 </span>
                 <p className="text-[11px] text-gray-400 leading-relaxed">
-                  Ao ativar esta opção, qualquer pessoa que se cadastrar na plataforma ficará <strong>SEM ACESSO</strong> à <strong>IA CandleX</strong>, à <strong>Planilha de Gestão</strong> e às aulas da <strong>Mentoria Gratuita</strong> até que você libere o acesso individualmente no painel de membros.
+                  Ao ativar esta opção, qualquer pessoa que se cadastrar na plataforma ficará <strong>SEM ACESSO</strong> à <strong>Planilha de Gestão</strong> e às aulas da <strong>Mentoria Gratuita</strong> até que você libere o acesso individualmente no painel de membros. A <strong>IA CandleX</strong> já é liberada automaticamente por padrão.
                 </p>
               </div>
 

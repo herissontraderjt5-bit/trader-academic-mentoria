@@ -182,6 +182,7 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
     });
 
     onUpdateUsers(updated);
+    storageService.saveStudents(updated);
     if (targetUpdated && supabaseService.isConfigured()) {
       supabaseService.upsertProfile(targetUpdated);
     }
@@ -212,6 +213,7 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
       return u;
     });
     onUpdateUsers(updated);
+    storageService.saveStudents(updated);
     if (targetUpdated && supabaseService.isConfigured()) {
       supabaseService.upsertProfile(targetUpdated);
     }
@@ -296,6 +298,7 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
       return u;
     });
     onUpdateUsers(updated);
+    storageService.saveStudents(updated);
     if (targetUpdated && supabaseService.isConfigured()) {
       await supabaseService.upsertProfile(targetUpdated);
     }
@@ -341,6 +344,7 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
     };
 
     onUpdateUsers([newUser, ...users]);
+    storageService.saveStudents([newUser, ...users]);
     if (supabaseService.isConfigured()) {
       supabaseService.upsertProfile(newUser);
     }
