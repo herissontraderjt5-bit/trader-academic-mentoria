@@ -470,7 +470,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 disabled={isLoading}
                 className="w-full py-3.5 rounded-2xl bg-orange-600 hover:bg-orange-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg shadow-orange-600/30 cursor-pointer disabled:opacity-50 mt-2"
               >
-                <span>{isLoading ? 'Acessando plataforma...' : 'Entrar na Plataforma'}</span>
+                {isLoading ? (
+                  <span>Acessando plataforma...</span>
+                ) : (
+                  <span>Entrar na Plataforma</span>
+                )}
                 <ArrowRight className="w-4 h-4" />
               </button>
 
@@ -730,7 +734,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 disabled={isLoading}
                 className="w-full py-3.5 rounded-2xl bg-orange-600 hover:bg-orange-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg shadow-orange-600/30 cursor-pointer disabled:opacity-50 mt-2"
               >
-                <span>{isLoading ? 'Cadastrando Aluno...' : 'Cadastrar & Liberar Acesso'}</span>
+                {isLoading ? (
+                  <span>Cadastrando Aluno...</span>
+                ) : (
+                  <span>Cadastrar & Liberar Acesso</span>
+                )}
                 <ArrowRight className="w-4 h-4" />
               </button>
 
