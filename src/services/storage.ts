@@ -548,8 +548,10 @@ export const storageService = {
     if (user.role === 'admin') return true;
     if (user.status !== 'Ativo') return false;
 
-    if (user.customAllowedModuleIds && user.customAllowedModuleIds.length > 0) {
-      return user.customAllowedModuleIds.includes(module.id);
+    const actualModuleOverrides = (user.customAllowedModuleIds || []).filter(id => !id.startsWith('TOOL_'));
+
+    if (actualModuleOverrides.length > 0) {
+      return actualModuleOverrides.includes(module.id);
     }
 
     const tierHierarchy: Record<string, number> = {
