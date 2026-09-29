@@ -62,7 +62,7 @@ export const AiAnalysisPanel: React.FC<AiAnalysisPanelProps> = ({
             className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors disabled:opacity-50 cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isAnalyzing ? "animate-spin" : ""}`} />
-            <span>{isAnalyzing ? "Calculando..." : "Atualizar"}</span>
+            {isAnalyzing ? <span>Calculando...</span> : <span>Atualizar</span>}
           </button>
         </div>
       </div>

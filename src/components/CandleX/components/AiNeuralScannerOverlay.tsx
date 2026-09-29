@@ -289,6 +289,7 @@ export const AiNeuralScannerOverlay: React.FC<AiNeuralScannerOverlayProps> = ({
   return (
     <div
       id="ai-neural-scanner-overlay"
+      translate="no"
       className="absolute inset-0 z-50 bg-[#070A10]/85 backdrop-blur-md flex flex-col items-center justify-center p-4 overflow-hidden animate-in fade-in duration-300 select-none"
     >
       {/* High-Tech Matrix Background Grid & Scanning Laser Lines */}
@@ -342,10 +343,12 @@ export const AiNeuralScannerOverlay: React.FC<AiNeuralScannerOverlayProps> = ({
               <span className="text-[10px] text-slate-400 uppercase block">Varredura Neural (3s)</span>
               <div className="flex items-center gap-1.5 justify-end">
                 <span className="text-sm font-bold text-amber-400">
-                  {Math.max(0, Math.ceil(3 - (progressPercent / 33.3)))}s
+                  <span>{Math.max(0, Math.ceil(3 - (progressPercent / 33.3)))}</span>s
                 </span>
                 <span className="text-slate-600">&bull;</span>
-                <span className="text-base font-black text-[#FF7A00]">{progressPercent}%</span>
+                <span className="text-base font-black text-[#FF7A00]">
+                  <span>{Math.floor(progressPercent)}</span>%
+                </span>
               </div>
             </div>
             <div className="w-9 h-9 rounded-full border-2 border-[#FF7A00]/40 border-t-[#FF7A00] animate-spin flex items-center justify-center">
@@ -371,7 +374,9 @@ export const AiNeuralScannerOverlay: React.FC<AiNeuralScannerOverlayProps> = ({
               <Sparkles className="w-3.5 h-3.5" />
               Validando 6 Pilares de Confluência Institucional...
             </span>
-            <span className="text-amber-400 font-bold">{Math.min(6, activeStep + 1)} de 6 Concluídos</span>
+            <span className="text-amber-400 font-bold">
+              <span>{Math.min(6, activeStep + 1)}</span> de 6 Concluídos
+            </span>
           </div>
 
           <div className="h-2.5 w-full bg-[#141A26] rounded-full overflow-hidden border border-[#222E44] relative">
