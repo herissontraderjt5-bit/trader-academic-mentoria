@@ -539,7 +539,8 @@ export default function App() {
   const isAdmin = currentUser?.role === 'admin' || ['viniciussestremmm@gmail.com', 'herisson.trader.jt5@gmail.com'].includes(currentUser?.email?.toLowerCase() || '');
   const requireRelease = settings.requireAdminReleaseForNewUsers ?? true;
 
-  const currentToolMap = settings.studentToolAccessMap?.[currentUser?.id || ''] || {};
+  const emailKey = currentUser?.email ? currentUser.email.toLowerCase() : '';
+  const currentToolMap = settings.studentToolAccessMap?.[currentUser?.id || ''] || (emailKey ? settings.studentToolAccessMap?.[emailKey] : null) || {};
 
   const hasAiAccess = isAdmin || currentToolMap.hasAiAccess !== false && currentUser?.hasAiAccess !== false;
   const hasGestaoAccess = isAdmin || currentToolMap.hasGestaoAccess === true || currentUser?.hasGestaoAccess === true || (!requireRelease && currentToolMap.hasGestaoAccess !== false && currentUser?.hasGestaoAccess !== false);

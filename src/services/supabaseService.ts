@@ -248,7 +248,7 @@ export const supabaseService = {
           hasAiAccess: (mergedCustomIds || []).includes('TOOL_AI') || p.has_ai_access === true || p.hasAiAccess === true,
           hasGestaoAccess: (mergedCustomIds || []).includes('TOOL_GESTAO') || p.has_gestao_access === true || p.hasGestaoAccess === true,
           hasMentoriaAccess: (mergedCustomIds || []).includes('TOOL_MENTORIA') || p.has_mentoria_access === true || p.hasMentoriaAccess === true,
-          hioveAccess: p.hiove_access === true,
+          hioveAccess: (mergedCustomIds || []).includes('TOOL_HIOVE') || userAccess.hioveAccess === true || p.hiove_access === true,
           hioveEmail: p.hiove_email,
           referredById: p.referred_by_id,
           referralBalance: Number(p.referral_balance || 0),

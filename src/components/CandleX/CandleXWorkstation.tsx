@@ -203,6 +203,12 @@ export default function CandleXWorkstation({
   // Hiove Access Gate State
   const [showHioveGate, setShowHioveGate] = useState<boolean>(!isAdmin && !currentUser.hioveAccess);
 
+  useEffect(() => {
+    if (isAdmin || currentUser.hioveAccess) {
+      setShowHioveGate(false);
+    }
+  }, [isAdmin, currentUser.hioveAccess]);
+
   const [signalBotConfig, setSignalBotConfig] = useState<SignalBotConfig>(() => {
     try {
       const saved = localStorage.getItem("signalBotConfig");
