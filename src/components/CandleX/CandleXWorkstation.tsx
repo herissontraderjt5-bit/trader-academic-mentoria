@@ -1505,6 +1505,23 @@ export default function CandleXWorkstation({
     );
   }
 
+  // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  // HIOVE ACCESS SUCCESS HANDLER
+  // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  const handleHioveAccessSuccess = async (validatedEmail: string) => {
+    try {
+      await supabaseService.upsertProfile({
+        ...currentUser,
+        hioveAccess: true,
+        hioveEmail: validatedEmail
+      });
+      setShowHioveGate(false);
+    } catch (e) {
+      console.error("Error saving hiove access to DB:", e);
+      setShowHioveGate(false);
+    }
+  };
+
   return (
     <div className={`flex flex-col ${isGlobalHeaderVisible ? "h-[calc(100vh-120px)] md:h-[calc(100vh-64px)]" : "h-screen"} w-full bg-[#0B0E14] text-slate-100 overflow-hidden font-sans select-none relative`}>
       
