@@ -169,12 +169,14 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
   const handleSaveCustomAccess = () => {
     if (!customAccessUser) return;
 
+    const newCustomAllowed = isOverrideActive ? selectedModuleIds : undefined;
+
     let targetUpdated: User | null = null;
     const updated = users.map((u) => {
       if (u.id === customAccessUser.id) {
         targetUpdated = {
           ...u,
-          customAllowedModuleIds: isOverrideActive ? selectedModuleIds : undefined,
+          customAllowedModuleIds: newCustomAllowed,
         };
         return targetUpdated;
       }
@@ -186,6 +188,30 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
     if (targetUpdated && supabaseService.isConfigured()) {
       supabaseService.upsertProfile(targetUpdated);
     }
+
+    // Backup to settings to survive schema mismatches
+    const currentSettings = settings || storageService.getSettings();
+    const currentMap = { ...(currentSettings.studentToolAccessMap || {}) };
+    const emailKey = customAccessUser.email ? customAccessUser.email.toLowerCase() : '';
+    
+    const userAccess = { ...(currentMap[customAccessUser.id] || (emailKey ? currentMap[emailKey] : {}) || {}) };
+    userAccess.customAllowedModuleIds = newCustomAllowed;
+    
+    currentMap[customAccessUser.id] = userAccess;
+    if (emailKey) {
+      currentMap[emailKey] = userAccess;
+    }
+
+    const updatedSettings: PlatformSettings = {
+      ...currentSettings,
+      studentToolAccessMap: currentMap,
+    };
+
+    if (onUpdateSettings) {
+      onUpdateSettings(updatedSettings);
+    }
+    storageService.saveSettings(updatedSettings);
+
     setCustomAccessUser(null);
   };
 

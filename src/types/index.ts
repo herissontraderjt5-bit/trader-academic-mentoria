@@ -171,6 +171,8 @@ export interface PlatformSettings {
     hasAiAccess?: boolean;
     hasGestaoAccess?: boolean;
     hasMentoriaAccess?: boolean;
+    hioveAccess?: boolean;
+    customAllowedModuleIds?: string[];
   }>;
 }
 

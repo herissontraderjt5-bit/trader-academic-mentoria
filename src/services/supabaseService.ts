@@ -219,6 +219,12 @@ export const supabaseService = {
           notesObj[nr.lesson_id] = nr.note;
         });
 
+        const settings = storageService.getSettings();
+        const accessMap = settings?.studentToolAccessMap || {};
+        const emailKey = p.email ? p.email.toLowerCase() : '';
+        const userAccess = accessMap[p.id] || (emailKey ? accessMap[emailKey] : {}) || {};
+        const mergedCustomIds = userAccess.customAllowedModuleIds || p.custom_allowed_module_ids;
+
         return {
           id: p.id,
           name: p.name || '',
@@ -237,11 +243,11 @@ export const supabaseService = {
           bio: p.bio,
           termsAccepted: p.terms_accepted,
           termsAcceptedAt: p.terms_accepted_at,
-          customAllowedModuleIds: p.custom_allowed_module_ids,
+          customAllowedModuleIds: mergedCustomIds,
           allowedCertificates: p.allowed_certificates,
-          hasAiAccess: (p.custom_allowed_module_ids || []).includes('TOOL_AI') || p.has_ai_access === true || p.hasAiAccess === true,
-          hasGestaoAccess: (p.custom_allowed_module_ids || []).includes('TOOL_GESTAO') || p.has_gestao_access === true || p.hasGestaoAccess === true,
-          hasMentoriaAccess: (p.custom_allowed_module_ids || []).includes('TOOL_MENTORIA') || p.has_mentoria_access === true || p.hasMentoriaAccess === true,
+          hasAiAccess: (mergedCustomIds || []).includes('TOOL_AI') || p.has_ai_access === true || p.hasAiAccess === true,
+          hasGestaoAccess: (mergedCustomIds || []).includes('TOOL_GESTAO') || p.has_gestao_access === true || p.hasGestaoAccess === true,
+          hasMentoriaAccess: (mergedCustomIds || []).includes('TOOL_MENTORIA') || p.has_mentoria_access === true || p.hasMentoriaAccess === true,
           hioveAccess: p.hiove_access === true,
           hioveEmail: p.hiove_email,
           referredById: p.referred_by_id,
