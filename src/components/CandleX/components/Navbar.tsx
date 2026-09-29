@@ -210,7 +210,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             ) : (
               <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
             )}
-            <span>{isAnalyzing ? "Analisando..." : "Análise IA"}</span>
+            {isAnalyzing ? <span>Analisando...</span> : <span>Análise IA</span>}
           </button>
 
           {/* Auto Analyze Switch */}

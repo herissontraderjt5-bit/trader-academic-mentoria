@@ -541,7 +541,7 @@ export const NeuralAnalyzerSidebar: React.FC<NeuralAnalyzerSidebarProps> = ({
                     isAnalyzing ? "text-amber-400/90 uppercase" : "text-slate-950/90"
                   }`}
                 >
-                  {isAnalyzing ? "NEURAL SCAN" : "◆ CandleX ◆"}
+                  {isAnalyzing ? <span>NEURAL SCAN</span> : <span>◆ CandleX ◆</span>}
                 </span>
 
                 <span
@@ -551,7 +551,7 @@ export const NeuralAnalyzerSidebar: React.FC<NeuralAnalyzerSidebarProps> = ({
                       : "text-slate-950 font-black"
                   }`}
                 >
-                  {isAnalyzing ? "ANALISANDO" : "ANALISAR"}
+                  {isAnalyzing ? <span>ANALISANDO</span> : <span>ANALISAR</span>}
                 </span>
 
                 <span
@@ -559,7 +559,7 @@ export const NeuralAnalyzerSidebar: React.FC<NeuralAnalyzerSidebarProps> = ({
                     isAnalyzing ? "text-orange-400" : "text-slate-950"
                   }`}
                 >
-                  {isAnalyzing ? "MERCADO..." : "MERCADO"}
+                  {isAnalyzing ? <span>MERCADO...</span> : <span>MERCADO</span>}
                 </span>
               </div>
 
@@ -577,7 +577,7 @@ export const NeuralAnalyzerSidebar: React.FC<NeuralAnalyzerSidebarProps> = ({
                     isAnalyzing ? "text-amber-300 uppercase" : "text-slate-950/90"
                   }`}
                 >
-                  {isAnalyzing ? "PROCESSANDO" : "CandleX Pronta"}
+                  {isAnalyzing ? <span>PROCESSANDO</span> : <span>CandleX Pronta</span>}
                 </span>
               </div>
             </button>
