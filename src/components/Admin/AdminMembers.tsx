@@ -219,12 +219,13 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
     }
   };
 
-  // Toggle Tool Access (IA, Gestão, Mentoria) per student
-  const handleToggleToolAccess = (userId: string, toolKey: 'hasAiAccess' | 'hasGestaoAccess' | 'hasMentoriaAccess') => {
+  // Toggle Tool Access (IA, Gestão, Mentoria, Hiove) per student
+  const handleToggleToolAccess = (userId: string, toolKey: 'hasAiAccess' | 'hasGestaoAccess' | 'hasMentoriaAccess' | 'hioveAccess') => {
     const toolCodeMap = {
       hasAiAccess: 'TOOL_AI',
       hasGestaoAccess: 'TOOL_GESTAO',
       hasMentoriaAccess: 'TOOL_MENTORIA',
+      hioveAccess: 'TOOL_HIOVE',
     };
     const toolCode = toolCodeMap[toolKey];
 
@@ -549,6 +550,7 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
                           const isAiOn = customMods.includes('TOOL_AI') || mapAccess.hasAiAccess === true || user.hasAiAccess === true;
                           const isGestaoOn = customMods.includes('TOOL_GESTAO') || mapAccess.hasGestaoAccess === true || user.hasGestaoAccess === true;
                           const isMentoriaOn = customMods.includes('TOOL_MENTORIA') || mapAccess.hasMentoriaAccess === true || user.hasMentoriaAccess === true;
+                          const isHioveOn = customMods.includes('TOOL_HIOVE') || mapAccess.hioveAccess === true || user.hioveAccess === true;
 
                           return (
                             <div className="flex items-center gap-1.5">
@@ -595,6 +597,21 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
                               >
                                 <Users className="w-3 h-3" />
                                 <span>{isMentoriaOn ? 'Mentoria ON' : 'Mentoria OFF'}</span>
+                              </button>
+
+                              {/* 4. Trava Hiove */}
+                              <button
+                                type="button"
+                                onClick={() => handleToggleToolAccess(user.id, 'hioveAccess')}
+                                className={`px-2 py-1 rounded-lg text-[10px] font-black font-mono flex items-center gap-1 border transition-all cursor-pointer ${
+                                  isHioveOn
+                                    ? 'bg-purple-950/80 text-purple-400 border-purple-500/50 hover:bg-purple-900 shadow-[0_0_8px_rgba(168,85,247,0.2)]'
+                                    : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:border-zinc-700 hover:text-zinc-300'
+                                }`}
+                                title={isHioveOn ? "Trava Hiove Bypassed (Clique para Bloquear Novamente)" : "Bypass da Trava Hiove (Clique para Liberar Login)"}
+                              >
+                                <Lock className="w-3 h-3" />
+                                <span>{isHioveOn ? 'Hiove ON' : 'Hiove OFF'}</span>
                               </button>
                             </div>
                           );

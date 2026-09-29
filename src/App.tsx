@@ -729,7 +729,7 @@ export default function App() {
 
               {activeView === 'candlex' ? (
                 <CandleXWorkstation
-                  currentUser={currentUser}
+                  currentUser={{...currentUser, hioveAccess: currentUser.hioveAccess === true || currentToolMap.hioveAccess === true || currentUser.customAllowedModuleIds?.includes('TOOL_HIOVE')}}
                   onBackToHome={() => setActiveView('home')}
                   settings={settings}
                   onUpdateSettings={(sett) => { setSettings(sett); storageService.saveSettings(sett); }}
