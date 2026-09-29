@@ -310,6 +310,12 @@ async function runWorkerLoop() {
     if (Date.now() - lastCancelTime < 60000) return;
 
     for (const pair of telegramSettings.allowedPairs) {
+      // Abort loop immediately if user clicked STOP during this long scan
+      const currentSettings = await fetchSettings();
+      if (!currentSettings || !currentSettings.isActive) {
+         return; 
+      }
+
       const cleanPairName = cleanPair(pair);
       
       // Skip this pair if it is on cooldown (took a loss recently)
