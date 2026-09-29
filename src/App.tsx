@@ -302,8 +302,55 @@ export default function App() {
         }
       });
 
+      // Realtime listener for profiles changes (tier changes, custom module unlocks, etc.)
+      const channel = supabase
+        .channel('public:profiles_realtime')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'profiles' },
+          async (payload: any) => {
+            const updatedRow = payload.new;
+            if (updatedRow && updatedRow.id) {
+              const freshProfile = await supabaseService.getProfileById(updatedRow.id);
+              if (freshProfile) {
+                setUsers((prev) => {
+                  const idx = prev.findIndex((u) => u.id === freshProfile.id);
+                  let updated = [...prev];
+                  if (idx >= 0) {
+                    updated[idx] = { ...updated[idx], ...freshProfile };
+                  } else {
+                    updated = [freshProfile, ...updated];
+                  }
+                  storageService.saveStudents(updated, true);
+                  return updated;
+                });
+              }
+            }
+          }
+        )
+        .subscribe();
+
+      const handleWindowFocus = () => {
+        storageService.syncWithSupabase().then((synced) => {
+          if (synced?.users) setUsers(synced.users);
+          if (synced?.modules) setModules(synced.modules);
+          if (synced?.settings) setSettings(synced.settings);
+        });
+      };
+      window.addEventListener('focus', handleWindowFocus);
+
+      // Periodic 20s background sync
+      const syncInterval = setInterval(() => {
+        storageService.syncWithSupabase().then((synced) => {
+          if (synced?.users) setUsers(synced.users);
+        });
+      }, 20000);
+
       return () => {
         subscription.unsubscribe();
+        supabase.removeChannel(channel);
+        window.removeEventListener('focus', handleWindowFocus);
+        clearInterval(syncInterval);
       };
     }
   }, []);

@@ -151,8 +151,9 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
   // Open Custom Access Modal for a user
   const handleOpenCustomAccess = (user: User) => {
     setCustomAccessUser(user);
-    if (user.customAllowedModuleIds && user.customAllowedModuleIds.length > 0) {
-      setSelectedModuleIds(user.customAllowedModuleIds);
+    const actualModules = (user.customAllowedModuleIds || []).filter(id => !id.startsWith('TOOL_'));
+    if (actualModules.length > 0) {
+      setSelectedModuleIds(actualModules);
       setIsOverrideActive(true);
     } else {
       const tierHierarchy: Record<string, number> = { 'Free': 1, 'VIP': 2, 'Vitalício': 3 };
@@ -166,10 +167,15 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
   };
 
   // Save Custom Access
-  const handleSaveCustomAccess = () => {
+  const handleSaveCustomAccess = async () => {
     if (!customAccessUser) return;
 
-    const newCustomAllowed = isOverrideActive ? selectedModuleIds : undefined;
+    const existingToolCodes = (customAccessUser.customAllowedModuleIds || []).filter(id => id.startsWith('TOOL_'));
+    const actualSelected = selectedModuleIds.filter(id => !id.startsWith('TOOL_'));
+
+    const newCustomAllowed = isOverrideActive
+      ? [...actualSelected, ...existingToolCodes]
+      : (existingToolCodes.length > 0 ? existingToolCodes : undefined);
 
     let targetUpdated: User | null = null;
     const updated = users.map((u) => {
@@ -186,7 +192,7 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
     onUpdateUsers(updated);
     storageService.saveStudents(updated);
     if (targetUpdated && supabaseService.isConfigured()) {
-      supabaseService.upsertProfile(targetUpdated);
+      await supabaseService.upsertProfile(targetUpdated);
     }
 
     // Backup to settings to survive schema mismatches
@@ -481,7 +487,7 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
                 </tr>
               ) : (
                 filteredUsers.map((user) => {
-                  const isCustom = user.customAllowedModuleIds && user.customAllowedModuleIds.length > 0;
+                  const isCustom = (user.customAllowedModuleIds || []).filter(id => !id.startsWith('TOOL_')).length > 0;
                   const totalLessonsCount = (modules || []).reduce((acc, m) => acc + (m.lessons?.length || 0), 0);
                   const completedCount = user.progress?.completedLessonIds?.length || 0;
                   const progressPct = totalLessonsCount > 0 
