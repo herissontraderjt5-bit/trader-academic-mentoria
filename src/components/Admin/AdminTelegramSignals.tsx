@@ -8,7 +8,9 @@ import {
   CheckCircle2,
   TrendingUp,
   Image as ImageIcon,
-  Radio
+  Radio,
+  History,
+  Trash2
 } from 'lucide-react';
 import { TelegramSignalSettings } from '../../types';
 import { telegramService } from '../../services/telegramService';
@@ -42,6 +44,29 @@ export const AdminTelegramSignals: React.FC = () => {
   const [testStatus, setTestStatus] = useState<{loading: boolean, success?: boolean, error?: string}>({ loading: false });
   const [reportStatus, setReportStatus] = useState<{loading: boolean, success?: boolean, error?: string}>({ loading: false });
   const [uploadingFile, setUploadingFile] = useState(false);
+
+  const [activeTab, setActiveTab] = useState<'config' | 'history'>('config');
+  const [historyItems, setHistoryItems] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  const loadHistory = async () => {
+    setLoadingHistory(true);
+    const data = await supabaseService.getTelegramSignalsHistory();
+    setHistoryItems(data);
+    setLoadingHistory(false);
+  };
+
+  React.useEffect(() => {
+    if (activeTab === 'history') {
+      loadHistory();
+    }
+  }, [activeTab]);
+
+  const handleDeleteHistory = async (id: string) => {
+    if (!window.confirm('Excluir este registro do histórico?')) return;
+    await supabaseService.deleteTelegramSignalHistory(id);
+    loadHistory();
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'sessionStartImageUrl' | 'sessionEndImageUrl') => {
     const file = e.target.files?.[0];
@@ -155,10 +180,37 @@ export const AdminTelegramSignals: React.FC = () => {
           Sinais no Telegram
         </h1>
         <p className="text-xs sm:text-sm text-gray-400 mt-1">
-          Configure a integração com o BotFather, horários de operação e mensagens de relatórios automáticos/manuais.
+          Configure a integração com o BotFather e acompanhe o histórico de sinais disparados.
         </p>
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-2 p-1 rounded-2xl bg-[#111118] border border-[#242433] w-fit">
+        <button
+          onClick={() => setActiveTab('config')}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
+            activeTab === 'config' 
+              ? 'bg-[#0088cc] text-white shadow-lg shadow-[#0088cc]/20' 
+              : 'text-gray-400 hover:text-white hover:bg-[#1a1a24]'
+          }`}
+        >
+          <ShieldAlert className="w-4 h-4" />
+          Configurações
+        </button>
+        <button
+          onClick={() => setActiveTab('history')}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
+            activeTab === 'history' 
+              ? 'bg-[#0088cc] text-white shadow-lg shadow-[#0088cc]/20' 
+              : 'text-gray-400 hover:text-white hover:bg-[#1a1a24]'
+          }`}
+        >
+          <History className="w-4 h-4" />
+          Histórico de Sinais
+        </button>
+      </div>
+
+      {activeTab === 'config' && (
       <form onSubmit={handleSubmit} className="p-6 sm:p-8 rounded-3xl bg-[#111118] border border-[#242433] space-y-6 relative overflow-hidden">
         
         {/* Toggle Ativação Geral */}
@@ -680,6 +732,80 @@ export const AdminTelegramSignals: React.FC = () => {
         </div>
 
       </form>
+      )}
+
+      {activeTab === 'history' && (
+        <div className="p-6 sm:p-8 rounded-3xl bg-[#111118] border border-[#242433] space-y-6 relative overflow-hidden">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-black text-white flex items-center gap-2">
+              <History className="w-5 h-5 text-[#0088cc]" />
+              Histórico de Sinais
+            </h3>
+            <button 
+              onClick={loadHistory}
+              className="text-xs text-[#0088cc] hover:text-white transition-colors cursor-pointer"
+            >
+              Atualizar
+            </button>
+          </div>
+
+          {loadingHistory ? (
+            <div className="text-center py-8 text-zinc-500 text-xs">Carregando histórico...</div>
+          ) : historyItems.length === 0 ? (
+            <div className="text-center py-12 text-zinc-500 text-sm">Nenhum sinal registrado ainda.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[600px]">
+                <thead>
+                  <tr className="border-b border-[#242433]">
+                    <th className="p-3 text-xs font-bold text-gray-400 uppercase">Data/Hora</th>
+                    <th className="p-3 text-xs font-bold text-gray-400 uppercase">Ativo</th>
+                    <th className="p-3 text-xs font-bold text-gray-400 uppercase">Direção</th>
+                    <th className="p-3 text-xs font-bold text-gray-400 uppercase">Tempo</th>
+                    <th className="p-3 text-xs font-bold text-gray-400 uppercase">Resultado</th>
+                    <th className="p-3 text-xs font-bold text-gray-400 uppercase text-right">Ação</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {historyItems.map((item) => (
+                    <tr key={item.id} className="border-b border-[#242433]/50 hover:bg-[#171724]/50 transition-colors">
+                      <td className="p-3 text-sm text-gray-300">
+                        {new Date(item.timestamp).toLocaleString()}
+                      </td>
+                      <td className="p-3 text-sm font-bold text-white">
+                        {item.ticker}
+                      </td>
+                      <td className="p-3 text-sm">
+                        <span className={`px-2 py-1 rounded-lg text-xs font-bold ${item.direction === 'CALL' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                          {item.direction}
+                        </span>
+                      </td>
+                      <td className="p-3 text-sm text-gray-300">
+                        {item.timeframe}
+                      </td>
+                      <td className="p-3 text-sm">
+                        {item.result === 'WIN' && <span className="text-emerald-400 font-bold">WIN</span>}
+                        {item.result === 'LOSS' && <span className="text-red-400 font-bold">LOSS</span>}
+                        {item.result === 'DOJI' && <span className="text-amber-400 font-bold">DOJI</span>}
+                        {!item.result && <span className="text-zinc-500">-</span>}
+                      </td>
+                      <td className="p-3 text-right">
+                        <button
+                          onClick={() => handleDeleteHistory(item.id)}
+                          className="p-2 inline-flex rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors cursor-pointer"
+                          title="Excluir"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

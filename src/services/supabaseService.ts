@@ -1127,4 +1127,57 @@ export const supabaseService = {
       return false;
     }
   },
+
+  async getTelegramSignalsHistory() {
+    try {
+      const { data, error } = await supabase
+        .from('telegram_signals_history')
+        .select('*')
+        .order('timestamp', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching telegram signals history:', error);
+        return [];
+      }
+      return data || [];
+    } catch (e) {
+      console.error('Error in getTelegramSignalsHistory:', e);
+      return [];
+    }
+  },
+
+  async saveTelegramSignalHistory(signal: any) {
+    try {
+      const { error } = await supabase
+        .from('telegram_signals_history')
+        .upsert(signal);
+
+      if (error) {
+        console.error('Error saving telegram signal history:', error);
+        return false;
+      }
+      return true;
+    } catch (e) {
+      console.error('Error in saveTelegramSignalHistory:', e);
+      return false;
+    }
+  },
+  
+  async deleteTelegramSignalHistory(id: string) {
+    try {
+      const { error } = await supabase
+        .from('telegram_signals_history')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error deleting telegram signal history:', error);
+        return false;
+      }
+      return true;
+    } catch (e) {
+      console.error('Error in deleteTelegramSignalHistory:', e);
+      return false;
+    }
+  }
 };

@@ -516,6 +516,19 @@ async function runWorkerLoop() {
                globalCooldownUntil = Date.now() + 5 * 60 * 1000;
                telegramService.sendMessage(telegramSettings, `⏳ <b>PAUSA DE ANÁLISE: 5 MINUTOS</b>\nO robô fará uma breve pausa para escanear novos padrões de fluxo no mercado.`);
             }
+            try {
+               const historyRecord = {
+                   id: `sig-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+                   ticker: t.ticker,
+                   direction: workflow.activeDirection,
+                   timeframe: workflow.activeTimeframe,
+                   result: outcome,
+                   timestamp: Date.now()
+               };
+               supabase.from('telegram_signals_history').insert([historyRecord]).then(({error}: any) => {
+                   if (error) console.error("Error saving signal history:", error);
+               });
+            } catch (e) {}
             signalBotSession.workflow = { status: "IDLE" };
          }
        } catch (e) {
