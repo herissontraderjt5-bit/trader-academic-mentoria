@@ -339,14 +339,11 @@ export const storageService = {
     return INITIAL_STUDENTS;
   },
 
-  saveStudents(students: User[], skipRemote = false): void {
+  saveStudents(students: User[], _skipRemote = false): void {
     try {
       localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(students));
     } catch (e) {
       console.warn('LocalStorage error for students:', e);
-    }
-    if (supabaseService.isConfigured() && !skipRemote) {
-      students.forEach((s) => supabaseService.upsertProfile(s));
     }
   },
 
