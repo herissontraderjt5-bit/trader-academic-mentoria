@@ -542,7 +542,7 @@ export default function App() {
   const emailKey = currentUser?.email ? currentUser.email.toLowerCase() : '';
   const currentToolMap = settings.studentToolAccessMap?.[currentUser?.id || ''] || (emailKey ? settings.studentToolAccessMap?.[emailKey] : null) || {};
 
-  const hasAiAccess = isAdmin || currentToolMap.hasAiAccess !== false && currentUser?.hasAiAccess !== false;
+  const hasAiAccess = isAdmin || currentToolMap.hasAiAccess === true || currentUser?.hasAiAccess === true || (!requireRelease && currentToolMap.hasAiAccess !== false && currentUser?.hasAiAccess !== false);
   const hasGestaoAccess = isAdmin || currentToolMap.hasGestaoAccess === true || currentUser?.hasGestaoAccess === true || (!requireRelease && currentToolMap.hasGestaoAccess !== false && currentUser?.hasGestaoAccess !== false);
   const hasMentoriaAccess = isAdmin || currentToolMap.hasMentoriaAccess === true || currentUser?.hasMentoriaAccess === true || (!requireRelease && currentToolMap.hasMentoriaAccess !== false && currentUser?.hasMentoriaAccess !== false);
 
