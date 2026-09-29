@@ -45,7 +45,7 @@ export const HioveAccessGateModal: React.FC<HioveAccessGateModalProps> = ({
       if (data.access === true) {
         onSuccess(email.trim().toLowerCase());
       } else {
-        setError('SALDO INSUFICIENTE, REALIZE UM DEPÓSITO MÍNIMO PARA CONTINUAR USANDO A FERRAMENTA!');
+        setError('E-mail não localizado como cliente ativo! Certifique-se de criar sua conta pelo nosso link abaixo e realizar seu primeiro depósito para liberar o acesso.');
       }
     } catch (err: any) {
       setError(err.message || 'Erro de conexão.');
