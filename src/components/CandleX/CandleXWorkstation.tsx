@@ -36,6 +36,7 @@ import { CenterSignalOverlay } from "./components/CenterSignalOverlay";
 import { HioveUnifiedTopBar } from "./components/HioveUnifiedTopBar";
 import { AutoTraderModal } from "./components/AutoTraderModal";
 import { TelegramSignalBotModal } from "./components/TelegramSignalBotModal";
+import { HioveAccessGateModal } from "./components/HioveAccessGateModal";
 
 import {
   Candle,
@@ -198,6 +199,10 @@ export default function CandleXWorkstation({
 
   // Telegram Signal Bot Config & Session
   const [isSignalBotOpen, setIsSignalBotOpen] = useState<boolean>(false);
+  
+  // Hiove Access Gate State
+  const [showHioveGate, setShowHioveGate] = useState<boolean>(!isAdmin && !currentUser.hioveAccess);
+
   const [signalBotConfig, setSignalBotConfig] = useState<SignalBotConfig>(() => {
     try {
       const saved = localStorage.getItem("signalBotConfig");
@@ -1676,6 +1681,12 @@ export default function CandleXWorkstation({
       </div>
 
       {/* Modals */}
+      <HioveAccessGateModal
+        isOpen={showHioveGate}
+        onSuccess={handleHioveAccessSuccess}
+        onClose={onBackToHome}
+      />
+
       <AutoTraderModal
         isOpen={isAutoTraderOpen}
         onClose={() => setIsAutoTraderOpen(false)}

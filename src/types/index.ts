@@ -28,6 +28,8 @@ export interface User {
   hasAiAccess?: boolean;
   hasGestaoAccess?: boolean;
   hasMentoriaAccess?: boolean;
+  hioveAccess?: boolean;
+  hioveEmail?: string;
   referredById?: string;
   referralCode?: string;
   referralBalance?: number;
