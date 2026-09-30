@@ -10,6 +10,7 @@ interface HeroBannerProps {
   onResumeWatching: () => void;
   onOpenCalendar: () => void;
   onOpenUpgrade?: () => void;
+  onOpenCandleX?: () => void;
 }
 
 export const HeroBanner: React.FC<HeroBannerProps> = ({
@@ -20,6 +21,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
   onResumeWatching,
   onOpenCalendar,
   onOpenUpgrade,
+  onOpenCandleX,
 }) => {
   // Find last watched or next uncompleted lesson
   let targetLessonTitle = 'Introdução ao Mercado & Boas-Vindas';
@@ -97,6 +99,17 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
 
           {/* Action CTA Buttons */}
           <div className="flex flex-wrap items-center gap-3">
+            {onOpenCandleX && (
+              <button
+                onClick={onOpenCandleX}
+                className="group relative flex items-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 hover:from-indigo-500 hover:via-purple-500 hover:to-indigo-500 text-white font-black text-xs uppercase tracking-widest transition-all shadow-[0_0_20px_rgba(79,70,229,0.4)] hover:shadow-[0_0_30px_rgba(79,70,229,0.6)] hover:scale-[1.03] cursor-pointer overflow-hidden border border-indigo-400/50"
+              >
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,transparent_0%,white_20%,transparent_40%)] opacity-20 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
+                <Sparkles className="w-4 h-4 text-white animate-pulse" />
+                <span>ACESSAR CANDLEX IA</span>
+              </button>
+            )}
+
             <button
               onClick={onResumeWatching}
               className="flex items-center gap-3 px-6 py-3.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-orange-600/30 hover:scale-[1.02] cursor-pointer"
@@ -109,11 +122,10 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
 
             <button
               onClick={onOpenCalendar}
-              className="flex items-center gap-2 px-5 py-3.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
+              className="flex items-center gap-2 px-5 py-3.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer hover:border-white/20"
             >
               <Calendar className="w-4 h-4 text-orange-500" />
               <span>Calendário Econômico</span>
-              <ArrowRight className="w-4 h-4 text-zinc-400 ml-1" />
             </button>
           </div>
         </div>

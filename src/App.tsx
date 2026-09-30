@@ -803,6 +803,7 @@ export default function App() {
                   onResumeWatching={handleResumeWatching}
                   onOpenUpgrade={() => handleOpenUpgrade()}
                   onOpenCalendar={() => setIsCalendarOpen(true)}
+                  onOpenCandleX={() => setActiveView('candlex')}
                 />
 
                 {/* Course Modules Grid */}
