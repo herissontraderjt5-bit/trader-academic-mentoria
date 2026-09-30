@@ -1363,13 +1363,13 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
               </div>
             )}
 
-            {/* 4. VALOR DA NEGOCIAÇÃO & CONFIGURAÇÃO DO ROBÔ AUTO TRADER IA */}
+            {/* 4. VALOR DA NEGOCIAÇÃO */}
             <div className="bg-[#0A0E18] p-3 rounded-xl border border-indigo-500/40 space-y-2.5 shadow-md">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   <DollarSign className="w-4 h-4 text-emerald-400" />
                   <span className="text-xs font-mono font-bold text-white">
-                    Valor da Negociação (Robô IA & Manual):
+                    Valor da Negociação:
                   </span>
                 </div>
                 <span className="text-[11px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
@@ -1404,37 +1404,6 @@ export const CenterSignalOverlay: React.FC<CenterSignalOverlayProps> = ({
                     className="w-full bg-[#141A26] border border-indigo-500/50 focus:border-indigo-400 rounded-lg py-1.5 pl-6 pr-2 text-xs font-mono font-bold text-white text-right outline-none"
                   />
                 </div>
-              </div>
-
-              {/* Integração Direta com o Robô Auto Trader IA */}
-              <div className="pt-1 flex items-center justify-between gap-2 border-t border-[#1C2538]">
-                <button
-                  type="button"
-                  onClick={onToggleAutoTrader}
-                  className={`flex-1 py-2 px-3 rounded-lg text-xs font-mono font-bold flex items-center justify-center gap-2 transition-all cursor-pointer border ${
-                    autoTraderConfig?.enabled
-                      ? "bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border-emerald-500/50 shadow-[0_0_12px_rgba(16,185,129,0.25)]"
-                      : "bg-[#141A26] hover:bg-[#1E2638] text-slate-300 border-[#222E44]"
-                  }`}
-                  title={autoTraderConfig?.enabled ? "Clique para pausar o Robô IA" : "Clique para ligar o Robô IA com este valor"}
-                >
-                  <Bot className={`w-4 h-4 ${autoTraderConfig?.enabled ? "text-emerald-400 animate-pulse" : "text-slate-400"}`} />
-                  <span>
-                    {autoTraderConfig?.enabled ? `Robô IA Ativo (Mão: R$ ${userStake})` : "Ligar Robô Auto Trader IA"}
-                  </span>
-                </button>
-
-                {onOpenAutoTrader && (
-                  <button
-                    type="button"
-                    onClick={onOpenAutoTrader}
-                    className="py-2 px-3 rounded-lg bg-[#141A26] hover:bg-[#1E2638] text-indigo-300 hover:text-white border border-indigo-500/30 hover:border-indigo-500/60 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer"
-                    title="Abrir configurações completas do Robô Auto Trader IA"
-                  >
-                    <Settings className="w-3.5 h-3.5 text-indigo-400" />
-                    <span>Configurar Robô</span>
-                  </button>
-                )}
               </div>
             </div>
 
