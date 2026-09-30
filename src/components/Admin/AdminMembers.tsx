@@ -177,9 +177,10 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
       ? [...actualSelected, ...existingToolCodes]
       : (existingToolCodes.length > 0 ? existingToolCodes : undefined);
 
+    const targetEmail = customAccessUser.email ? customAccessUser.email.toLowerCase() : '';
     let targetUpdated: User | null = null;
     const updated = users.map((u) => {
-      if (u.id === customAccessUser.id) {
+      if (u.id === customAccessUser.id || (targetEmail && u.email?.toLowerCase() === targetEmail)) {
         targetUpdated = {
           ...u,
           customAllowedModuleIds: newCustomAllowed,
@@ -232,10 +233,13 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
   };
 
   // Toggle Status (Ativo / Bloqueado)
-  const handleToggleStatus = (userId: string) => {
+  const handleToggleStatus = async (userId: string) => {
+    const targetUser = users.find((u) => u.id === userId || (u.email && u.email.toLowerCase() === userId.toLowerCase()));
+    const targetEmail = targetUser?.email ? targetUser.email.toLowerCase() : '';
+
     let targetUpdated: User | null = null;
     const updated = users.map((u) => {
-      if (u.id === userId) {
+      if (u.id === userId || (targetEmail && u.email?.toLowerCase() === targetEmail)) {
         targetUpdated = {
           ...u,
           status: u.status === 'Ativo' ? ('Bloqueado' as StudentStatus) : ('Ativo' as StudentStatus),
@@ -247,7 +251,7 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
     onUpdateUsers(updated);
     storageService.saveStudents(updated);
     if (targetUpdated && supabaseService.isConfigured()) {
-      supabaseService.upsertProfile(targetUpdated);
+      await supabaseService.upsertProfile(targetUpdated);
     }
   };
 
@@ -318,10 +322,12 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
 
   // Change Tier
   const handleChangeTier = async (userId: string, newTier: Tier) => {
-    const oldUser = users.find(u => u.id === userId);
+    const oldUser = users.find((u) => u.id === userId || (u.email && u.email.toLowerCase() === userId.toLowerCase()));
+    const targetEmail = oldUser?.email ? oldUser.email.toLowerCase() : '';
+
     let targetUpdated: User | null = null;
     const updated = users.map((u) => {
-      if (u.id === userId) {
+      if (u.id === userId || (targetEmail && u.email?.toLowerCase() === targetEmail)) {
         targetUpdated = {
           ...u,
           tier: newTier,

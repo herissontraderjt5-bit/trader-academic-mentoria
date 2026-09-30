@@ -65,7 +65,7 @@ export const storageService = {
       if (remoteProfiles && remoteProfiles.length > 0) {
         const localStudents = this.getStudents();
         const mergedStudents = remoteProfiles.map((rp) => {
-          const local = localStudents.find((u) => u.id === rp.id);
+          const local = localStudents.find((u) => u.id === rp.id || (rp.email && u.email?.toLowerCase() === rp.email.toLowerCase()));
           return {
             ...rp,
             hasAiAccess: rp.hasAiAccess ?? local?.hasAiAccess ?? false,

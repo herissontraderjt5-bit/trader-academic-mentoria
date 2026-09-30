@@ -272,7 +272,7 @@ export default function App() {
 
         // Sync fetched profile into users state and local storage
         setUsers((prevUsers) => {
-          const index = prevUsers.findIndex(u => u.id === profile.id);
+          const index = prevUsers.findIndex(u => u.id === profile.id || (profile.email && u.email?.toLowerCase() === profile.email.toLowerCase()));
           let updated = [...prevUsers];
           if (index >= 0) {
             updated[index] = { ...updated[index], ...profile };
@@ -314,7 +314,7 @@ export default function App() {
               const freshProfile = await supabaseService.getProfileById(updatedRow.id);
               if (freshProfile) {
                 setUsers((prev) => {
-                  const idx = prev.findIndex((u) => u.id === freshProfile.id);
+                  const idx = prev.findIndex((u) => u.id === freshProfile.id || (freshProfile.email && u.email?.toLowerCase() === freshProfile.email.toLowerCase()));
                   let updated = [...prev];
                   if (idx >= 0) {
                     updated[idx] = { ...updated[idx], ...freshProfile };
