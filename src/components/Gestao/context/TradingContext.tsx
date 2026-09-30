@@ -101,7 +101,7 @@ interface TradingContextType {
   // Operations
   operations: Operation[];
   filteredOperations: Operation[];
-  addOperation: (op: Omit<Operation, 'id' | 'userId' | 'monthId' | 'profit' | 'createdAt'>) => Operation;
+  addOperation: (op: Omit<Operation, 'id' | 'userId' | 'monthId' | 'profit' | 'createdAt'> & { customProfit?: number }) => Operation;
   updateOperation: (id: string, op: Partial<Operation>) => void;
   deleteOperation: (id: string) => void;
   addCustomAsset: (asset: string) => void;
@@ -663,9 +663,9 @@ export const TradingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Operations CRUD
   const addOperation = (
-    opData: Omit<Operation, 'id' | 'userId' | 'monthId' | 'profit' | 'createdAt'>
+    opData: Omit<Operation, 'id' | 'userId' | 'monthId' | 'profit' | 'createdAt'> & { customProfit?: number }
   ): Operation => {
-    const profit = calculateOperationProfit(opData.investment, opData.payout, opData.result);
+    const profit = opData.customProfit !== undefined ? opData.customProfit : calculateOperationProfit(opData.investment, opData.payout, opData.result);
     const newOp: Operation = {
       ...opData,
       id: `op-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -748,21 +748,6 @@ export const TradingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const opProfit = calculateOperationProfit(investment, payout, result);
     const timeStr = getCurrentTimeString();
     
-    // Add real operation to main operations list
-    addOperation({
-      date: getTodayDateString(),
-      time: timeStr,
-      asset,
-      marketType: 'ABERTO',
-      direction: 'CALL',
-      investment,
-      payout,
-      expiration: 'M1',
-      strategy,
-      result,
-      notes: `Operação #${session5x2.operations.length + 1} da sessão 5x2 (Payout: ${payout}% | Estratégia: ${strategy})`,
-    });
-
     const newOps = [...session5x2.operations, result];
     const newOpDetail = {
       result,
@@ -798,6 +783,25 @@ export const TradingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       newStatus = totalProfit > 0 ? 'STOP_WIN' : 'FINISHED';
     } else if (totalProfit >= (session5x2.dailyTargetWin || 999999)) {
       newStatus = 'STOP_WIN';
+    }
+
+    // Se a sessão acabou, salva o resultado consolidado
+    if (newStatus !== 'ACTIVE') {
+      const finalResult = totalProfit > 0 ? 'WIN' : 'LOSS';
+      addOperation({
+        date: getTodayDateString(),
+        time: timeStr,
+        asset,
+        marketType: 'ABERTO',
+        direction: 'CALL',
+        investment: (session5x2.fixedEntryAmount || monthConfig.defaultEntryAmount || 2.5),
+        payout,
+        expiration: 'M1',
+        strategy,
+        result: finalResult,
+        customProfit: Number(totalProfit.toFixed(2)),
+        notes: `Gestão 5x2 - Sessão Finalizada: ${newStatus === 'STOP_WIN' ? 'Meta Batida' : 'Stop Atingido'} (${formatCurrency(Number(totalProfit.toFixed(2)))})`,
+      });
     }
 
     setSession5x2((prev) => ({

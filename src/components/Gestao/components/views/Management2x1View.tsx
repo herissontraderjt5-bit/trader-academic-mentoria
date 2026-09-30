@@ -107,26 +107,15 @@ export const Management2x1View: React.FC = () => {
 
   // Execute Step 1
   const handleExecuteStep1 = (result: 'WIN' | 'LOSS') => {
-    const timeStr = getCurrentTimeString();
     if (result === 'WIN') {
-      addOperation({
-        date: getTodayDateString(),
-        time: timeStr,
-        asset: step1Asset,
-        marketType: 'ABERTO',
-        direction: 'CALL',
-        investment: mgmt.firstEntryAmount,
-        payout: step1Payout,
-        expiration: 'M1',
-        strategy: step1Strategy,
-        result: 'WIN',
-        notes: `Gestão 2x1 - Entrada 01: ${formatCurrency(mgmt.firstEntryAmount)} -> WIN (+${formatCurrency(step1Profit)})`,
-      });
       setCurrentStep('STEP_2');
     } else {
+      setCycleResult('0x1_STOP');
+      setProfitGenerated(-mgmt.firstEntryAmount);
+      setCurrentStep('CYCLE_FINISHED');
       addOperation({
         date: getTodayDateString(),
-        time: timeStr,
+        time: getCurrentTimeString(),
         asset: step1Asset,
         marketType: 'ABERTO',
         direction: 'CALL',
@@ -135,51 +124,50 @@ export const Management2x1View: React.FC = () => {
         expiration: 'M1',
         strategy: step1Strategy,
         result: 'LOSS',
-        notes: `Gestão 2x1 - Entrada 01: Stop Diário (-${formatCurrency(mgmt.firstEntryAmount)})`,
+        customProfit: -mgmt.firstEntryAmount,
+        notes: `Gestão 2x1 - Ciclo Finalizado: Stop Diário (-${formatCurrency(mgmt.firstEntryAmount)})`,
       });
-      setCycleResult('0x1_STOP');
-      setProfitGenerated(-mgmt.firstEntryAmount);
-      setCurrentStep('CYCLE_FINISHED');
     }
   };
 
   // Execute Step 2 (Soros)
   const handleExecuteStep2 = (result: 'WIN' | 'LOSS') => {
-    const timeStr = getCurrentTimeString();
     if (result === 'WIN') {
+      setCycleResult('2x0_WIN');
+      setProfitGenerated(totalDynamicTargetProfit);
+      setCurrentStep('CYCLE_FINISHED');
       addOperation({
         date: getTodayDateString(),
-        time: timeStr,
+        time: getCurrentTimeString(),
         asset: step2Asset,
         marketType: 'ABERTO',
         direction: 'CALL',
-        investment: step2EntryAmount,
+        investment: mgmt.firstEntryAmount,
         payout: step2Payout,
         expiration: 'M1',
         strategy: step2Strategy,
         result: 'WIN',
-        notes: `Gestão 2x1 - Entrada 02 Soros: ${formatCurrency(step2EntryAmount)} -> WIN (+${formatCurrency(step2Profit)} | Meta Batida!)`,
+        customProfit: totalDynamicTargetProfit,
+        notes: `Gestão 2x1 - Ciclo Finalizado: Meta Batida! (+${formatCurrency(totalDynamicTargetProfit)})`,
       });
-      setCycleResult('2x0_WIN');
-      setProfitGenerated(totalDynamicTargetProfit);
-      setCurrentStep('CYCLE_FINISHED');
     } else {
+      setCycleResult('1x1_STOP');
+      setProfitGenerated(-mgmt.firstEntryAmount);
+      setCurrentStep('CYCLE_FINISHED');
       addOperation({
         date: getTodayDateString(),
-        time: timeStr,
+        time: getCurrentTimeString(),
         asset: step2Asset,
         marketType: 'ABERTO',
         direction: 'CALL',
-        investment: step2EntryAmount,
+        investment: mgmt.firstEntryAmount,
         payout: step2Payout,
         expiration: 'M1',
         strategy: step2Strategy,
         result: 'LOSS',
-        notes: `Gestão 2x1 - Entrada 02 Soros: LOSS (-${formatCurrency(mgmt.firstEntryAmount)})`,
+        customProfit: -mgmt.firstEntryAmount,
+        notes: `Gestão 2x1 - Ciclo Finalizado: Stop na 2ª Mão (-${formatCurrency(mgmt.firstEntryAmount)})`,
       });
-      setCycleResult('1x1_STOP');
-      setProfitGenerated(-mgmt.firstEntryAmount);
-      setCurrentStep('CYCLE_FINISHED');
     }
   };
 
