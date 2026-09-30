@@ -629,7 +629,77 @@ export default function App() {
     );
   }
 
-  // Os bloqueios para Gestão e Mentoria foram removidos conforme solicitação
+  // Lock Screen: Gestão de Banca pending release
+  if (activeView === 'gestao' && !hasGestaoAccess) {
+    return (
+      <div className="min-h-screen bg-[#070709] text-white flex flex-col items-center justify-center p-4">
+        <div className="w-full max-w-md bg-[#0e0e12] border border-cyan-500/40 rounded-3xl p-8 shadow-2xl text-center space-y-4 animate-in zoom-in-95">
+          <div className="w-16 h-16 rounded-2xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-400 flex items-center justify-center mx-auto shadow-xl">
+            <Lock className="w-8 h-8" />
+          </div>
+          <span className="px-3 py-1 rounded-full text-[10px] font-black bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 uppercase tracking-widest font-mono">
+            Acesso Pendente pelo Administrador
+          </span>
+          <h2 className="text-xl font-black text-white uppercase tracking-tight">Planilha de Gestão Pendente</h2>
+          <p className="text-xs text-zinc-400 leading-relaxed font-mono">
+            Olá, <strong className="text-white">{currentUser.name}</strong>! O acesso à Planilha Profissional de Gestão de Banca requer liberação individual do administrador. Fale com o suporte para liberar seu acesso.
+          </p>
+          <div className="pt-3 flex flex-col gap-2 font-mono">
+            <a
+              href={`https://wa.me/${settings.supportWhatsapp}?text=${encodeURIComponent(`Olá! Gostaria de solicitar a liberação do meu acesso à Planilha de Gestão de Banca. Meu email: ${currentUser.email}`)}`}
+              target="_blank"
+              rel="noreferrer"
+              className="w-full py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-cyan-600/20 text-center"
+            >
+              Solicitar Liberação no WhatsApp
+            </a>
+            <button
+              onClick={() => setActiveView('home')}
+              className="w-full py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs font-bold uppercase transition-all"
+            >
+              Voltar ao Painel Principal
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Lock Screen: Mentoria Gratuita pending release
+  if (activeView === 'player' && !hasMentoriaAccess) {
+    return (
+      <div className="min-h-screen bg-[#070709] text-white flex flex-col items-center justify-center p-4">
+        <div className="w-full max-w-md bg-[#0e0e12] border border-amber-500/40 rounded-3xl p-8 shadow-2xl text-center space-y-4 animate-in zoom-in-95">
+          <div className="w-16 h-16 rounded-2xl bg-amber-950/80 border border-amber-500/40 text-amber-400 flex items-center justify-center mx-auto shadow-xl">
+            <Lock className="w-8 h-8" />
+          </div>
+          <span className="px-3 py-1 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase tracking-widest font-mono">
+            Acesso Pendente pelo Administrador
+          </span>
+          <h2 className="text-xl font-black text-white uppercase tracking-tight">Mentoria Gratuita Pendente</h2>
+          <p className="text-xs text-zinc-400 leading-relaxed font-mono">
+            Olá, <strong className="text-white">{currentUser.name}</strong>! As aulas da Mentoria Gratuita necessitam de liberação manual do mentor. Entre em contato para ativar suas aulas.
+          </p>
+          <div className="pt-3 flex flex-col gap-2 font-mono">
+            <a
+              href={`https://wa.me/${settings.supportWhatsapp}?text=${encodeURIComponent(`Olá! Gostaria de solicitar a liberação do meu acesso às aulas da Mentoria Gratuita. Meu email: ${currentUser.email}`)}`}
+              target="_blank"
+              rel="noreferrer"
+              className="w-full py-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-amber-600/20 text-center"
+            >
+              Falar com o Mentor no WhatsApp
+            </a>
+            <button
+              onClick={() => setActiveView('home')}
+              className="w-full py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs font-bold uppercase transition-all"
+            >
+              Voltar ao Painel Principal
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
 
   return (

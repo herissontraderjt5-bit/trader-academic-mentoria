@@ -545,10 +545,25 @@ export const storageService = {
     if (user.role === 'admin') return true;
     if (user.status !== 'Ativo') return false;
 
+    // Check specific module overrides
     const actualModuleOverrides = (user.customAllowedModuleIds || []).filter(id => !id.startsWith('TOOL_'));
-
     if (actualModuleOverrides.length > 0) {
-      return actualModuleOverrides.includes(module.id);
+      if (actualModuleOverrides.includes(module.id)) return true;
+    }
+
+    // Se o usuário tem a chave de acesso "Mentoria ON" ativada, liberar acesso aos módulos da mentoria.
+    // Isso resolve o problema onde o painel ADM mostra ATIVO, mas o módulo pede liberação no player
+    // pois a lógica de "tier" estava bloqueando mesmo com a flag ativada.
+    const settings = this.getSettings();
+    const accessMap = settings?.studentToolAccessMap || {};
+    const emailKey = user.email ? user.email.toLowerCase() : '';
+    const userAccess = accessMap[user.id] || (emailKey ? accessMap[emailKey] : {}) || {};
+    const hasMentoria = user.hasMentoriaAccess === true || 
+                        userAccess.hasMentoriaAccess === true || 
+                        (user.customAllowedModuleIds || []).includes('TOOL_MENTORIA');
+                        
+    if (hasMentoria) {
+      return true; // Se o Mentor ligou a flag, libera todas as aulas
     }
 
     const tierHierarchy: Record<string, number> = {
