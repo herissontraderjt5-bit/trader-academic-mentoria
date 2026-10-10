@@ -21,6 +21,45 @@ export const AutoTraderVisualizerOverlay: React.FC<AutoTraderVisualizerOverlayPr
   const [logs, setLogs] = useState<string[]>([]);
   const logsEndRef = useRef<HTMLDivElement>(null);
   
+  // Dragging state
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragRef = useRef<{ startX: number, startY: number, initialX: number, initialY: number }>({ startX: 0, startY: 0, initialX: 0, initialY: 0 });
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    dragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      initialX: position.x,
+      initialY: position.y
+    };
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const dx = e.clientX - dragRef.current.startX;
+      const dy = e.clientY - dragRef.current.startY;
+      setPosition({
+        x: dragRef.current.initialX + dx,
+        y: dragRef.current.initialY + dy
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
+
   const addLog = (msg: string) => {
     setLogs(prev => {
       const newLogs = [...prev, `[${new Date().toLocaleTimeString('pt-BR')}] ${msg}`];
@@ -82,9 +121,15 @@ export const AutoTraderVisualizerOverlay: React.FC<AutoTraderVisualizerOverlayPr
   if (!config.enabled) return null;
 
   return (
-    <div className="absolute top-4 right-4 z-40 w-80 rounded-2xl bg-[#08080a]/90 backdrop-blur-xl border border-[#ff6b00]/30 shadow-[0_0_40px_-10px_rgba(255,107,0,0.3)] overflow-hidden flex flex-col">
+    <div 
+      className="absolute top-4 right-4 z-40 w-80 rounded-2xl bg-[#08080a]/90 backdrop-blur-xl border border-[#ff6b00]/30 shadow-[0_0_40px_-10px_rgba(255,107,0,0.3)] overflow-hidden flex flex-col transition-shadow"
+      style={{ transform: `translate(${position.x}px, ${position.y}px)`, ...(isDragging ? { boxShadow: '0 0 50px -5px rgba(255,107,0,0.5)' } : {}) }}
+    >
       {/* Header */}
-      <div className="bg-gradient-to-r from-[#ff6b00]/20 to-transparent p-3 flex items-center gap-3 border-b border-[#ff6b00]/20 relative overflow-hidden">
+      <div 
+        onMouseDown={handleMouseDown}
+        className="bg-gradient-to-r from-[#ff6b00]/20 to-transparent p-3 flex items-center gap-3 border-b border-[#ff6b00]/20 relative overflow-hidden cursor-grab active:cursor-grabbing"
+      >
         <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(255,107,0,0.1)_50%,transparent_100%)] translate-x-[-100%] animate-[shimmer_2s_infinite]" />
         
         <div className="relative">
