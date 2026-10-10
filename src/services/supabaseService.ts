@@ -220,7 +220,11 @@ export const supabaseService = {
           notesObj[nr.lesson_id] = nr.note;
         });
 
-        const settings = storageService.getSettings();
+        let settings: any = {};
+        try {
+          const s = localStorage.getItem('trader_academic_settings_v1');
+          if (s) settings = JSON.parse(s);
+        } catch(e){}
         const accessMap = settings?.studentToolAccessMap || {};
         const emailKey = p.email ? p.email.toLowerCase() : '';
         const userAccess = accessMap[p.id] || (emailKey ? accessMap[emailKey] : {}) || {};
