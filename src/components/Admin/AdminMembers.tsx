@@ -148,6 +148,12 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
     return matchesSearch && matchesTier && matchesStatus;
   });
 
+  const sortedUsers = [...filteredUsers].sort((a, b) => {
+    const dateA = new Date(a.termsAcceptedAt || a.joinedAt || 0).getTime();
+    const dateB = new Date(b.termsAcceptedAt || b.joinedAt || 0).getTime();
+    return dateB - dateA;
+  });
+
   // Open Custom Access Modal for a user
   const handleOpenCustomAccess = (user: User) => {
     setCustomAccessUser(user);
@@ -485,14 +491,14 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 text-xs">
-              {filteredUsers.length === 0 ? (
+              {sortedUsers.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-zinc-500">
                     Nenhum aluno encontrado com esses filtros.
                   </td>
                 </tr>
               ) : (
-                filteredUsers.map((user) => {
+                sortedUsers.map((user) => {
                   const isCustom = (user.customAllowedModuleIds || []).filter(id => !id.startsWith('TOOL_')).length > 0;
                   const totalLessonsCount = (modules || []).reduce((acc, m) => acc + (m.lessons?.length || 0), 0);
                   const completedCount = user.progress?.completedLessonIds?.length || 0;
