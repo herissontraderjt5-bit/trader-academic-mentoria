@@ -56,19 +56,14 @@ export const AutoTraderVisualizerOverlay: React.FC<AutoTraderVisualizerOverlayPr
         const conf = latestAnalysis.confidence || 0;
         addLog(`Sinal Detectado: ${latestAnalysis.signal} com precisão de ${conf}%`);
         
-        if (conf >= 70) {
-          setStatus('EXECUTING');
-          addLog(`EXECUTANDO ORDEM ${latestAnalysis.signal} - Valor: $${config.stakeAmount}`);
-          
-          setTimeout(() => {
-            onExecuteTrade(latestAnalysis.signal as 'CALL' | 'PUT', config.stakeAmount || 50);
-            addLog('Ordem executada com sucesso. Proteção de capital ativada.');
-            setStatus('IDLE');
-          }, 3000);
-        } else {
-          addLog('Sinal descartado. Precisão abaixo da margem de segurança do Auto Trader.');
+        setStatus('EXECUTING');
+        addLog(`EXECUTANDO ORDEM ${latestAnalysis.signal} - Valor: $${config.stakeAmount}`);
+        
+        setTimeout(() => {
+          onExecuteTrade(latestAnalysis.signal as 'CALL' | 'PUT', config.stakeAmount || 50);
+          addLog('Ordem executada com sucesso no Diário Local. Proteção ativada.');
           setStatus('IDLE');
-        }
+        }, 3000);
       } else {
         addLog('Nenhuma oportunidade clara identificada. Padrão NEUTRO.');
         setStatus('IDLE');
