@@ -6,8 +6,7 @@ interface AutoTraderVisualizerOverlayProps {
   config: AutoTraderConfig;
   activeTicker: string;
   timeframe: string;
-  latestAnalysis: AiAnalysisResult | null;
-  onTriggerAnalysis: () => void;
+  onTriggerAnalysis: () => Promise<AiAnalysisResult | null>;
   onExecuteTrade: (direction: 'CALL' | 'PUT', stake: number) => void;
 }
 
@@ -15,7 +14,6 @@ export const AutoTraderVisualizerOverlay: React.FC<AutoTraderVisualizerOverlayPr
   config,
   activeTicker,
   timeframe,
-  latestAnalysis,
   onTriggerAnalysis,
   onExecuteTrade
 }) => {
@@ -46,21 +44,35 @@ export const AutoTraderVisualizerOverlay: React.FC<AutoTraderVisualizerOverlayPr
     
     let interval: NodeJS.Timeout;
     
-    const runCycle = () => {
+    const runCycle = async () => {
       setStatus('ANALYZING');
       addLog('Iniciando varredura neural profunda...');
-      onTriggerAnalysis();
       
-      // We will react to the analysis result in the other useEffect
-      setTimeout(() => {
-        setStatus(prev => {
-          if (prev === 'ANALYZING') {
-             addLog('Aguardando próxima janela de operação...');
-             return 'IDLE';
-          }
-          return prev;
-        });
-      }, 5000);
+      const latestAnalysis = await onTriggerAnalysis();
+      
+      if (!config.enabled) return;
+
+      if (latestAnalysis && (latestAnalysis.signal === 'CALL' || latestAnalysis.signal === 'PUT')) {
+        const conf = latestAnalysis.confidence || 0;
+        addLog(`Sinal Detectado: ${latestAnalysis.signal} com precisão de ${conf}%`);
+        
+        if (conf >= 70) {
+          setStatus('EXECUTING');
+          addLog(`EXECUTANDO ORDEM ${latestAnalysis.signal} - Valor: $${config.stakeAmount}`);
+          
+          setTimeout(() => {
+            onExecuteTrade(latestAnalysis.signal as 'CALL' | 'PUT', config.stakeAmount || 50);
+            addLog('Ordem executada com sucesso. Proteção de capital ativada.');
+            setStatus('IDLE');
+          }, 3000);
+        } else {
+          addLog('Sinal descartado. Precisão abaixo da margem de segurança do Auto Trader.');
+          setStatus('IDLE');
+        }
+      } else {
+        addLog('Nenhuma oportunidade clara identificada. Padrão NEUTRO.');
+        setStatus('IDLE');
+      }
     };
 
     // Run first cycle after 3s
@@ -71,33 +83,6 @@ export const AutoTraderVisualizerOverlay: React.FC<AutoTraderVisualizerOverlayPr
     
     return () => clearInterval(interval);
   }, [config.enabled, activeTicker, timeframe]);
-
-  // React to analysis results
-  useEffect(() => {
-    if (!config.enabled || !latestAnalysis || status !== 'ANALYZING') return;
-
-    if (latestAnalysis.signal === 'CALL' || latestAnalysis.signal === 'PUT') {
-      const conf = latestAnalysis.confidence || 0;
-      addLog(`Sinal Detectado: ${latestAnalysis.signal} com precisão de ${conf}%`);
-      
-      if (conf >= 70) {
-        setStatus('EXECUTING');
-        addLog(`EXECUTANDO ORDEM ${latestAnalysis.signal} - Valor: $${config.stakeAmount}`);
-        
-        setTimeout(() => {
-          onExecuteTrade(latestAnalysis.signal as 'CALL' | 'PUT', config.stakeAmount || 50);
-          addLog('Ordem executada com sucesso. Proteção de capital ativada.');
-          setStatus('IDLE');
-        }, 3000);
-      } else {
-        addLog('Sinal descartado. Precisão abaixo da margem de segurança do Auto Trader.');
-        setStatus('IDLE');
-      }
-    } else {
-      addLog('Nenhuma oportunidade clara identificada. Padrão NEUTRO.');
-      setStatus('IDLE');
-    }
-  }, [latestAnalysis]);
 
   if (!config.enabled) return null;
 

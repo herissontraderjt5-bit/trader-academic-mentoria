@@ -914,11 +914,11 @@ export default function CandleXWorkstation({
   }, [candles, indicators, activeTicker, timeframe]);
 
   // Silent Trigger: Used by AutoTrader bot to analyze without opening the visual modal
-  const runSilentAiScan = useCallback(async () => {
+  const runSilentAiScan = useCallback(async (): Promise<AiAnalysisResult | null> => {
     try {
       const cands = candlesRef.current;
       const indics = indicatorsRef.current;
-      if (cands.length === 0) return;
+      if (cands.length === 0) return null;
 
       const result = await candlexApiService.analyze(
         activeTickerRef.current,
@@ -926,9 +926,10 @@ export default function CandleXWorkstation({
         cands,
         indics || calculateAllIndicators(cands)
       );
-      setAiAnalysis(result);
+      return result;
     } catch (e) {
       console.error("Silent AI Analysis error:", e);
+      return null;
     }
   }, [candles, indicators, activeTicker, timeframe]);
 
@@ -1763,7 +1764,6 @@ export default function CandleXWorkstation({
               config={autoTraderConfig}
               activeTicker={activeTicker}
               timeframe={timeframe}
-              latestAnalysis={aiAnalysis}
               onTriggerAnalysis={runSilentAiScan}
               onExecuteTrade={(direction, stake) => {
                 handleRecordTrade({
