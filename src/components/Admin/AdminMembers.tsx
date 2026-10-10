@@ -521,6 +521,9 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
                               )}
                             </h4>
                             <p className="text-zinc-400 text-[11px]">{user.email}</p>
+                            {user.password && (
+                              <p className="text-orange-400 font-mono text-[10px] mt-0.5">Senha: {user.password}</p>
+                            )}
                             
                             <div className="flex flex-wrap gap-2 items-center mt-1 text-[10px]">
                               {user.whatsapp && (

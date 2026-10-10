@@ -137,6 +137,7 @@ export const supabaseService = {
         tier: isAdmin ? 'VIP' : 'Free',
         status: 'Ativo',
         whatsapp: userData.whatsapp.trim(),
+        password: userData.password,
         termsAccepted: userData.termsAccepted,
         termsAcceptedAt: new Date().toISOString(),
         joinedAt: new Date().toISOString().split('T')[0],
