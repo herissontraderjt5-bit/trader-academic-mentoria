@@ -37,6 +37,7 @@ import { HioveUnifiedTopBar } from "./components/HioveUnifiedTopBar";
 import { AutoTraderModal } from "./components/AutoTraderModal";
 import { TelegramSignalBotModal } from "./components/TelegramSignalBotModal";
 import { HioveAccessGateModal } from "./components/HioveAccessGateModal";
+import { AutoTraderVisualizerOverlay } from "./components/AutoTraderVisualizerOverlay";
 
 import {
   Candle,
@@ -912,6 +913,25 @@ export default function CandleXWorkstation({
     }
   }, [candles, indicators, activeTicker, timeframe]);
 
+  // Silent Trigger: Used by AutoTrader bot to analyze without opening the visual modal
+  const runSilentAiScan = useCallback(async () => {
+    try {
+      const cands = candlesRef.current;
+      const indics = indicatorsRef.current;
+      if (cands.length === 0) return;
+
+      const result = await candlexApiService.analyze(
+        activeTickerRef.current,
+        timeframeRef.current.toUpperCase(),
+        cands,
+        indics || calculateAllIndicators(cands)
+      );
+      setAiAnalysis(result);
+    } catch (e) {
+      console.error("Silent AI Analysis error:", e);
+    }
+  }, [candles, indicators, activeTicker, timeframe]);
+
   // When visual 6-pillar scan completes, reveal signal card
   const handleScanComplete = useCallback(() => {
     setIsScanningModalOpen(false);
@@ -1737,6 +1757,24 @@ export default function CandleXWorkstation({
               analysis={aiAnalysis}
               onClose={handleCancelScan}
               onComplete={handleScanComplete}
+            />
+
+            <AutoTraderVisualizerOverlay
+              config={autoTraderConfig}
+              activeTicker={activeTicker}
+              timeframe={timeframe}
+              latestAnalysis={aiAnalysis}
+              onTriggerAnalysis={runSilentAiScan}
+              onExecuteTrade={(direction, stake) => {
+                handleRecordTrade({
+                  asset: activeTicker,
+                  direction,
+                  stake,
+                  payoutPercent: 82,
+                  entryPrice: currentPrice || 0,
+                  date: Date.now()
+                });
+              }}
             />
 
             <CenterSignalOverlay
