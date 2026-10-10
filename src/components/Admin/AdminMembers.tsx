@@ -136,7 +136,7 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
     const nameStr = (u.name || '').toLowerCase();
     const emailStr = (u.email || '').toLowerCase();
     const whatsappStr = u.whatsapp || '';
-    const q = searchQuery.toLowerCase();
+    const q = searchQuery.toLowerCase().trim();
 
     const matchesSearch =
       !searchQuery ||
