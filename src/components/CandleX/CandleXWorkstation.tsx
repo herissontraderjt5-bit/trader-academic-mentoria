@@ -1759,6 +1759,32 @@ export default function CandleXWorkstation({
               onToggleAutoTrader={handleToggleAutoTrader}
               onUpdateAutoTraderConfig={handleUpdateAutoTraderConfig}
             />
+
+            {/* Mobile Floating Analyze Button */}
+            <div className="md:hidden absolute bottom-20 right-4 z-40">
+              <button
+                type="button"
+                onClick={runManualAiScan}
+                disabled={isAnalyzing || aiAnalysis !== null}
+                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-full font-black text-sm uppercase tracking-wider shadow-[0_0_20px_rgba(255,122,0,0.4)] transition-all ${
+                  isAnalyzing || aiAnalysis !== null
+                    ? "bg-zinc-800 text-zinc-500 border border-zinc-700 cursor-not-allowed"
+                    : "bg-gradient-to-r from-[#FF9500] to-[#FF2E00] text-white border border-[#FFE082] cursor-pointer hover:scale-105 active:scale-95"
+                }`}
+              >
+                {isAnalyzing ? (
+                  <>
+                    <RefreshCw className="w-5 h-5 animate-spin text-amber-400" />
+                    <span>Processando</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5 text-yellow-200" />
+                    <span>Analisar IA</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </main>
       </div>
